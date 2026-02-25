@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
-<title>لوحة التحكم — محفظة 2043</title>
+<title>لوحة التحكم — محفظة التقاعد</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -133,7 +133,9 @@
 const portfolio = Store.load('portfolio_v1', APP.portfolio);
 const settings  = APP.settings;
 const divs      = Store.load('dividends_v1', APP.dividends);
-
+  
+const TICKER_MAP = {};
+TICKERS.forEach(t => { TICKER_MAP[t.code] = t; });
 const totalCost = portfolio.reduce((s,p) => s + p.qty * p.avg_cost,      0);
 const totalMkt  = portfolio.reduce((s,p) => s + p.qty * p.current_price, 0);
 const totalPL   = totalMkt - totalCost;
@@ -208,10 +210,6 @@ document.getElementById('kpiRow2').innerHTML = `
     <div class="kpi-value warn">${toReduce}</div>
     <div class="kpi-sub">تخفيف عند الأهداف</div>
   </div>`;
-
-// ── Sector Lookup من TICKERS ─────────────────────────────
-const TICKER_MAP = {};
-TICKERS.forEach(t => { TICKER_MAP[t.code] = t; });
 
 // ── Sector Doughnut ──────────────────────────────────────
 const sectorMap = {};
