@@ -12,54 +12,68 @@
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
 <style>
-  .progress-bar-wrap {
-    background: var(--border);
-    border-radius: 4px;
-    height: 6px;
-    overflow: hidden;
-    margin-top: 8px;
-  }
-  .progress-bar {
-    height: 100%;
-    border-radius: 4px;
-    background: linear-gradient(90deg, var(--accent), var(--purple));
-    transition: width 0.8s ease;
-  }
-  .stock-row-mini {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-  .stock-row-mini:last-child { border-bottom: none; }
-  .stock-row-mini .name   { font-weight: 600; }
-  .stock-row-mini .ticker { color: var(--text3); font-size: 11px; }
-  .rule-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    color: var(--text2);
-  }
-  .rule-item:last-child  { border-bottom: none; }
-  .rule-item .rule-icon  { flex-shrink: 0; margin-top: 1px; }
+/* ── تجاوز chart-card من style.css — لا height ثابت هنا ── */
+.chart-card {
+  height: auto !important;
+  display: block !important;
+  overflow: visible !important;
+}
 
-  /* ── Chart wrapper — الحل الرسمي لـ Chart.js ── */
-  .chart-wrap {
-    position: relative;
-    width: 100%;
-    height: 240px;      /* ارتفاع ثابت هنا فقط */
-  }
-  .chart-wrap canvas {
-    position: absolute !important;
-    top: 0; left: 0;
-    width: 100% !important;
-    height: 100% !important;
-  }
+/* ── الـ wrapper هو الوحيد اللي يتحكم بالارتفاع ── */
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;       /* يحبس الـ canvas */
+}
+.chart-wrap canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Progress ── */
+.progress-bar-wrap {
+  background: var(--border);
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  transition: width 0.8s ease;
+}
+
+/* ── Stocks mini list ── */
+.stock-row-mini {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.stock-row-mini:last-child { border-bottom: none; }
+.stock-row-mini .name   { font-weight: 600; }
+.stock-row-mini .ticker { color: var(--text3); font-size: 11px; }
+
+/* ── Rules ── */
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text2);
+}
+.rule-item:last-child { border-bottom: none; }
+.rule-item .rule-icon { flex-shrink: 0; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -67,7 +81,6 @@
 
 <div class="main">
 
-  <!-- Header -->
   <div class="page-header">
     <div class="page-header-left">
       <h1>🏠 لوحة التحكم</h1>
@@ -78,13 +91,9 @@
     </div>
   </div>
 
-  <!-- KPIs Row 1 -->
   <div class="kpi-grid cols-4" id="kpiRow1"></div>
-
-  <!-- KPIs Row 2 -->
   <div class="kpi-grid cols-4" id="kpiRow2"></div>
 
-  <!-- Charts Row 1 -->
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">🥧 توزيع القطاعات</div>
@@ -100,7 +109,6 @@
     </div>
   </div>
 
-  <!-- Charts Row 2 -->
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">💰 التوزيعات المستلمة حسب السهم</div>
@@ -110,11 +118,10 @@
     </div>
     <div class="chart-card">
       <div class="chart-title">📈 تقدم رأس المال نحو الهدف</div>
-      <div style="padding:16px 0" id="goalProgress"></div>
+      <div style="padding:12px 0" id="goalProgress"></div>
     </div>
   </div>
 
-  <!-- Bottom Row -->
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">🏆 أفضل الأسهم أداءً</div>
@@ -140,13 +147,14 @@ const plPct     = totalPL / totalCost;
 const totalDiv  = divs.reduce((s,d) => s + d.amount, 0);
 const divYield  = totalDiv / totalCost;
 
-// ── Header ────────────────────────────────────
+// ── Header ──────────────────────────────────────────────
 document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-SA', {
   weekday:'long', year:'numeric', month:'long', day:'numeric'
 });
-document.getElementById('lastUpdate').textContent = `آخر تحديث: ${APP.netWorth.lastUpdated}`;
+document.getElementById('lastUpdate').textContent =
+  `آخر تحديث: ${APP.netWorth.lastUpdated}`;
 
-// ── KPI Row 1 ─────────────────────────────────
+// ── KPI Row 1 ────────────────────────────────────────────
 document.getElementById('kpiRow1').innerHTML = `
   <div class="kpi-card">
     <div class="kpi-icon">💹</div>
@@ -171,20 +179,18 @@ document.getElementById('kpiRow1').innerHTML = `
     <div class="kpi-label">الهدف السنوي للعائد</div>
     <div class="kpi-value warn">${H.fmt(settings.targetYield*100,1)}%</div>
     <div class="kpi-sub">رأس مال مستهدف: ${H.fmt(settings.targetCapital)}</div>
-  </div>
-`;
+  </div>`;
 
-// ── KPI Row 2 ─────────────────────────────────
-const positions = portfolio.length;
-const sectors   = [...new Set(portfolio.map(p=>p.sector))].length;
-const toAccum   = portfolio.filter(p=>p.decision.includes('تجميع')).length;
-const toReduce  = portfolio.filter(p=>p.decision.includes('تخفيف')).length;
+// ── KPI Row 2 ────────────────────────────────────────────
+const toAccum  = portfolio.filter(p=>p.decision.includes('تجميع')).length;
+const toReduce = portfolio.filter(p=>p.decision.includes('تخفيف')).length;
+const sectors  = [...new Set(portfolio.map(p=>p.sector))].length;
 
 document.getElementById('kpiRow2').innerHTML = `
   <div class="kpi-card">
     <div class="kpi-icon">🏦</div>
     <div class="kpi-label">عدد المراكز</div>
-    <div class="kpi-value">${positions}</div>
+    <div class="kpi-value">${portfolio.length}</div>
     <div class="kpi-sub">من ${settings.minPositions}–${settings.maxPositions} مستهدف</div>
   </div>
   <div class="kpi-card">
@@ -204,14 +210,12 @@ document.getElementById('kpiRow2').innerHTML = `
     <div class="kpi-label">أسهم للتخفيف</div>
     <div class="kpi-value warn">${toReduce}</div>
     <div class="kpi-sub">تخفيف عند الأهداف</div>
-  </div>
-`;
+  </div>`;
 
-// ── Sector Doughnut ───────────────────────────
+// ── Sector Doughnut ──────────────────────────────────────
 const sectorMap = {};
 portfolio.forEach(p => {
-  const v = p.qty * p.current_price;
-  sectorMap[p.sector] = (sectorMap[p.sector]||0) + v;
+  sectorMap[p.sector] = (sectorMap[p.sector]||0) + p.qty * p.current_price;
 });
 const COLORS = [
   '#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa',
@@ -246,36 +250,59 @@ new Chart(document.getElementById('sectorChart'), {
   }
 });
 
-// ── Allocation Bar ────────────────────────────
+// ── Allocation Bar — أعلى 12 سهم فقط ───────────────────
 const allocData = portfolio
   .map(p => ({
-    name:   p.stock.substring(0,7),
+    name:   p.ticker,                               // تيكر أقصر
     goal:   p.goal_alloc * 100,
     actual: p.qty * p.current_price / totalMkt * 100,
   }))
-  .sort((a,b) => b.goal - a.goal);
+  .sort((a,b) => b.goal - a.goal)
+  .slice(0, 12);
 
 new Chart(document.getElementById('allocChart'), {
   type: 'bar',
   data: {
     labels: allocData.map(d=>d.name),
     datasets: [
-      { label:'الهدف %',  data: allocData.map(d=>d.goal),   backgroundColor:'rgba(79,142,247,0.5)', borderRadius:3 },
-      { label:'الفعلي %', data: allocData.map(d=>d.actual), backgroundColor:'rgba(34,197,94,0.5)',  borderRadius:3 },
+      {
+        label: 'الهدف %',
+        data:  allocData.map(d=>d.goal),
+        backgroundColor: 'rgba(79,142,247,0.6)',
+        borderRadius: 3,
+        maxBarThickness: 22,
+      },
+      {
+        label: 'الفعلي %',
+        data:  allocData.map(d=>d.actual),
+        backgroundColor: 'rgba(34,197,94,0.6)',
+        borderRadius: 3,
+        maxBarThickness: 22,
+      },
     ]
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend:{ labels:{ color:'#94a3b8', font:{size:11} } } },
+    barPercentage: 0.65,
+    categoryPercentage: 0.75,
+    plugins: {
+      legend: { labels:{ color:'#94a3b8', font:{size:11} } }
+    },
     scales: {
-      x: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'#1e2340' } },
-      y: { ticks:{ color:'#64748b' },                grid:{ color:'#1e2340' } }
+      x: {
+        ticks: { color:'#64748b', font:{size:9}, maxRotation:45 },
+        grid:  { color:'#1e2340' }
+      },
+      y: {
+        ticks: { color:'#64748b', callback: v => v+'%' },
+        grid:  { color:'#1e2340' }
+      }
     }
   }
 });
 
-// ── Dividends Bar ─────────────────────────────
+// ── Dividends Bar ────────────────────────────────────────
 const divMap = {};
 divs.forEach(d => { divMap[d.stock] = (divMap[d.stock]||0) + d.amount; });
 const divSorted = Object.entries(divMap).sort((a,b)=>b[1]-a[1]);
@@ -287,8 +314,9 @@ new Chart(document.getElementById('divChart'), {
     datasets: [{
       label: 'SAR',
       data:  divSorted.map(d=>d[1]),
-      backgroundColor: 'rgba(79,142,247,0.6)',
+      backgroundColor: 'rgba(79,142,247,0.65)',
       borderRadius: 4,
+      maxBarThickness: 32,
     }]
   },
   options: {
@@ -302,23 +330,26 @@ new Chart(document.getElementById('divChart'), {
   }
 });
 
-// ── Goal Progress ─────────────────────────────
-const targetCap   = settings.targetCapital;
-const progressPct = Math.min((totalMkt / targetCap) * 100, 100);
+// ── Goal Progress ────────────────────────────────────────
+const progressPct = Math.min(totalMkt / settings.targetCapital * 100, 100);
 const yearsLeft   = settings.retirementYear - new Date().getFullYear();
 
 document.getElementById('goalProgress').innerHTML = `
-  <div style="margin-bottom:20px">
+  <div style="margin-bottom:18px">
     <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-      <span style="font-size:13px;color:var(--text2)">التقدم نحو ${H.fmt(targetCap)} SAR</span>
-      <span style="font-size:13px;font-weight:700;color:var(--accent)">${progressPct.toFixed(1)}%</span>
+      <span style="font-size:13px;color:var(--text2)">
+        التقدم نحو ${H.fmt(settings.targetCapital)} SAR
+      </span>
+      <span style="font-size:13px;font-weight:700;color:var(--accent)">
+        ${progressPct.toFixed(1)}%
+      </span>
     </div>
     <div class="progress-bar-wrap">
       <div class="progress-bar" style="width:${progressPct}%"></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text3)">
       <span>${H.fmt(totalMkt)} SAR حالياً</span>
-      <span>${H.fmt(targetCap - totalMkt)} SAR متبقي</span>
+      <span>${H.fmt(settings.targetCapital - totalMkt)} SAR متبقي</span>
     </div>
   </div>
   <div class="kpi-grid cols-2" style="margin:0">
@@ -329,13 +360,12 @@ document.getElementById('goalProgress').innerHTML = `
     </div>
     <div class="kpi-card" style="padding:14px">
       <div class="kpi-label">الهدف السنوي</div>
-      <div class="kpi-value pos">${H.fmt(targetCap * settings.targetYield)}</div>
+      <div class="kpi-value pos">${H.fmt(settings.targetCapital * settings.targetYield)}</div>
       <div class="kpi-sub">SAR توزيعات</div>
     </div>
-  </div>
-`;
+  </div>`;
 
-// ── Top / Worst Stocks ────────────────────────
+// ── Top / Worst Stocks ───────────────────────────────────
 const sorted = [...portfolio]
   .map(p => ({ ...p, pl: (p.current_price - p.avg_cost) / p.avg_cost }))
   .sort((a,b) => b.pl - a.pl);
@@ -353,10 +383,9 @@ document.getElementById('topStocks').innerHTML =
         </div>
         <div style="font-size:11px;color:var(--text3)">${H.fmt(p.current_price)}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
-// ── Financial Bible ───────────────────────────
+// ── Financial Bible ──────────────────────────────────────
 const rules = [
   { icon:'🛡️', text:'الحماية أهم من الربح. نم قرير العين.' },
   { icon:'⏳', text:'الوقت في السوق أهم من توقيت السوق.' },
@@ -370,8 +399,7 @@ document.getElementById('rulesBox').innerHTML = rules.map(r => `
   <div class="rule-item">
     <span class="rule-icon">${r.icon}</span>
     <span>${r.text}</span>
-  </div>
-`).join('');
+  </div>`).join('');
 </script>
 </body>
 </html>
