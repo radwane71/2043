@@ -41,6 +41,45 @@
 .pct-bar-wrap { display:flex; align-items:center; gap:6px; min-width:100px; }
 .pct-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
 .pct-bar-fill { height:100%; border-radius:2px; background:var(--accent); }
+
+/* ── Quick Price Modal ── */
+.qp-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.qp-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%; max-width: 480px;
+  max-height: 82vh;
+  overflow-y: auto;
+}
+.qp-row {
+  display: grid;
+  grid-template-columns: 1fr 60px 110px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qp-row:last-of-type { border-bottom: none; }
+.qp-name   { font-size: 13px; font-weight: 600; }
+.qp-ticker { font-size: 11px; color: var(--text3); }
+.qp-old    { font-size: 12px; color: var(--text3); text-align: center; }
+.qp-input  {
+  padding: 5px 8px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text);
+  font-size: 13px; text-align: center;
+  outline: none; font-family: inherit; width: 100%;
+  transition: border-color .15s;
+}
+.qp-input:focus { border-color: var(--accent); }
+.qp-input.changed { border-color: var(--green); color: var(--green); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -54,8 +93,9 @@
       <p>21 سهم — انقر على أي قيمة لتعديلها مباشرة</p>
     </div>
     <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 تصدير CSV</button>
-      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ التغييرات</button>
+      <button class="btn btn-ghost btn-sm"    onclick="quickPriceUpdate()">⚡ تحديث الأسعار</button>
+      <button class="btn btn-ghost btn-sm"    onclick="exportCSV()">📥 CSV</button>
+      <button class="btn btn-primary btn-sm"  onclick="saveAll()">💾 حفظ</button>
     </div>
   </div>
 
@@ -100,9 +140,34 @@
   </div>
 
   <div class="info-box blue">
-    💡 انقر على <strong>السعر الحالي، الكمية، متوسط التكلفة، منطقة الشراء، منطقة البيع</strong> لتعديلها مباشرة. ثم اضغط <strong>حفظ التغييرات</strong>.
+    💡 انقر على <strong>السعر الحالي، الكمية، متوسط التكلفة، منطقة الشراء، منطقة البيع</strong> لتعديلها مباشرة،
+    أو استخدم <strong>⚡ تحديث الأسعار</strong> لتحديث الكل دفعة واحدة.
   </div>
 
+</div>
+
+<!-- ══ Quick Price Modal ══ -->
+<div id="qpModal" class="qp-modal" style="display:none">
+  <div class="qp-box">
+    <h3 style="margin-bottom:4px">⚡ تحديث الأسعار</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">
+      أدخل الأسعار الجديدة — الحقول الخضراء تعني تغيير مكتشف
+    </p>
+
+    <!-- header row -->
+    <div class="qp-row" style="border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px">
+      <span style="font-size:11px;color:var(--text3);font-weight:700">السهم</span>
+      <span style="font-size:11px;color:var(--text3);font-weight:700;text-align:center">القديم</span>
+      <span style="font-size:11px;color:var(--text3);font-weight:700;text-align:center">الجديد</span>
+    </div>
+
+    <div id="qpRows"></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+      <button class="btn btn-ghost"   onclick="closeQP()">إلغاء</button>
+      <button class="btn btn-primary" onclick="applyQuickPrices()">✅ تطبيق وحفظ</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -135,50 +200,41 @@ function renderKPIs() {
   const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
   const divs     = Store.load('dividends_v1', APP.dividends);
   const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
+  const { netCost } = calcTrueCost();
 
-  const { netCost, totalBought, totalSold } = calcTrueCost();
-
-  // ── ر/خ ورقية
   const truePL         = totalMkt - netCost;
   const truePLPct      = netCost > 0 ? truePL / netCost : 0;
-
-  // ── العائد الشامل = ر/خ + توزيعات
   const totalReturn    = truePL + totalDiv;
   const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
 
-  // ── YOC المرجّح
+  // YOC المرجّح
   const divByStock = {};
   divs.forEach(d => { divByStock[d.stock] = (divByStock[d.stock]||0) + d.amount; });
-
   let weightedYOC = 0, totalWeight = 0;
   portData.forEach(p => {
-    const cost     = p.qty * p.avg_cost;
-    const stockDiv = divByStock[p.stock] || 0;
-    if (cost > 0 && stockDiv > 0) {
-      weightedYOC += (stockDiv / cost) * cost;
-      totalWeight += cost;
-    }
+    const cost = p.qty * p.avg_cost;
+    const sd   = divByStock[p.stock] || 0;
+    if (cost > 0 && sd > 0) { weightedYOC += (sd/cost)*cost; totalWeight += cost; }
   });
-  const portfolioYOC = totalWeight > 0 ? (weightedYOC / totalWeight) * 100 : 0;
+  const portfolioYOC = totalWeight > 0 ? (weightedYOC/totalWeight)*100 : 0;
 
-  // ── Annualized YOC
-  const divDates = divs.map(d => new Date(d.date)).filter(d => !isNaN(d));
-  const firstDiv = divDates.length ? new Date(Math.min(...divDates)) : new Date();
-  const lastDiv  = divDates.length ? new Date(Math.max(...divDates)) : new Date();
+  // Annualized
+  const divDates  = divs.map(d=>new Date(d.date)).filter(d=>!isNaN(d));
+  const firstDiv  = divDates.length ? new Date(Math.min(...divDates)) : new Date();
+  const lastDiv   = divDates.length ? new Date(Math.max(...divDates)) : new Date();
   const monthSpan = Math.max(
-    (lastDiv.getFullYear() - firstDiv.getFullYear()) * 12
-    + (lastDiv.getMonth()  - firstDiv.getMonth()), 1
+    (lastDiv.getFullYear()-firstDiv.getFullYear())*12
+    +(lastDiv.getMonth()-firstDiv.getMonth()), 1
   );
   const annualizedYOC = portfolioYOC / monthSpan * 12;
 
-  // ── آخر 12 و 6 أشهر
+  // آخر 12 و 6 أشهر
   const now   = new Date();
-  const ago12 = new Date(now); ago12.setMonth(ago12.getMonth() - 12);
-  const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()  - 6);
-  const div12m = divs.filter(d => d.date && new Date(d.date) >= ago12).reduce((s,d)=>s+d.amount,0);
-  const div6m  = divs.filter(d => d.date && new Date(d.date) >= ago6 ).reduce((s,d)=>s+d.amount,0);
+  const ago12 = new Date(now); ago12.setMonth(ago12.getMonth()-12);
+  const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()-6);
+  const div12m = divs.filter(d=>d.date&&new Date(d.date)>=ago12).reduce((s,d)=>s+d.amount,0);
+  const div6m  = divs.filter(d=>d.date&&new Date(d.date)>=ago6 ).reduce((s,d)=>s+d.amount,0);
 
-  // ── Row 1
   document.getElementById('portKPIs').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💼</div>
@@ -205,7 +261,6 @@ function renderKPIs() {
       <div class="kpi-sub">${H.pct(truePLPct)} على التكلفة</div>
     </div>`;
 
-  // ── Row 2
   document.getElementById('portKPIs2').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💰</div>
@@ -229,7 +284,7 @@ function renderKPIs() {
       <div class="kpi-icon">🎯</div>
       <div class="kpi-label">الهدف السنوي</div>
       <div class="kpi-value">${H.fmt(APP.settings.targetYield*100,1)}%</div>
-      <div class="kpi-sub">فجوة ${H.fmt(APP.settings.targetYield*100 - annualizedYOC,2)}%</div>
+      <div class="kpi-sub">فجوة ${H.fmt(APP.settings.targetYield*100-annualizedYOC,2)}%</div>
     </div>`;
 }
 
@@ -243,7 +298,7 @@ function renderTable() {
     const mkt        = p.qty * p.current_price;
     const pl         = mkt - cost;
     const plPct      = cost > 0 ? pl / cost : 0;
-    const allocPct   = totalMkt > 0 ? (mkt / totalMkt) * 100 : 0;
+    const allocPct   = totalMkt > 0 ? (mkt/totalMkt)*100 : 0;
     const plClass    = pl >= 0 ? 'pos' : 'neg';
     const priceClass = p.current_price >= p.avg_cost ? 'price-up' : 'price-down';
     const inBuyZone  = p.current_price <= p.buy_zone_max;
@@ -292,7 +347,7 @@ function editCell(span, idx, field) {
     if (!isNaN(val) && val > 0) {
       portData[idx][field] = val;
       if (field === 'sell_zone_low')
-        portData[idx].sell_zone_high = parseFloat((val * 1.05).toFixed(2));
+        portData[idx].sell_zone_high = parseFloat((val*1.05).toFixed(2));
     }
     applyFilters(); renderKPIs();
   }
@@ -301,6 +356,59 @@ function editCell(span, idx, field) {
     if (e.key === 'Enter')  input.blur();
     if (e.key === 'Escape') applyFilters();
   });
+}
+
+// ══════════════════════════════════════════════
+//  Quick Price Update
+// ══════════════════════════════════════════════
+function quickPriceUpdate() {
+  document.getElementById('qpRows').innerHTML = portData.map((p,i) => `
+    <div class="qp-row">
+      <div>
+        <div class="qp-name">${p.stock}</div>
+        <div class="qp-ticker">${p.ticker}</div>
+      </div>
+      <div class="qp-old">${H.fmt(p.current_price)}</div>
+      <input
+        class="qp-input"
+        type="number"
+        step="0.01"
+        value="${p.current_price}"
+        data-idx="${i}"
+        data-old="${p.current_price}"
+        oninput="markChanged(this)"
+      >
+    </div>`).join('');
+  document.getElementById('qpModal').style.display = 'flex';
+}
+
+function markChanged(inp) {
+  const oldVal = parseFloat(inp.dataset.old);
+  const newVal = parseFloat(inp.value);
+  inp.classList.toggle('changed', !isNaN(newVal) && newVal !== oldVal);
+}
+
+function closeQP() {
+  document.getElementById('qpModal').style.display = 'none';
+}
+
+function applyQuickPrices() {
+  let changed = 0;
+  document.querySelectorAll('#qpRows .qp-input').forEach(inp => {
+    const val = parseFloat(inp.value);
+    const idx = parseInt(inp.dataset.idx);
+    const old = parseFloat(inp.dataset.old);
+    if (!isNaN(val) && val > 0 && val !== old) {
+      portData[idx].current_price = val;
+      changed++;
+    }
+  });
+  closeQP();
+  // حفظ تلقائي بعد التطبيق
+  Store.save('portfolio_v1', portData);
+  renderKPIs();
+  applyFilters();
+  toast(`✅ تم تحديث ${changed} سعر وحفظ التغييرات`, 'success');
 }
 
 // ══════════════════════════════════════════════
