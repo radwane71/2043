@@ -34,7 +34,7 @@
     font-size: 13px;
   }
   .stock-row-mini:last-child { border-bottom: none; }
-  .stock-row-mini .name { font-weight: 600; }
+  .stock-row-mini .name   { font-weight: 600; }
   .stock-row-mini .ticker { color: var(--text3); font-size: 11px; }
   .rule-item {
     display: flex;
@@ -45,12 +45,25 @@
     font-size: 13px;
     color: var(--text2);
   }
-  .rule-item:last-child { border-bottom: none; }
-  .rule-item .rule-icon { flex-shrink: 0; margin-top: 1px; }
+  .rule-item:last-child  { border-bottom: none; }
+  .rule-item .rule-icon  { flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Chart wrapper — الحل الرسمي لـ Chart.js ── */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 240px;      /* ارتفاع ثابت هنا فقط */
+  }
+  .chart-wrap canvas {
+    position: absolute !important;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
 </style>
 </head>
 <body>
-<script> initPage('dashboard'); </script>
+<script>initPage('dashboard');</script>
 
 <div class="main">
 
@@ -71,15 +84,19 @@
   <!-- KPIs Row 2 -->
   <div class="kpi-grid cols-4" id="kpiRow2"></div>
 
-  <!-- Charts Row -->
+  <!-- Charts Row 1 -->
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">🥧 توزيع القطاعات</div>
-      <canvas id="sectorChart" height="240"></canvas>
+      <div class="chart-wrap">
+        <canvas id="sectorChart"></canvas>
+      </div>
     </div>
     <div class="chart-card">
       <div class="chart-title">📊 التخصيص الفعلي مقابل الهدف</div>
-      <canvas id="allocChart" height="240"></canvas>
+      <div class="chart-wrap">
+        <canvas id="allocChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -87,7 +104,9 @@
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">💰 التوزيعات المستلمة حسب السهم</div>
-      <canvas id="divChart" height="200"></canvas>
+      <div class="chart-wrap">
+        <canvas id="divChart"></canvas>
+      </div>
     </div>
     <div class="chart-card">
       <div class="chart-title">📈 تقدم رأس المال نحو الهدف</div>
@@ -97,50 +116,37 @@
 
   <!-- Bottom Row -->
   <div class="chart-grid cols-2">
-
-    <!-- Top performers -->
     <div class="chart-card">
       <div class="chart-title">🏆 أفضل الأسهم أداءً</div>
       <div id="topStocks"></div>
     </div>
-
-    <!-- Financial Bible -->
     <div class="chart-card">
       <div class="chart-title">📖 قواعد الاستثمار</div>
       <div id="rulesBox"></div>
     </div>
-
   </div>
 
-</div><!-- /main -->
+</div>
 
 <script>
-// ───────────────────────────────────────────────
-//  حسابات المحفظة
-// ───────────────────────────────────────────────
-const portfolio = APP.portfolio;
+const portfolio = Store.load('portfolio_v1', APP.portfolio);
 const settings  = APP.settings;
 const divs      = Store.load('dividends_v1', APP.dividends);
 
-const totalCost = portfolio.reduce((s,p) => s + p.qty * p.avg_cost,         0);
-const totalMkt  = portfolio.reduce((s,p) => s + p.qty * p.current_price,    0);
+const totalCost = portfolio.reduce((s,p) => s + p.qty * p.avg_cost,      0);
+const totalMkt  = portfolio.reduce((s,p) => s + p.qty * p.current_price, 0);
 const totalPL   = totalMkt - totalCost;
 const plPct     = totalPL / totalCost;
 const totalDiv  = divs.reduce((s,d) => s + d.amount, 0);
 const divYield  = totalDiv / totalCost;
-const nw        = Store.load('networth_v1', APP.netWorth);
 
-// ───────────────────────────────────────────────
-//  Header date
-// ───────────────────────────────────────────────
+// ── Header ────────────────────────────────────
 document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-SA', {
   weekday:'long', year:'numeric', month:'long', day:'numeric'
 });
 document.getElementById('lastUpdate').textContent = `آخر تحديث: ${APP.netWorth.lastUpdated}`;
 
-// ───────────────────────────────────────────────
-//  KPI Row 1
-// ───────────────────────────────────────────────
+// ── KPI Row 1 ─────────────────────────────────
 document.getElementById('kpiRow1').innerHTML = `
   <div class="kpi-card">
     <div class="kpi-icon">💹</div>
@@ -168,9 +174,7 @@ document.getElementById('kpiRow1').innerHTML = `
   </div>
 `;
 
-// ───────────────────────────────────────────────
-//  KPI Row 2
-// ───────────────────────────────────────────────
+// ── KPI Row 2 ─────────────────────────────────
 const positions = portfolio.length;
 const sectors   = [...new Set(portfolio.map(p=>p.sector))].length;
 const toAccum   = portfolio.filter(p=>p.decision.includes('تجميع')).length;
@@ -203,28 +207,23 @@ document.getElementById('kpiRow2').innerHTML = `
   </div>
 `;
 
-// ───────────────────────────────────────────────
-//  Sector Doughnut
-// ───────────────────────────────────────────────
+// ── Sector Doughnut ───────────────────────────
 const sectorMap = {};
 portfolio.forEach(p => {
   const v = p.qty * p.current_price;
   sectorMap[p.sector] = (sectorMap[p.sector]||0) + v;
 });
-const sectorLabels = Object.keys(sectorMap);
-const sectorValues = Object.values(sectorMap);
 const COLORS = [
   '#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa',
-  '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6',
-  '#8b5cf6','#fb923c'
+  '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6','#8b5cf6','#fb923c'
 ];
 
 new Chart(document.getElementById('sectorChart'), {
   type: 'doughnut',
   data: {
-    labels: sectorLabels,
+    labels: Object.keys(sectorMap),
     datasets: [{
-      data: sectorValues,
+      data: Object.values(sectorMap),
       backgroundColor: COLORS,
       borderColor: '#131722',
       borderWidth: 2,
@@ -247,16 +246,12 @@ new Chart(document.getElementById('sectorChart'), {
   }
 });
 
-// ───────────────────────────────────────────────
-//  Allocation Bar Chart
-// ───────────────────────────────────────────────
+// ── Allocation Bar ────────────────────────────
 const allocData = portfolio
   .map(p => ({
-    name:    p.stock.substring(0,7),
-    goal:    p.goal_alloc * 100,
-    actual:  p.current_alloc !== undefined
-               ? p.current_alloc * 100
-               : (p.qty * p.current_price / totalMkt * 100),
+    name:   p.stock.substring(0,7),
+    goal:   p.goal_alloc * 100,
+    actual: p.qty * p.current_price / totalMkt * 100,
   }))
   .sort((a,b) => b.goal - a.goal);
 
@@ -265,8 +260,8 @@ new Chart(document.getElementById('allocChart'), {
   data: {
     labels: allocData.map(d=>d.name),
     datasets: [
-      { label:'الهدف %',  data: allocData.map(d=>d.goal),   backgroundColor:'rgba(79,142,247,0.5)',  borderRadius:3 },
-      { label:'الفعلي %', data: allocData.map(d=>d.actual), backgroundColor:'rgba(34,197,94,0.5)',   borderRadius:3 },
+      { label:'الهدف %',  data: allocData.map(d=>d.goal),   backgroundColor:'rgba(79,142,247,0.5)', borderRadius:3 },
+      { label:'الفعلي %', data: allocData.map(d=>d.actual), backgroundColor:'rgba(34,197,94,0.5)',  borderRadius:3 },
     ]
   },
   options: {
@@ -275,14 +270,12 @@ new Chart(document.getElementById('allocChart'), {
     plugins: { legend:{ labels:{ color:'#94a3b8', font:{size:11} } } },
     scales: {
       x: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'#1e2340' } },
-      y: { ticks:{ color:'#64748b' }, grid:{ color:'#1e2340' } }
+      y: { ticks:{ color:'#64748b' },                grid:{ color:'#1e2340' } }
     }
   }
 });
 
-// ───────────────────────────────────────────────
-//  Dividends by Stock
-// ───────────────────────────────────────────────
+// ── Dividends Bar ─────────────────────────────
 const divMap = {};
 divs.forEach(d => { divMap[d.stock] = (divMap[d.stock]||0) + d.amount; });
 const divSorted = Object.entries(divMap).sort((a,b)=>b[1]-a[1]);
@@ -304,17 +297,14 @@ new Chart(document.getElementById('divChart'), {
     plugins: { legend:{ display:false } },
     scales: {
       x: { ticks:{ color:'#64748b', font:{size:10} }, grid:{ color:'#1e2340' } },
-      y: { ticks:{ color:'#64748b' }, grid:{ color:'#1e2340' } }
+      y: { ticks:{ color:'#64748b' },                 grid:{ color:'#1e2340' } }
     }
   }
 });
 
-// ───────────────────────────────────────────────
-//  Goal Progress
-// ───────────────────────────────────────────────
+// ── Goal Progress ─────────────────────────────
 const targetCap   = settings.targetCapital;
-const currentCap  = totalMkt;
-const progressPct = Math.min((currentCap / targetCap) * 100, 100);
+const progressPct = Math.min((totalMkt / targetCap) * 100, 100);
 const yearsLeft   = settings.retirementYear - new Date().getFullYear();
 
 document.getElementById('goalProgress').innerHTML = `
@@ -327,8 +317,8 @@ document.getElementById('goalProgress').innerHTML = `
       <div class="progress-bar" style="width:${progressPct}%"></div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text3)">
-      <span>${H.fmt(currentCap)} SAR حالياً</span>
-      <span>${H.fmt(targetCap - currentCap)} SAR متبقي</span>
+      <span>${H.fmt(totalMkt)} SAR حالياً</span>
+      <span>${H.fmt(targetCap - totalMkt)} SAR متبقي</span>
     </div>
   </div>
   <div class="kpi-grid cols-2" style="margin:0">
@@ -345,36 +335,28 @@ document.getElementById('goalProgress').innerHTML = `
   </div>
 `;
 
-// ───────────────────────────────────────────────
-//  Top / Worst Stocks
-// ───────────────────────────────────────────────
+// ── Top / Worst Stocks ────────────────────────
 const sorted = [...portfolio]
-  .map(p => ({
-    ...p,
-    pl:    (p.current_price - p.avg_cost) / p.avg_cost
-  }))
+  .map(p => ({ ...p, pl: (p.current_price - p.avg_cost) / p.avg_cost }))
   .sort((a,b) => b.pl - a.pl);
 
-const topList = [...sorted.slice(0,5), ...sorted.slice(-3)];
-
-document.getElementById('topStocks').innerHTML = topList.map(p => `
-  <div class="stock-row-mini">
-    <div>
-      <div class="name">${p.stock}</div>
-      <div class="ticker">${p.ticker}</div>
-    </div>
-    <div style="text-align:left">
-      <div class="${p.pl>=0?'pos':'neg'}" style="font-weight:700">
-        ${p.pl>=0?'+':''}${(p.pl*100).toFixed(2)}%
+document.getElementById('topStocks').innerHTML =
+  [...sorted.slice(0,5), ...sorted.slice(-3)].map(p => `
+    <div class="stock-row-mini">
+      <div>
+        <div class="name">${p.stock}</div>
+        <div class="ticker">${p.ticker}</div>
       </div>
-      <div style="font-size:11px;color:var(--text3)">${H.fmt(p.current_price)}</div>
+      <div style="text-align:left">
+        <div class="${p.pl>=0?'pos':'neg'}" style="font-weight:700">
+          ${p.pl>=0?'+':''}${(p.pl*100).toFixed(2)}%
+        </div>
+        <div style="font-size:11px;color:var(--text3)">${H.fmt(p.current_price)}</div>
+      </div>
     </div>
-  </div>
-`).join('');
+  `).join('');
 
-// ───────────────────────────────────────────────
-//  Financial Bible
-// ───────────────────────────────────────────────
+// ── Financial Bible ───────────────────────────
 const rules = [
   { icon:'🛡️', text:'الحماية أهم من الربح. نم قرير العين.' },
   { icon:'⏳', text:'الوقت في السوق أهم من توقيت السوق.' },
