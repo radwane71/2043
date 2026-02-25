@@ -175,14 +175,12 @@ body {
 .kpi-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 .kpi-grid.cols-5 { grid-template-columns: repeat(5, 1fr); }
 
-.kpi-card {
+.chart-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 22px;
-  transition: border-color 0.2s;
-  position: relative;
-  overflow: hidden;
+  padding: 22px;
+  /* overflow محذوف — chart-wrap يتحكم بالحدود */
 }
 .kpi-card::before {
   content:''; position:absolute; top:0; right:0;
