@@ -140,6 +140,25 @@ select.field-inline option { background: var(--card); }
   font-size: 11px; color: var(--text3); margin-top: 4px;
 }
 
+/* ── Chart fix ── */
+.chart-card {
+  height: auto !important;
+  display: block !important;
+  overflow: visible !important;
+}
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+}
+.chart-wrap canvas {
+  position: absolute !important;
+  top: 0 !important; left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @media(max-width:768px){
   .asset-row { grid-template-columns: 1fr 1fr; gap:8px; }
   .liability-row { grid-template-columns: 1fr 1fr; gap:8px; }
@@ -174,11 +193,15 @@ select.field-inline option { background: var(--card); }
   <div class="chart-grid cols-2" style="margin-bottom:24px">
     <div class="chart-card">
       <div class="chart-title">🥧 توزيع الأصول</div>
-      <canvas id="assetsChart" height="240"></canvas>
+      <div class="chart-wrap">
+        <canvas id="assetsChart"></canvas>
+      </div>
     </div>
     <div class="chart-card">
       <div class="chart-title">⚖️ الأصول مقابل الالتزامات</div>
-      <canvas id="liabChart" height="240"></canvas>
+      <div class="chart-wrap">
+        <canvas id="liabChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -361,7 +384,7 @@ select.field-inline option { background: var(--card); }
 
 <script>
 // ────────────────────────────────────────────────
-//  State — load from session or defaults
+//  State
 // ────────────────────────────────────────────────
 const NW = Store.load('networth_full_v1', {
   properties:  [],
@@ -372,7 +395,7 @@ const NW = Store.load('networth_full_v1', {
 });
 
 // ────────────────────────────────────────────────
-//  Calculated from portfolio (live)
+//  Portfolio (live)
 // ────────────────────────────────────────────────
 function getPortfolioValue() {
   const port = Store.load('portfolio_v1', APP.portfolio);
@@ -397,24 +420,24 @@ function carCurrentValue(car) {
 //  Totals
 // ────────────────────────────────────────────────
 function totals() {
-  const stocks     = getPortfolioValue();
-  const properties = NW.properties.reduce((s,p) => s + (p.value||0), 0);
-  const cars       = NW.cars.reduce((s,c) => s + carCurrentValue(c), 0);
-  const cash       = NW.cash.reduce((s,c) => s + (c.amount||0), 0);
-  const other      = NW.other.reduce((s,o) => s + (o.value||0), 0);
-  const liabilities= NW.liabilities.reduce((s,l) => s + (l.remain||l.total||0), 0);
-  const totalAssets= stocks + properties + cars + cash + other;
-  const netWorth   = totalAssets - liabilities;
+  const stocks      = getPortfolioValue();
+  const properties  = NW.properties.reduce((s,p) => s + (p.value||0), 0);
+  const cars        = NW.cars.reduce((s,c) => s + carCurrentValue(c), 0);
+  const cash        = NW.cash.reduce((s,c) => s + (c.amount||0), 0);
+  const other       = NW.other.reduce((s,o) => s + (o.value||0), 0);
+  const liabilities = NW.liabilities.reduce((s,l) => s + (l.remain||l.total||0), 0);
+  const totalAssets = stocks + properties + cars + cash + other;
+  const netWorth    = totalAssets - liabilities;
   return { stocks, properties, cars, cash, other, liabilities, totalAssets, netWorth };
 }
 
 // ────────────────────────────────────────────────
-//  Render Summary
+//  Render Summary + Charts
 // ────────────────────────────────────────────────
 let chartAssets = null, chartLiab = null;
 
 function renderSummary() {
-  const t = totals();
+  const t      = totals();
   const target = APP.settings.targetCapital;
   const pct    = Math.min((t.netWorth / target) * 100, 100);
   const leverage = t.totalAssets > 0 ? (t.liabilities / t.totalAssets * 100) : 0;
@@ -503,7 +526,7 @@ function renderSummary() {
     }
   });
 
-  // Bar Assets vs Liabilities
+  // Bar
   if (chartLiab) chartLiab.destroy();
   chartLiab = new Chart(document.getElementById('liabChart'), {
     type: 'bar',
@@ -526,7 +549,7 @@ function renderSummary() {
     }
   });
 
-  // Update section totals
+  // Section totals
   document.getElementById('stocks-total').textContent      = H.fmt(t.stocks)      + ' SAR';
   document.getElementById('properties-total').textContent  = H.fmt(t.properties)  + ' SAR';
   document.getElementById('cars-total').textContent        = H.fmt(t.cars)        + ' SAR';
@@ -536,14 +559,12 @@ function renderSummary() {
 }
 
 // ────────────────────────────────────────────────
-//  Render Stocks Breakdown
+//  Render Rows
 // ────────────────────────────────────────────────
 function renderStocks() {
-  const port = Store.load('portfolio_v1', APP.portfolio);
+  const port     = Store.load('portfolio_v1', APP.portfolio);
   const totalMkt = port.reduce((s,p) => s + p.qty * p.current_price, 0);
-
-  // Group by sector
-  const sectors = {};
+  const sectors  = {};
   port.forEach(p => {
     const v = p.qty * p.current_price;
     sectors[p.sector] = (sectors[p.sector]||0) + v;
@@ -567,9 +588,6 @@ function renderStocks() {
   `;
 }
 
-// ────────────────────────────────────────────────
-//  Render Rows Helpers
-// ────────────────────────────────────────────────
 function renderProperties() {
   document.getElementById('prop-rows').innerHTML = NW.properties.map((p,i) => `
     <div class="asset-row">
@@ -646,10 +664,10 @@ function addProperty() {
 }
 
 function addCar() {
-  const name  = document.getElementById('car-name').value.trim();
-  const year  = parseInt(document.getElementById('car-year').value)||new Date().getFullYear();
-  const cost  = parseFloat(document.getElementById('car-cost').value)||0;
-  const cv    = parseFloat(document.getElementById('car-value').value)||0;
+  const name = document.getElementById('car-name').value.trim();
+  const year = parseInt(document.getElementById('car-year').value)||new Date().getFullYear();
+  const cost = parseFloat(document.getElementById('car-cost').value)||0;
+  const cv   = parseFloat(document.getElementById('car-value').value)||0;
   if (!name || !cost) return toast('أدخل الاسم والتكلفة','error');
   NW.cars.push({ name, year, cost, current_value: cv });
   ['car-name','car-year','car-cost','car-value'].forEach(id=>document.getElementById(id).value='');
@@ -703,24 +721,14 @@ function del(section, idx) {
 //  Toggle Collapse
 // ────────────────────────────────────────────────
 function toggleSection(id) {
-  const sec = document.getElementById(`sec-${id}`);
-  sec.classList.toggle('collapsed');
+  document.getElementById(`sec-${id}`).classList.toggle('collapsed');
 }
 
 // ────────────────────────────────────────────────
-//  Save
+//  Save / Print
 // ────────────────────────────────────────────────
-function saveAll() {
-  Store.save('networth_full_v1', NW);
-  toast('✅ تم الحفظ الكامل','success');
-}
-
-// ────────────────────────────────────────────────
-//  Print
-// ────────────────────────────────────────────────
-function exportPDF() {
-  window.print();
-}
+function saveAll()   { Store.save('networth_full_v1', NW); toast('✅ تم الحفظ الكامل','success'); }
+function exportPDF() { window.print(); }
 
 // ────────────────────────────────────────────────
 //  Refresh All
