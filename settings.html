@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>الإعدادات — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+</head>
+<body>
+<script>initPage('settings');</script>
+
+<div class="main">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>⚙️ الإعدادات والمتغيرات</h1>
+      <p>تحكم كامل في كل معاملات الموقع — التغييرات تنعكس فوراً على كل الصفحات</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-danger  btn-sm" onclick="resetAll()">🔄 استعادة الافتراضي</button>
+      <button class="btn btn-primary"        onclick="saveAll()">💾 حفظ الكل</button>
+    </div>
+  </div>
+
+  <!-- ══ 1. إعدادات عامة ══ -->
+  <div class="settings-section">
+    <div class="settings-section-header">👤 إعدادات عامة</div>
+    <div class="settings-section-body">
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>اسم المالك</label>
+          <small>يظهر في الـ Sidebar</small>
+        </div>
+        <input type="text" id="s-ownerName">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>سنة التقاعد المستهدفة</label>
+          <small>المحور الزمني الرئيسي</small>
+        </div>
+        <input type="number" id="s-retirementYear">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>رأس المال المستهدف (SAR)</label>
+          <small>هدف صافي الثروة الكامل</small>
+        </div>
+        <input type="number" id="s-targetCapital">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>عائد التوزيعات المستهدف %</label>
+          <small>النسبة السنوية المطلوبة على رأس المال</small>
+        </div>
+        <input type="number" id="s-targetYield" step="0.01">
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 2. العمولات والضرائب ══ -->
+  <div class="settings-section">
+    <div class="settings-section-header">💸 العمولات والضرائب</div>
+    <div class="settings-section-body">
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>نسبة عمولة التداول %</label>
+          <small>تطبق على كل عملية شراء أو بيع</small>
+        </div>
+        <input type="number" id="s-commissionRate" step="0.00001">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>نسبة VAT على العمولة %</label>
+          <small>ضريبة القيمة المضافة</small>
+        </div>
+        <input type="number" id="s-vatRate" step="0.01">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>الحد الأدنى للعمولة (SAR)</label>
+          <small>0 = لا يوجد حد أدنى</small>
+        </div>
+        <input type="number" id="s-minCommission" step="0.01">
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3. قواعد المحفظة ══ -->
+  <div class="settings-section">
+    <div class="settings-section-header">📐 قواعد المحفظة</div>
+    <div class="settings-section-body">
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>أقصى تخصيص لسهم واحد %</label>
+          <small>تجاوزه يعني تركيز مرتفع</small>
+        </div>
+        <input type="number" id="s-maxPositionPct" step="0.01">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>أقصى تخصيص لقطاع واحد %</label>
+          <small>للحماية من تركيز القطاع</small>
+        </div>
+        <input type="number" id="s-maxSectorPct" step="0.01">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>أقصى تخصيص للبلو شيب %</label>
+          <small>أرامكو / STC</small>
+        </div>
+        <input type="number" id="s-blueChipMaxPct" step="0.01">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>الحد الأدنى لعدد المراكز</label>
+          <small>تنويع كافٍ</small>
+        </div>
+        <input type="number" id="s-minPositions">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>الحد الأقصى لعدد المراكز</label>
+          <small>لتجنب التشتت</small>
+        </div>
+        <input type="number" id="s-maxPositions">
+      </div>
+      <div class="setting-row">
+        <div class="setting-row-info">
+          <label>عتبة إعادة التوازن %</label>
+          <small>تفاوت مقبول قبل إعادة التوازن</small>
+        </div>
+        <input type="number" id="s-rebalanceThresh" step="0.01">
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 4. إعدادات الأسهم الفردية ══ -->
+  <div class="settings-section">
+    <div class="settings-section-header">📋 إعدادات الأسهم — مناطق الشراء والبيع والهدف</div>
+    <div class="settings-section-body">
+      <div class="info-box blue" style="margin-bottom:16px">
+        هذه البيانات مربوطة مباشرة بصفحة المحفظة. التعديل هنا يحدّث الجدول الرئيسي فوراً عند الحفظ.
+      </div>
+      <div style="overflow:auto">
+        <table style="min-width:900px">
+          <thead>
+            <tr>
+              <th>السهم</th>
+              <th>التيكر</th>
+              <th>الهدف %</th>
+              <th>شراء &lt;</th>
+              <th>بيع من</th>
+              <th>بيع إلى</th>
+              <th>القرار</th>
+              <th>التقييم</th>
+            </tr>
+          </thead>
+          <tbody id="stocksSettingsBody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;text-align:left">
+        <button class="btn btn-success" onclick="saveStocksSettings()">💾 حفظ إعدادات الأسهم</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 5. بيانات الجلسة ══ -->
+  <div class="settings-section">
+    <div class="settings-section-header">🗄️ إدارة البيانات المحفوظة</div>
+    <div class="settings-section-body">
+      <div class="info-box yellow" style="margin-bottom:16px">
+        ⚠️ هذه البيانات محفوظة في الجلسة الحالية. تُمسح عند إغلاق المتصفح إلا إذا حفظت النسخة الاحتياطية.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <button class="btn btn-ghost" onclick="exportBackup()">📦 تصدير نسخة احتياطية كاملة</button>
+        <button class="btn btn-warn"  onclick="document.getElementById('restoreInput').click()">📤 استعادة نسخة احتياطية</button>
+        <button class="btn btn-danger" onclick="clearSession()">🗑 مسح كل بيانات الجلسة</button>
+      </div>
+      <input id="restoreInput" type="file" accept=".json" style="display:none" onchange="restoreBackup(this)">
+
+      <div style="margin-top:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">البيانات الموجودة في الجلسة:</div>
+        <div id="sessionStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Load settings into fields ─────────────────────────────
+function loadSettings(){
+  const s = Store.load('app_settings_v1', APP.settings);
+  const f = Store.load('app_fees_v1',     APP.fees);
+
+  document.getElementById('s-ownerName').value       = s.ownerName        || APP.settings.ownerName;
+  document.getElementById('s-retirementYear').value  = s.retirementYear   || APP.settings.retirementYear;
+  document.getElementById('s-targetCapital').value   = s.targetCapital    || APP.settings.targetCapital;
+  document.getElementById('s-targetYield').value     = ((s.targetYield    || APP.settings.targetYield)*100).toFixed(2);
+  document.getElementById('s-commissionRate').value  = ((f.commissionRate || APP.fees.commissionRate)*100).toFixed(4);
+  document.getElementById('s-vatRate').value         = ((f.vatRate        || APP.fees.vatRate)*100).toFixed(0);
+  document.getElementById('s-minCommission').value   = f.minCommission    ?? APP.fees.minCommission;
+  document.getElementById('s-maxPositionPct').value  = ((s.maxPositionPct || APP.settings.maxPositionPct)*100).toFixed(0);
+  document.getElementById('s-maxSectorPct').value    = ((s.maxSectorPct   || APP.settings.maxSectorPct)*100).toFixed(0);
+  document.getElementById('s-blueChipMaxPct').value  = ((s.blueChipMaxPct || APP.settings.blueChipMaxPct)*100).toFixed(0);
+  document.getElementById('s-minPositions').value    = s.minPositions     || APP.settings.minPositions;
+  document.getElementById('s-maxPositions').value    = s.maxPositions     || APP.settings.maxPositions;
+  document.getElementById('s-rebalanceThresh').value = ((s.rebalanceThresh|| APP.settings.rebalanceThresh)*100).toFixed(0);
+}
+
+// ── Stocks settings table ────────────────────────────────
+function loadStocksSettings(){
+  const port = Store.load('portfolio_v1', APP.portfolio);
+  const decisions = ['تجميع','احتفاظ','مراقبة','تخفيف','بيع'];
+
+  document.getElementById('stocksSettingsBody').innerHTML = port.map((p,i) => `
+    <tr>
+      <td style="font-weight:600">${p.stock}</td>
+      <td class="accent">${p.ticker}</td>
+      <td>
+        <input class="field-inline" style="width:70px;text-align:center"
+          id="sp-goal-${i}" type="number" step="0.1" value="${(p.goal_alloc*100).toFixed(1)}">
+      </td>
+      <td>
+        <input class="field-inline" style="width:80px;text-align:center"
+          id="sp-buy-${i}" type="number" step="0.01" value="${p.buy_zone_max}">
+      </td>
+      <td>
+        <input class="field-inline" style="width:80px;text-align:center"
+          id="sp-sellL-${i}" type="number" step="0.01" value="${p.sell_zone_low}">
+      </td>
+      <td>
+        <input class="field-inline" style="width:80px;text-align:center"
+          id="sp-sellH-${i}" type="number" step="0.01" value="${p.sell_zone_high}">
+      </td>
+      <td>
+        <select class="field-inline" style="width:100px" id="sp-dec-${i}">
+          ${decisions.map(d=>`<option ${d===p.decision?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <input class="field-inline" style="width:160px" id="sp-eval-${i}" type="text" value="${p.eval}">
+      </td>
+    </tr>
+  `).join('');
+}
+
+function saveStocksSettings(){
+  const port = Store.load('portfolio_v1', APP.portfolio);
+  port.forEach((p,i)=>{
+    p.goal_alloc    = parseFloat(document.getElementById(`sp-goal-${i}`).value)/100 || p.goal_alloc;
+    p.buy_zone_max  = parseFloat(document.getElementById(`sp-buy-${i}`).value)       || p.buy_zone_max;
+    p.sell_zone_low = parseFloat(document.getElementById(`sp-sellL-${i}`).value)     || p.sell_zone_low;
+    p.sell_zone_high= parseFloat(document.getElementById(`sp-sellH-${i}`).value)     || p.sell_zone_high;
+    p.decision      = document.getElementById(`sp-dec-${i}`).value;
+    p.eval          = document.getElementById(`sp-eval-${i}`).value;
+  });
+  Store.save('portfolio_v1', port);
+  toast('✅ تم حفظ إعدادات الأسهم وتحديث المحفظة','success');
+}
+
+// ── Save all general settings ────────────────────────────
+function saveAll(){
+  const newSettings = {
+    ownerName:       document.getElementById('s-ownerName').value,
+    retirementYear:  parseInt(document.getElementById('s-retirementYear').value),
+    targetCapital:   parseFloat(document.getElementById('s-targetCapital').value),
+    targetYield:     parseFloat(document.getElementById('s-targetYield').value)/100,
+    maxPositionPct:  parseFloat(document.getElementById('s-maxPositionPct').value)/100,
+    maxSectorPct:    parseFloat(document.getElementById('s-maxSectorPct').value)/100,
+    blueChipMaxPct:  parseFloat(document.getElementById('s-blueChipMaxPct').value)/100,
+    minPositions:    parseInt(document.getElementById('s-minPositions').value),
+    maxPositions:    parseInt(document.getElementById('s-maxPositions').value),
+    rebalanceThresh: parseFloat(document.getElementById('s-rebalanceThresh').value)/100,
+  };
+  const newFees = {
+    commissionRate:  parseFloat(document.getElementById('s-commissionRate').value)/100,
+    vatRate:         parseFloat(document.getElementById('s-vatRate').value)/100,
+    minCommission:   parseFloat(document.getElementById('s-minCommission').value)||0,
+  };
+
+  // Sync to APP live
+  Object.assign(APP.settings, newSettings);
+  Object.assign(APP.fees,     newFees);
+
+  Store.save('app_settings_v1', newSettings);
+  Store.save('app_fees_v1',     newFees);
+
+  toast('✅ تم الحفظ — الإعدادات مفعّلة الآن','success');
+  renderSessionStatus();
+}
+
+// ── Reset ────────────────────────────────────────────────
+function resetAll(){
+  if(!confirm('استعادة جميع الإعدادات الافتراضية؟')) return;
+  Store.save('app_settings_v1', APP.settings);
+  Store.save('app_fees_v1',     APP.fees);
+  loadSettings();
+  toast('🔄 تمت الاستعادة','warn');
+}
+
+// ── Backup Export ────────────────────────────────────────
+function exportBackup(){
+  const keys=['portfolio_v1','transactions_v1','dividends_v1',
+              'cashinvest_v1','networth_full_v1','properties_v1',
+              'app_settings_v1','app_fees_v1'];
+  const backup={};
+  keys.forEach(k=>{ const v=Store.get(k); if(v) backup[k]=v; });
+  backup._exported = new Date().toISOString();
+  backup._version  = '2043-v1';
+
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+  a.download=`backup_2043_${H.today()}.json`; a.click();
+  toast('📦 تم تصدير النسخة الاحتياطية الكاملة','success');
+}
+
+// ── Backup Restore ───────────────────────────────────────
+function restoreBackup(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const data=JSON.parse(e.target.result);
+      if(!data._version) return toast('ملف غير صالح','error');
+      if(!confirm(`استعادة نسخة من ${data._exported?.split('T')[0]||'—'}؟ سيتم استبدال كل البيانات الحالية.`)) return;
+      Object.entries(data).forEach(([k,v])=>{
+        if(!k.startsWith('_')) Store.set(k,v);
+      });
+      toast('✅ تمت الاستعادة — أعد تحميل الصفحة','success');
+      setTimeout(()=>location.reload(), 1500);
+    } catch(err){ toast('خطأ في قراءة الملف','error'); }
+  };
+  reader.readAsText(file);
+}
+
+// ── Clear session ────────────────────────────────────────
+function clearSession(){
+  if(!confirm('مسح كل البيانات المحفوظة في الجلسة؟ لا يمكن التراجع.')) return;
+  try{ sessionStorage.clear(); }catch(e){}
+  toast('🗑 تم المسح — أعد تحميل الصفحة','warn');
+  setTimeout(()=>location.reload(),1200);
+}
+
+// ── Session Status ───────────────────────────────────────
+function renderSessionStatus(){
+  const keys=[
+    {k:'portfolio_v1',    label:'المحفظة'},
+    {k:'transactions_v1', label:'العمليات'},
+    {k:'dividends_v1',    label:'التوزيعات'},
+    {k:'cashinvest_v1',   label:'السيولة'},
+    {k:'networth_full_v1',label:'صافي الثروة'},
+    {k:'properties_v1',   label:'العقارات'},
+    {k:'app_settings_v1', label:'الإعدادات'},
+    {k:'app_fees_v1',     label:'العمولات'},
+  ];
+  document.getElementById('sessionStatus').innerHTML=keys.map(({k,label})=>{
+    const exists=Store.get(k)!==null;
+    return `
+      <div style="padding:10px 14px;background:var(--bg2);border:1px solid ${exists?'rgba(34,197,94,.3)':'var(--border)'};border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px">${label}</span>
+        <span style="font-size:11px;font-weight:700;color:${exists?'var(--green)':'var(--text3)'}">${exists?'✅ محفوظ':'⬜ افتراضي'}</span>
+      </div>`;
+  }).join('');
+}
+
+// ── Init ─────────────────────────────────────────────────
+loadSettings();
+loadStocksSettings();
+renderSessionStatus();
+</script>
+</body>
+</html>
