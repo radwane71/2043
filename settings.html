@@ -173,20 +173,25 @@
   <div class="settings-section">
     <div class="settings-section-header">🗄️ إدارة البيانات المحفوظة</div>
     <div class="settings-section-body">
+
       <div class="info-box yellow" style="margin-bottom:16px">
-        ⚠️ هذه البيانات محفوظة في الجلسة الحالية. تُمسح عند إغلاق المتصفح إلا إذا حفظت النسخة الاحتياطية.
+        ⚠️ البيانات محفوظة في localStorage وتبقى بعد إغلاق المتصفح.
+        استخدم <strong>مسح localStorage</strong> لإعادة تحميل البيانات من data.js.
       </div>
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
         <button class="btn btn-ghost" onclick="exportBackup()">📦 تصدير نسخة احتياطية كاملة</button>
         <button class="btn btn-warn"  onclick="document.getElementById('restoreInput').click()">📤 استعادة نسخة احتياطية</button>
-        <button class="btn btn-danger" onclick="clearSession()">🗑 مسح كل بيانات الجلسة</button>
+        <button class="btn btn-danger" onclick="clearSession()">🗑 مسح sessionStorage</button>
+        <button class="btn btn-danger" onclick="clearLocalStorage()">🗑 مسح localStorage كاملاً</button>
       </div>
       <input id="restoreInput" type="file" accept=".json" style="display:none" onchange="restoreBackup(this)">
 
       <div style="margin-top:20px">
-        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">البيانات الموجودة في الجلسة:</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">البيانات الموجودة في localStorage:</div>
         <div id="sessionStatus" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px"></div>
       </div>
+
     </div>
   </div>
 
@@ -284,7 +289,6 @@ function saveAll(){
     minCommission:   parseFloat(document.getElementById('s-minCommission').value)||0,
   };
 
-  // Sync to APP live
   Object.assign(APP.settings, newSettings);
   Object.assign(APP.fees,     newFees);
 
@@ -339,11 +343,19 @@ function restoreBackup(input){
   reader.readAsText(file);
 }
 
-// ── Clear session ────────────────────────────────────────
+// ── Clear sessionStorage فقط ─────────────────────────────
 function clearSession(){
-  if(!confirm('مسح كل البيانات المحفوظة في الجلسة؟ لا يمكن التراجع.')) return;
+  if(!confirm('مسح sessionStorage؟ البيانات في localStorage ستبقى.')) return;
   try{ sessionStorage.clear(); }catch(e){}
-  toast('🗑 تم المسح — أعد تحميل الصفحة','warn');
+  toast('🗑 تم مسح sessionStorage','warn');
+  setTimeout(()=>location.reload(),1200);
+}
+
+// ── Clear localStorage كاملاً ────────────────────────────
+function clearLocalStorage(){
+  if(!confirm('⚠️ مسح كل localStorage؟\n\nستُحذف جميع البيانات المحفوظة وتعود من data.js.\nتأكد أنك صدّرت نسخة احتياطية أولاً.')) return;
+  try{ localStorage.clear(); }catch(e){}
+  toast('🗑 تم مسح localStorage — جاري إعادة التحميل','warn');
   setTimeout(()=>location.reload(),1200);
 }
 
