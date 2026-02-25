@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>العقارات — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<style>
+.editable {
+  cursor:pointer; border-bottom:1px dashed var(--border2);
+  display:inline-block; min-width:30px; transition:border-color .2s;
+}
+.editable:hover { border-color:var(--accent); color:var(--accent); }
+.edit-input {
+  width:110px; padding:4px 6px; background:var(--bg2);
+  border:1px solid var(--accent); border-radius:4px;
+  color:var(--text); font-size:12px; text-align:center;
+  outline:none; font-family:inherit;
+}
+.yield-bar-wrap { display:flex; align-items:center; gap:6px; }
+.yield-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.yield-bar-fill { height:100%; border-radius:2px; }
+</style>
+</head>
+<body>
+<script>initPage('properties');</script>
+
+<div class="main">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>🏠 العقارات</h1>
+      <p>سجل ممتلكاتك العقارية — انقر على أي قيمة لتعديلها</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid cols-4" id="prKPIs"></div>
+
+  <!-- Charts -->
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">🥧 توزيع العقارات بالقيمة</div>
+      <canvas id="propChart" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📊 عائد الإيجار لكل عقار</div>
+      <canvas id="yieldChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Add Form -->
+  <div class="form-card">
+    <h3>➕ إضافة عقار جديد</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>اسم / وصف العقار</label>
+        <input id="pr-name" placeholder="شقة الرياض — حي النرجس">
+      </div>
+      <div class="form-group">
+        <label>النوع</label>
+        <select id="pr-type">
+          <option>شقة سكنية</option><option>فيلا</option>
+          <option>أرض</option><option>محل تجاري</option>
+          <option>مستودع</option><option>صندوق ريت</option><option>أخرى</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>المدينة</label>
+        <input id="pr-city" placeholder="الرياض">
+      </div>
+      <div class="form-group">
+        <label>سنة الشراء</label>
+        <input id="pr-year" type="number" placeholder="2022">
+      </div>
+      <div class="form-group">
+        <label>تكلفة الشراء (SAR)</label>
+        <input id="pr-cost" type="number" placeholder="500000">
+      </div>
+      <div class="form-group">
+        <label>القيمة السوقية الحالية (SAR)</label>
+        <input id="pr-value" type="number" placeholder="650000">
+      </div>
+      <div class="form-group">
+        <label>الإيجار السنوي (SAR)</label>
+        <input id="pr-rent" type="number" placeholder="36000">
+      </div>
+      <div class="form-group">
+        <label>الحالة</label>
+        <select id="pr-status">
+          <option>مؤجر</option><option>شاغر</option>
+          <option>للبيع</option><option>للاستخدام الشخصي</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ملاحظة</label>
+        <input id="pr-note" placeholder="اختياري">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addProperty()">➕ إضافة العقار</button>
+  </div>
+
+  <!-- Table -->
+  <div class="toolbar">
+    <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
+    <span id="prCount" style="color:var(--text3);font-size:13px"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>الاسم</th><th>النوع</th><th>المدينة</th>
+          <th>سنة الشراء</th><th>تكلفة الشراء</th><th>القيمة الحالية</th>
+          <th>الربح الورقي</th><th>الإيجار السنوي</th>
+          <th>عائد الإيجار %</th><th>الحالة</th><th>ملاحظة</th><th>حذف</th>
+        </tr>
+      </thead>
+      <tbody id="prBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let prData   = Store.load('properties_v1', NW_default());
+let filtered = [...prData];
+let searchQ  = '';
+
+function NW_default() {
+  const nw = Store.load('networth_full_v1', { properties:[] });
+  return nw.properties || [];
+}
+
+let chartProp=null, chartYield=null;
+
+// ── KPIs ─────────────────────────────────────────────────
+function renderKPIs() {
+  const totalVal  = prData.reduce((s,p)=>s+(p.value||0),0);
+  const totalCost = prData.reduce((s,p)=>s+(p.cost||0),0);
+  const totalRent = prData.reduce((s,p)=>s+(p.rent||0),0);
+  const pl        = totalVal - totalCost;
+  const avgYield  = totalVal>0 ? totalRent/totalVal*100 : 0;
+
+  document.getElementById('prKPIs').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-label">إجمالي القيمة السوقية</div>
+      <div class="kpi-value accent">${H.fmt(totalVal)}</div>
+      <div class="kpi-sub">SAR — ${prData.length} عقار</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">الربح الرأسمالي</div>
+      <div class="kpi-value ${pl>=0?'pos':'neg'}">${pl>=0?'+':''}${H.fmt(pl)}</div>
+      <div class="kpi-sub">${H.pct(totalCost>0?pl/totalCost:0)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">الإيجار السنوي</div>
+      <div class="kpi-value pos">${H.fmt(totalRent)}</div>
+      <div class="kpi-sub">${H.fmt(totalRent/12)} SAR / شهرياً</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">متوسط العائد الإيجاري</div>
+      <div class="kpi-value warn">${H.fmt(avgYield,2)}%</div>
+      <div class="kpi-sub">على القيمة السوقية</div>
+    </div>
+  `;
+}
+
+// ── Charts ───────────────────────────────────────────────
+function renderCharts() {
+  if(!prData.length) return;
+
+  if(chartProp)  chartProp.destroy();
+  if(chartYield) chartYield.destroy();
+
+  const COLORS=['#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#f97316','#84cc16'];
+
+  chartProp = new Chart(document.getElementById('propChart'),{
+    type:'doughnut',
+    data:{
+      labels: prData.map(p=>p.name.substring(0,12)),
+      datasets:[{ data:prData.map(p=>p.value||0),
+        backgroundColor:COLORS, borderColor:'#131722', borderWidth:2 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:8,boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${H.fmt(ctx.raw)} SAR`}}
+      }
+    }
+  });
+
+  chartYield = new Chart(document.getElementById('yieldChart'),{
+    type:'bar',
+    data:{
+      labels: prData.map(p=>p.name.substring(0,10)),
+      datasets:[{
+        label:'عائد الإيجار %',
+        data: prData.map(p=> p.value>0 ? parseFloat(((p.rent||0)/p.value*100).toFixed(2)) : 0),
+        backgroundColor:'rgba(34,197,94,.65)', borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2340'}},
+        y:{ticks:{color:'#64748b',callback:v=>v+'%'},grid:{color:'#1e2340'}}
+      }
+    }
+  });
+}
+
+// ── Table ────────────────────────────────────────────────
+function renderTable() {
+  document.getElementById('prCount').textContent = `${filtered.length} عقار`;
+
+  if(!filtered.length){
+    document.getElementById('prBody').innerHTML=`
+      <tr><td colspan="13"><div class="empty-state">
+        <div class="empty-icon">🏗️</div><p>لا يوجد عقارات مسجلة</p>
+      </div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('prBody').innerHTML = filtered.map(p => {
+    const idx     = prData.indexOf(p);
+    const pl      = (p.value||0)-(p.cost||0);
+    const plPct   = p.cost>0 ? pl/p.cost : 0;
+    const yld     = p.value>0 ? (p.rent||0)/p.value*100 : 0;
+    const yldClr  = yld>=6?'var(--green)':yld>=4?'var(--yellow)':'var(--red)';
+    const statusBadge = {
+      'مؤجر':              'badge-buy',
+      'شاغر':              'badge-watch',
+      'للبيع':             'badge-reduce',
+      'للاستخدام الشخصي': 'badge-hold',
+    }[p.status]||'badge-hold';
+
+    return `<tr>
+      <td style="color:var(--text3)">${idx+1}</td>
+      <td style="font-weight:600">
+        <span class="editable" onclick="editText(this,${idx},'name')">${p.name}</span>
+      </td>
+      <td><span class="editable" onclick="editSelect(this,${idx},'type',['شقة سكنية','فيلا','أرض','محل تجاري','مستودع','صندوق ريت','أخرى'])">${p.type}</span></td>
+      <td><span class="editable" onclick="editText(this,${idx},'city')">${p.city||'—'}</span></td>
+      <td style="color:var(--text3)"><span class="editable" onclick="editNum(this,${idx},'year',0)">${p.year||'—'}</span></td>
+      <td><span class="editable" onclick="editNum(this,${idx},'cost')">${H.fmt(p.cost||0)}</span></td>
+      <td class="accent" style="font-weight:700">
+        <span class="editable" onclick="editNum(this,${idx},'value')">${H.fmt(p.value||0)}</span>
+      </td>
+      <td class="${pl>=0?'pos':'neg'}" style="font-weight:600">${pl>=0?'+':''}${H.fmt(pl)}</td>
+      <td class="pos">
+        <span class="editable" onclick="editNum(this,${idx},'rent')">${H.fmt(p.rent||0)}</span>
+      </td>
+      <td>
+        <div class="yield-bar-wrap">
+          <span style="color:${yldClr};font-weight:700">${yld.toFixed(2)}%</span>
+          <div class="yield-bar-bg">
+            <div class="yield-bar-fill" style="width:${Math.min(yld/10*100,100)}%;background:${yldClr}"></div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${statusBadge}">${p.status||'—'}</span></td>
+      <td style="color:var(--text3)">
+        <span class="editable" onclick="editText(this,${idx},'note')">${p.note||'—'}</span>
+      </td>
+      <td><button class="btn btn-danger btn-sm" onclick="delProp(${idx})">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Inline Edits ─────────────────────────────────────────
+function editNum(span,idx,field,min=0){
+  if(span.querySelector('input')) return;
+  const inp=document.createElement('input');
+  inp.className='edit-input'; inp.type='number'; inp.step='0.01'; inp.value=prData[idx][field]||0;
+  span.textContent=''; span.appendChild(inp); inp.focus(); inp.select();
+  const c=()=>{const v=parseFloat(inp.value); if(!isNaN(v)&&v>=min) prData[idx][field]=v; refreshAll();};
+  inp.addEventListener('blur',c);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+}
+
+function editText(span,idx,field){
+  if(span.querySelector('input')) return;
+  const inp=document.createElement('input');
+  inp.className='edit-input'; inp.style.width='140px'; inp.type='text'; inp.value=prData[idx][field]||'';
+  span.textContent=''; span.appendChild(inp); inp.focus(); inp.select();
+  const c=()=>{if(inp.value.trim()) prData[idx][field]=inp.value.trim(); refreshAll();};
+  inp.addEventListener('blur',c);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+}
+
+function editSelect(span,idx,field,options){
+  if(span.querySelector('select')) return;
+  const sel=document.createElement('select');
+  sel.className='edit-input'; sel.style.width='130px';
+  options.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o;
+    if(o===prData[idx][field]) opt.selected=true; sel.appendChild(opt); });
+  span.textContent=''; span.appendChild(sel); sel.focus();
+  const c=()=>{prData[idx][field]=sel.value; refreshAll();};
+  sel.addEventListener('blur',c);
+  sel.addEventListener('change',c);
+}
+
+// ── Add ──────────────────────────────────────────────────
+function addProperty(){
+  const name  = document.getElementById('pr-name').value.trim();
+  const type  = document.getElementById('pr-type').value;
+  const city  = document.getElementById('pr-city').value.trim();
+  const year  = parseInt(document.getElementById('pr-year').value)||0;
+  const cost  = parseFloat(document.getElementById('pr-cost').value)||0;
+  const value = parseFloat(document.getElementById('pr-value').value)||0;
+  const rent  = parseFloat(document.getElementById('pr-rent').value)||0;
+  const status= document.getElementById('pr-status').value;
+  const note  = document.getElementById('pr-note').value.trim();
+
+  if(!name)  return toast('أدخل اسم العقار','error');
+  if(!value) return toast('أدخل القيمة السوقية','error');
+
+  prData.push({name,type,city,year,cost,value,rent,status,note});
+  ['pr-name','pr-city','pr-year','pr-cost','pr-value','pr-rent','pr-note']
+    .forEach(id=>document.getElementById(id).value='');
+  refreshAll(); toast('✅ تمت إضافة العقار','success');
+}
+
+// ── Delete ───────────────────────────────────────────────
+function delProp(idx){
+  if(!confirm(`حذف "${prData[idx].name}"؟`)) return;
+  prData.splice(idx,1);
+  refreshAll(); toast('🗑 تم الحذف','warn');
+}
+
+// ── Search ───────────────────────────────────────────────
+function applySearch(q){
+  searchQ=q;
+  filtered=prData.filter(p=>!q||p.name.includes(q)||p.city?.includes(q)||p.type.includes(q));
+  renderTable();
+}
+
+// ── Save ─────────────────────────────────────────────────
+function saveAll(){
+  Store.save('properties_v1', prData);
+  // sync with networth
+  const nw = Store.load('networth_full_v1',{properties:[],cars:[],cash:[],other:[],liabilities:[]});
+  nw.properties = prData;
+  Store.save('networth_full_v1', nw);
+  toast('✅ تم الحفظ ومزامنة صافي الثروة','success');
+}
+
+// ── Export ───────────────────────────────────────────────
+function exportCSV(){
+  const h=['name','type','city','year','cost','value','rent','status','note'];
+  const rows=prData.map(p=>h.map(k=>p[k]??'').join(','));
+  const csv='\uFEFF'+[h.join(','),...rows].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`properties_${H.today()}.csv`; a.click();
+  toast('📥 تم التصدير','success');
+}
+
+// ── Refresh ──────────────────────────────────────────────
+function refreshAll(){
+  filtered=prData.filter(p=>!searchQ||p.name.includes(searchQ)||p.city?.includes(searchQ));
+  renderKPIs(); renderCharts(); renderTable();
+}
+
+refreshAll();
+</script>
+</body>
+</html>
