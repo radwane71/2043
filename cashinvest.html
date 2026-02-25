@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>السيولة للضخ — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<style>
+.editable{cursor:pointer;border-bottom:1px dashed var(--border2);display:inline-block;min-width:30px;transition:border-color .2s}
+.editable:hover{border-color:var(--accent);color:var(--accent)}
+.edit-input{width:110px;padding:4px 6px;background:var(--bg2);border:1px solid var(--accent);border-radius:4px;color:var(--text);font-size:12px;text-align:center;outline:none;font-family:inherit}
+</style>
+</head>
+<body>
+<script>initPage('cashinvest');</script>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>💵 السيولة للضخ</h1>
+      <p>خطط الضخ الشهري في المحفظة — انقر على أي قيمة لتعديلها</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid cols-4" id="ciKPIs"></div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">📅 الضخ الشهري</div>
+      <canvas id="ciMonthChart" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🎯 توزيع الضخ على الأسهم</div>
+      <canvas id="ciTargetChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>➕ إضافة خطة ضخ</h3>
+    <div class="form-row">
+      <div class="form-group"><label>الشهر</label><input id="ci-date" type="month"></div>
+      <div class="form-group"><label>المبلغ (SAR)</label><input id="ci-amount" type="number" placeholder="5000"></div>
+      <div class="form-group"><label>السهم المستهدف</label><input id="ci-target" placeholder="أرامكو أو متنوع"></div>
+      <div class="form-group">
+        <label>الحالة</label>
+        <select id="ci-stat">
+          <option>مخطط</option><option>منفذ</option><option>ملغي</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ملاحظة</label><input id="ci-note" placeholder="اختياري"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addPlan()">➕ إضافة</button>
+  </div>
+
+  <div class="toolbar">
+    <div style="display:flex;gap:6px;flex-wrap:wrap" id="filterTabs">
+      <button class="filter-tab active" onclick="setFilter('all',this)">الكل</button>
+      <button class="filter-tab" onclick="setFilter('مخطط',this)">مخطط</button>
+      <button class="filter-tab" onclick="setFilter('منفذ',this)">منفذ</button>
+      <button class="filter-tab" onclick="setFilter('ملغي',this)">ملغي</button>
+    </div>
+    <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>الشهر</th><th>المبلغ</th><th>السهم المستهدف</th><th>الحالة</th><th>ملاحظة</th><th>حذف</th></tr>
+      </thead>
+      <tbody id="ciBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ── filter-tab style ──────────────────────────────────────
+const ftStyle=`.filter-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit}.filter-tab:hover{border-color:var(--accent);color:var(--accent)}.filter-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}`;
+const styleEl=document.createElement('style'); styleEl.textContent=ftStyle; document.head.appendChild(styleEl);
+
+let ciData   = Store.load('cashinvest_v1', APP.cashPlans || []);
+let filtered = [...ciData];
+let activeF  = 'all';
+let searchQ  = '';
+let chartMonth=null, chartTarget=null;
+
+// ── KPIs ─────────────────────────────────────────────────
+function renderKPIs(){
+  const planned  = ciData.filter(c=>c.status==='مخطط').reduce((s,c)=>s+c.amount,0);
+  const executed = ciData.filter(c=>c.status==='منفذ').reduce((s,c)=>s+c.amount,0);
+  const total    = ciData.reduce((s,c)=>s+c.amount,0);
+  const cnt      = ciData.filter(c=>c.status==='منفذ').length;
+
+  document.getElementById('ciKPIs').innerHTML=`
+    <div class="kpi-card">
+      <div class="kpi-icon">💵</div>
+      <div class="kpi-label">إجمالي الخطط</div>
+      <div class="kpi-value accent">${H.fmt(total)}</div>
+      <div class="kpi-sub">SAR — ${ciData.length} خطة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">منفذ</div>
+      <div class="kpi-value pos">${H.fmt(executed)}</div>
+      <div class="kpi-sub">${cnt} خطة منفذة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-label">مخطط</div>
+      <div class="kpi-value warn">${H.fmt(planned)}</div>
+      <div class="kpi-sub">SAR قادمة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">نسبة التنفيذ</div>
+      <div class="kpi-value">${total>0?H.fmt(executed/total*100,1)+'%':'—'}</div>
+      <div class="kpi-sub">من الإجمالي</div>
+    </div>
+  `;
+}
+
+// ── Charts ───────────────────────────────────────────────
+function renderCharts(){
+  if(chartMonth)  chartMonth.destroy();
+  if(chartTarget) chartTarget.destroy();
+
+  // By month
+  const mMap={};
+  ciData.forEach(c=>{
+    const k=c.date||'غير محدد';
+    mMap[k]=(mMap[k]||0)+c.amount;
+  });
+  const mKeys=Object.keys(mMap).sort();
+
+  chartMonth=new Chart(document.getElementById('ciMonthChart'),{
+    type:'bar',
+    data:{
+      labels:mKeys,
+      datasets:[{
+        label:'SAR',
+        data:mKeys.map(k=>mMap[k]),
+        backgroundColor: ciData.map(c=>
+          c.status==='منفذ'?'rgba(34,197,94,.7)':
+          c.status==='ملغي'?'rgba(239,68,68,.5)':'rgba(79,142,247,.6)'
+        ).slice(0,mKeys.length),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2340'}},
+        y:{ticks:{color:'#64748b'},grid:{color:'#1e2340'}}
+      }
+    }
+  });
+
+  // By target stock
+  const tMap={};
+  ciData.filter(c=>c.status!=='ملغي').forEach(c=>{
+    const k=c.target||'غير محدد';
+    tMap[k]=(tMap[k]||0)+c.amount;
+  });
+  const tEntries=Object.entries(tMap).sort((a,b)=>b[1]-a[1]);
+
+  chartTarget=new Chart(document.getElementById('ciTargetChart'),{
+    type:'doughnut',
+    data:{
+      labels:tEntries.map(e=>e[0]),
+      datasets:[{
+        data:tEntries.map(e=>e[1]),
+        backgroundColor:['#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#f97316','#84cc16'],
+        borderColor:'#131722',borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:8,boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>`${H.fmt(ctx.raw)} SAR`}}
+      }
+    }
+  });
+}
+
+// ── Table ────────────────────────────────────────────────
+function renderTable(){
+  if(!filtered.length){
+    document.getElementById('ciBody').innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💼</div><p>لا توجد خطط</p></div></td></tr>`;
+    return;
+  }
+
+  const badgeMap={
+    'مخطط':'badge-plan',
+    'منفذ':'badge-done',
+    'ملغي':'badge-cancel'
+  };
+
+  document.getElementById('ciBody').innerHTML=filtered.map(c=>{
+    const idx=ciData.indexOf(c);
+    return `<tr>
+      <td style="color:var(--text3)">${idx+1}</td>
+      <td><span class="editable" onclick="editDate(this,${idx},'date')">${c.date||'—'}</span></td>
+      <td class="accent" style="font-weight:700">
+        <span class="editable" onclick="editNum(this,${idx},'amount')">${H.fmt(c.amount)}</span>
+      </td>
+      <td><span class="editable" onclick="editText(this,${idx},'target')">${c.target||'—'}</span></td>
+      <td>
+        <span class="editable badge ${badgeMap[c.status]||'badge-hold'}"
+              onclick="cycleStatus(${idx})">${c.status}</span>
+      </td>
+      <td style="color:var(--text3)">
+        <span class="editable" onclick="editText(this,${idx},'note')">${c.note||'—'}</span>
+      </td>
+      <td><button class="btn btn-danger btn-sm" onclick="delPlan(${idx})">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Cycle Status (click to change) ───────────────────────
+function cycleStatus(idx){
+  const order=['مخطط','منفذ','ملغي'];
+  const cur=ciData[idx].status||'مخطط';
+  ciData[idx].status=order[(order.indexOf(cur)+1)%order.length];
+  refreshAll();
+}
+
+// ── Inline Edits ─────────────────────────────────────────
+function editNum(span,idx,field){
+  if(span.querySelector('input')) return;
+  const inp=document.createElement('input');
+  inp.className='edit-input';inp.type='number';inp.step='0.01';inp.value=ciData[idx][field]||0;
+  span.textContent='';span.appendChild(inp);inp.focus();inp.select();
+  const c=()=>{const v=parseFloat(inp.value);if(!isNaN(v)&&v>=0)ciData[idx][field]=v;refreshAll();};
+  inp.addEventListener('blur',c);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+}
+
+function editText(span,idx,field){
+  if(span.querySelector('input')) return;
+  const inp=document.createElement('input');
+  inp.className='edit-input';inp.style.width='130px';inp.type='text';inp.value=ciData[idx][field]||'';
+  span.textContent='';span.appendChild(inp);inp.focus();inp.select();
+  const c=()=>{if(inp.value.trim())ciData[idx][field]=inp.value.trim();refreshAll();};
+  inp.addEventListener('blur',c);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+}
+
+function editDate(span,idx,field){
+  if(span.querySelector('input')) return;
+  const inp=document.createElement('input');
+  inp.className='edit-input';inp.style.width='130px';inp.type='month';inp.value=ciData[idx][field]||'';
+  span.textContent='';span.appendChild(inp);inp.focus();
+  const c=()=>{if(inp.value)ciData[idx][field]=inp.value;refreshAll();};
+  inp.addEventListener('blur',c);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+}
+
+// ── Add ──────────────────────────────────────────────────
+function addPlan(){
+  const date   = document.getElementById('ci-date').value;
+  const amount = parseFloat(document.getElementById('ci-amount').value)||0;
+  const target = document.getElementById('ci-target').value.trim();
+  const status = document.getElementById('ci-stat').value;
+  const note   = document.getElementById('ci-note').value.trim();
+
+  if(!amount) return toast('أدخل المبلغ','error');
+  if(!target) return toast('أدخل السهم المستهدف','error');
+
+  ciData.push({date,amount,target,status,note});
+  ['ci-date','ci-amount','ci-target','ci-note'].forEach(id=>document.getElementById(id).value='');
+  refreshAll(); toast('✅ تمت الإضافة','success');
+}
+
+// ── Delete ───────────────────────────────────────────────
+function delPlan(idx){
+  if(!confirm('حذف هذه الخطة؟')) return;
+  ciData.splice(idx,1);
+  refreshAll(); toast('🗑 تم الحذف','warn');
+}
+
+// ── Filters ──────────────────────────────────────────────
+function setFilter(f,btn){
+  activeF=f;
+  document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+function applySearch(q){searchQ=q;applyFilters();}
+function applyFilters(){
+  filtered=ciData.filter(c=>{
+    const mF=activeF==='all'||c.status===activeF;
+    const mS=!searchQ||c.target?.includes(searchQ)||(c.note||'').includes(searchQ);
+    return mF&&mS;
+  });
+  renderTable();
+}
+
+// ── Save ─────────────────────────────────────────────────
+function saveAll(){
+  Store.save('cashinvest_v1',ciData);
+  toast('✅ تم الحفظ','success');
+}
+
+// ── Export ───────────────────────────────────────────────
+function exportCSV(){
+  const h=['date','amount','target','status','note'];
+  const rows=ciData.map(c=>h.map(k=>c[k]??'').join(','));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+[h.join(','),...rows].join('\n')],{type:'text/csv'}));
+  a.download=`cashinvest_${H.today()}.csv`;a.click();
+  toast('📥 تم التصدير','success');
+}
+
+// ── Refresh ──────────────────────────────────────────────
+function refreshAll(){
+  applyFilters();
+  renderKPIs();
+  renderCharts();
+}
+
+// ── Init ─────────────────────────────────────────────────
+const now=new Date();
+document.getElementById('ci-date').value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+refreshAll();
+</script>
+</body>
+</html>
