@@ -1,0 +1,65 @@
+// ═══════════════════════════════════════════════════════════
+//  auth.js — نظام الحماية المشترك
+//  أضفه في كل صفحة بعد data.js
+// ═══════════════════════════════════════════════════════════
+
+// Sidebar HTML — مشترك لكل الصفحات
+function renderSidebar(activePage) {
+  const pages = [
+    { id:'dashboard',    icon:'🏠', label:'لوحة التحكم',    file:'dashboard.html'    },
+    { id:'portfolio',    icon:'💹', label:'المحفظة',         file:'portfolio.html'    },
+    { id:'transactions', icon:'🔄', label:'العمليات',         file:'transactions.html' },
+    { id:'dividends',    icon:'💰', label:'التوزيعات',        file:'dividends.html'    },
+    { id:'networth',     icon:'📊', label:'صافي الثروة',     file:'networth.html'     },
+    { id:'properties',   icon:'🏢', label:'العقارات',         file:'properties.html'   },
+    { id:'cashinvest',   icon:'💵', label:'السيولة للضخ',    file:'cashinvest.html'   },
+    { id:'settings',     icon:'⚙️', label:'الإعدادات',        file:'settings.html'     },
+  ];
+
+  const navHTML = pages.map(p => `
+    <a href="${p.file}" class="nav-item ${activePage === p.id ? 'active' : ''}">
+      <span class="nav-icon">${p.icon}</span>
+      <span>${p.label}</span>
+    </a>
+  `).join('');
+
+  return `
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">📈</div>
+        <h2>محفظة 2043</h2>
+        <span>رضوان الجهني</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">الرئيسية</div>
+        ${navHTML}
+      </nav>
+      <div class="sidebar-footer">
+        <button class="logout-btn" onclick="doLogout()">
+          <span>🚪</span>
+          <span>تسجيل الخروج</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Toast إشعار سريع
+function toast(msg, type = 'success') {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// تهيئة الصفحة — استدعيه في كل صفحة
+function initPage(pageId) {
+  requireAuth();
+  document.body.insertAdjacentHTML('afterbegin', renderSidebar(pageId));
+}
