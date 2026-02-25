@@ -14,14 +14,12 @@
 <style>
 .price-up   { color: var(--green); }
 .price-down { color: var(--red);   }
-
 .editable {
   cursor: pointer;
   border-bottom: 1px dashed var(--border2);
   transition: border-color 0.2s;
 }
 .editable:hover { border-color: var(--accent); }
-
 .edit-input {
   width: 90px; padding: 4px 6px;
   background: var(--bg2); border: 1px solid var(--accent);
@@ -29,7 +27,6 @@
   font-size: 12px; text-align: center;
   outline: none; font-family: inherit;
 }
-
 .filter-tabs { display:flex; gap:6px; flex-wrap:wrap; }
 .filter-tab {
   padding: 6px 14px; border-radius: 20px;
@@ -39,20 +36,11 @@
 }
 .filter-tab:hover  { border-color: var(--accent); color: var(--accent); }
 .filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
 .zone-buy  { color: var(--green);  font-weight: 600; }
 .zone-sell { color: var(--yellow); font-weight: 600; }
-
 .pct-bar-wrap { display:flex; align-items:center; gap:6px; min-width:100px; }
 .pct-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
 .pct-bar-fill { height:100%; border-radius:2px; background:var(--accent); }
-
-/* Cost badge */
-.cost-method {
-  font-size: 10px; color: var(--text3);
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 4px; padding: 2px 6px; margin-right: 6px;
-}
 </style>
 </head>
 <body>
@@ -72,7 +60,6 @@
   </div>
 
   <div class="kpi-grid cols-4" id="portKPIs"></div>
-  <!-- صف ثانٍ للعوائد -->
   <div class="kpi-grid cols-4" id="portKPIs2"></div>
 
   <div class="toolbar">
@@ -122,111 +109,127 @@
 // ══════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
-let portData     = Store.load('portfolio_v1',    APP.portfolio).map(p=>({...p}));
+let portData     = Store.load('portfolio_v1', APP.portfolio).map(p=>({...p}));
 let filtered     = [...portData];
 let activeFilter = 'all';
 let searchQ      = '';
 
 // ══════════════════════════════════════════════
-//  حساب التكلفة الحقيقية من العمليات
-//  (إجمالي المدفوع فعلاً = total_cost للشراء)
+//  calcTrueCost
 // ══════════════════════════════════════════════
 function calcTrueCost() {
   const transactions = Store.load('transactions_v1', APP.transactions);
-
-  // إجمالي مدفوع شراء (يشمل عمولة + ضريبة)
-  const totalBought = transactions
+  const totalBought  = transactions
     .filter(t => t.status === 'Buy')
     .reduce((s,t) => s + (t.total_cost || 0), 0);
-
-  // إجمالي مستلم من البيع
-  const totalSold = transactions
+  const totalSold    = transactions
     .filter(t => t.status === 'Sell')
     .reduce((s,t) => s + (t.total_cost || 0), 0);
-
-  // صافي التكلفة = ما دفعته - ما استرددته من البيع
-  const netCost = totalBought - totalSold;
-
-  return { totalBought, totalSold, netCost };
+  return { totalBought, totalSold, netCost: totalBought - totalSold };
 }
 
 // ══════════════════════════════════════════════
 //  KPIs
 // ══════════════════════════════════════════════
 function renderKPIs() {
-  const totalMkt  = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
-  const divs      = Store.load('dividends_v1', APP.dividends);
-  const totalDiv  = divs.reduce((s,d) => s + d.amount, 0);
+  const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
+  const divs     = Store.load('dividends_v1', APP.dividends);
+  const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
 
-  // التكلفة الحقيقية من العمليات
   const { netCost, totalBought, totalSold } = calcTrueCost();
 
-  // الربح/الخسارة الحقيقية = قيمة سوقية - صافي تكلفة
-  const truePL    = totalMkt - netCost;
-  const truePLPct = netCost > 0 ? truePL / netCost : 0;
+  // ── ر/خ ورقية
+  const truePL         = totalMkt - netCost;
+  const truePLPct      = netCost > 0 ? truePL / netCost : 0;
 
-  // الربح الشامل = ر/خ ورقي + توزيعات
+  // ── العائد الشامل = ر/خ + توزيعات
   const totalReturn    = truePL + totalDiv;
   const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
 
-  // عائد آخر 12 شهر
-  const now     = new Date();
-  const y12Ago  = new Date(now); y12Ago.setFullYear(y12Ago.getFullYear()-1);
-  const div12m  = divs
-    .filter(d => d.date && new Date(d.date) >= y12Ago)
-    .reduce((s,d) => s + d.amount, 0);
-  const yield12m = netCost > 0 ? div12m / netCost * 100 : 0;
+  // ── YOC المرجّح
+  const divByStock = {};
+  divs.forEach(d => { divByStock[d.stock] = (divByStock[d.stock]||0) + d.amount; });
 
+  let weightedYOC = 0, totalWeight = 0;
+  portData.forEach(p => {
+    const cost     = p.qty * p.avg_cost;
+    const stockDiv = divByStock[p.stock] || 0;
+    if (cost > 0 && stockDiv > 0) {
+      weightedYOC += (stockDiv / cost) * cost;
+      totalWeight += cost;
+    }
+  });
+  const portfolioYOC = totalWeight > 0 ? (weightedYOC / totalWeight) * 100 : 0;
+
+  // ── Annualized YOC
+  const divDates = divs.map(d => new Date(d.date)).filter(d => !isNaN(d));
+  const firstDiv = divDates.length ? new Date(Math.min(...divDates)) : new Date();
+  const lastDiv  = divDates.length ? new Date(Math.max(...divDates)) : new Date();
+  const monthSpan = Math.max(
+    (lastDiv.getFullYear() - firstDiv.getFullYear()) * 12
+    + (lastDiv.getMonth()  - firstDiv.getMonth()), 1
+  );
+  const annualizedYOC = portfolioYOC / monthSpan * 12;
+
+  // ── آخر 12 و 6 أشهر
+  const now   = new Date();
+  const ago12 = new Date(now); ago12.setMonth(ago12.getMonth() - 12);
+  const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()  - 6);
+  const div12m = divs.filter(d => d.date && new Date(d.date) >= ago12).reduce((s,d)=>s+d.amount,0);
+  const div6m  = divs.filter(d => d.date && new Date(d.date) >= ago6 ).reduce((s,d)=>s+d.amount,0);
+
+  // ── Row 1
   document.getElementById('portKPIs').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💼</div>
       <div class="kpi-label">القيمة السوقية</div>
       <div class="kpi-value accent">${H.fmt(totalMkt)}</div>
-      <div class="kpi-sub">SAR</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📊</div>
-      <div class="kpi-label">التكلفة الكلية الفعلية</div>
-      <div class="kpi-value">${H.fmt(netCost)}</div>
-      <div class="kpi-sub">شراء ${H.fmt(totalBought)} — بيع ${H.fmt(totalSold)}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📈</div>
-      <div class="kpi-label">ر/خ ورقية</div>
-      <div class="kpi-value ${truePL>=0?'pos':'neg'}">${truePL>=0?'+':''}${H.fmt(truePL)}</div>
-      <div class="kpi-sub">${H.pct(truePLPct)}</div>
+      <div class="kpi-sub">صافي التكلفة: ${H.fmt(netCost)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">🏆</div>
       <div class="kpi-label">العائد الشامل</div>
       <div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''}${H.fmt(totalReturn)}</div>
       <div class="kpi-sub">ر/خ + توزيعات • ${H.pct(totalReturnPct)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">YOC المرجّح</div>
+      <div class="kpi-value pos">${H.fmt(portfolioYOC,2)}%</div>
+      <div class="kpi-sub">سنوي مُعدَّل: ${H.fmt(annualizedYOC,2)}%</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">ر/خ ورقية</div>
+      <div class="kpi-value ${truePL>=0?'pos':'neg'}">${truePL>=0?'+':''}${H.fmt(truePL)}</div>
+      <div class="kpi-sub">${H.pct(truePLPct)} على التكلفة</div>
     </div>`;
 
+  // ── Row 2
   document.getElementById('portKPIs2').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💰</div>
       <div class="kpi-label">التوزيعات المستلمة</div>
       <div class="kpi-value pos">${H.fmt(totalDiv)}</div>
-      <div class="kpi-sub">YOC ${H.fmt(totalDiv/netCost*100,2)}%</div>
+      <div class="kpi-sub">خلال ${monthSpan} شهر</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">🗓️</div>
-      <div class="kpi-label">عائد آخر 12 شهر</div>
-      <div class="kpi-value warn">${H.fmt(yield12m,2)}%</div>
-      <div class="kpi-sub">${H.fmt(div12m)} SAR توزيعات</div>
+      <div class="kpi-label">توزيعات آخر 12 شهر</div>
+      <div class="kpi-value warn">${H.fmt(div12m)}</div>
+      <div class="kpi-sub">${H.fmt(div12m/netCost*100,2)}% على التكلفة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-label">توزيعات آخر 6 أشهر</div>
+      <div class="kpi-value">${H.fmt(div6m)}</div>
+      <div class="kpi-sub">${H.fmt(div6m/netCost*100,2)}% على التكلفة</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">🎯</div>
       <div class="kpi-label">الهدف السنوي</div>
       <div class="kpi-value">${H.fmt(APP.settings.targetYield*100,1)}%</div>
-      <div class="kpi-sub">فجوة ${H.fmt(APP.settings.targetYield*100 - yield12m, 2)}%</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🏦</div>
-      <div class="kpi-label">عدد المراكز</div>
-      <div class="kpi-value">${portData.length}</div>
-      <div class="kpi-sub">من ${APP.settings.minPositions}–${APP.settings.maxPositions} مستهدف</div>
+      <div class="kpi-sub">فجوة ${H.fmt(APP.settings.targetYield*100 - annualizedYOC,2)}%</div>
     </div>`;
 }
 
@@ -235,8 +238,7 @@ function renderKPIs() {
 // ══════════════════════════════════════════════
 function renderTable() {
   const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
-
-  document.getElementById('portBody').innerHTML = filtered.map((p, i) => {
+  document.getElementById('portBody').innerHTML = filtered.map((p,i) => {
     const cost       = p.qty * p.avg_cost;
     const mkt        = p.qty * p.current_price;
     const pl         = mkt - cost;
@@ -247,24 +249,14 @@ function renderTable() {
     const inBuyZone  = p.current_price <= p.buy_zone_max;
     const inSellZone = p.current_price >= p.sell_zone_low;
     const idx        = portData.indexOf(p);
-
     return `<tr>
       <td style="color:var(--text3)">${i+1}</td>
-      <td>
-        <strong>${p.stock}</strong>
-        ${p.is_bluechip ? '<span style="font-size:10px;color:var(--yellow)"> ⭐</span>' : ''}
-      </td>
+      <td><strong>${p.stock}</strong>${p.is_bluechip?'<span style="font-size:10px;color:var(--yellow)"> ⭐</span>':''}</td>
       <td class="accent" style="font-weight:700">${p.ticker}</td>
       <td><small style="color:var(--text3)">${p.sector}</small></td>
-      <td>
-        <span class="editable" onclick="editCell(this,${idx},'qty')">${H.fmt(p.qty,0)}</span>
-      </td>
-      <td>
-        <span class="editable" onclick="editCell(this,${idx},'avg_cost')">${H.fmt(p.avg_cost)}</span>
-      </td>
-      <td>
-        <span class="editable ${priceClass}" onclick="editCell(this,${idx},'current_price')">${H.fmt(p.current_price)}</span>
-      </td>
+      <td><span class="editable" onclick="editCell(this,${idx},'qty')">${H.fmt(p.qty,0)}</span></td>
+      <td><span class="editable" onclick="editCell(this,${idx},'avg_cost')">${H.fmt(p.avg_cost)}</span></td>
+      <td><span class="editable ${priceClass}" onclick="editCell(this,${idx},'current_price')">${H.fmt(p.current_price)}</span></td>
       <td style="font-weight:600">${H.fmt(mkt)}</td>
       <td class="${plClass}" style="font-weight:700">${pl>=0?'+':''}${H.fmt(pl)}</td>
       <td class="${plClass}">${H.pct(plPct)}</td>
@@ -277,16 +269,8 @@ function renderTable() {
         </div>
       </td>
       <td style="color:var(--text3)">${(p.goal_alloc*100).toFixed(1)}%</td>
-      <td>
-        <span class="editable ${inBuyZone?'zone-buy':''}" onclick="editCell(this,${idx},'buy_zone_max')">
-          &lt;${H.fmt(p.buy_zone_max)}
-        </span>
-      </td>
-      <td>
-        <span class="editable ${inSellZone?'zone-sell':''}" onclick="editCell(this,${idx},'sell_zone_low')">
-          ${H.fmt(p.sell_zone_low)}–${H.fmt(p.sell_zone_high)}
-        </span>
-      </td>
+      <td><span class="editable ${inBuyZone?'zone-buy':''}" onclick="editCell(this,${idx},'buy_zone_max')">&lt;${H.fmt(p.buy_zone_max)}</span></td>
+      <td><span class="editable ${inSellZone?'zone-sell':''}" onclick="editCell(this,${idx},'sell_zone_low')">${H.fmt(p.sell_zone_low)}–${H.fmt(p.sell_zone_high)}</span></td>
       <td>${H.badge(p.decision)}</td>
       <td><small style="color:var(--text3)">${p.eval}</small></td>
     </tr>`;
@@ -300,13 +284,9 @@ function editCell(span, idx, field) {
   if (span.querySelector('input')) return;
   const input = document.createElement('input');
   input.className = 'edit-input';
-  input.type  = 'number';
-  input.value = portData[idx][field];
-  input.step  = '0.01';
-  span.textContent = '';
-  span.appendChild(input);
+  input.type = 'number'; input.value = portData[idx][field]; input.step = '0.01';
+  span.textContent = ''; span.appendChild(input);
   input.focus(); input.select();
-
   function commit() {
     const val = parseFloat(input.value);
     if (!isNaN(val) && val > 0) {
@@ -314,10 +294,9 @@ function editCell(span, idx, field) {
       if (field === 'sell_zone_low')
         portData[idx].sell_zone_high = parseFloat((val * 1.05).toFixed(2));
     }
-    applyFilters();
-    renderKPIs();
+    applyFilters(); renderKPIs();
   }
-  input.addEventListener('blur',    commit);
+  input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter')  input.blur();
     if (e.key === 'Escape') applyFilters();
@@ -366,7 +345,7 @@ function exportCSV() {
   const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
   const a   = document.createElement('a');
   a.href    = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download= `portfolio_${H.today()}.csv`;
+  a.download = `portfolio_${H.today()}.csv`;
   a.click();
   toast('📥 تم تصدير CSV', 'success');
 }
