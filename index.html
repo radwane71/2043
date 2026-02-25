@@ -3,900 +3,285 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>محفظة رضوان — 2043</title>
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>محفظة 2043 — دخول</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  :root {
-    --bg: #0f1117;
-    --card: #1a1d27;
-    --border: #2a2d3e;
-    --accent: #4f8ef7;
-    --green: #22c55e;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #94a3b8;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',Tahoma,sans-serif; font-size:14px; }
+* { margin:0; padding:0; box-sizing:border-box; }
 
-  /* LOGIN */
-  #loginScreen {
-    display:flex; align-items:center; justify-content:center;
-    min-height:100vh; background:radial-gradient(ellipse at center, #1a2040 0%, #0f1117 70%);
-  }
-  .login-box {
-    background:var(--card); border:1px solid var(--border); border-radius:16px;
-    padding:48px 40px; width:360px; text-align:center;
-  }
-  .login-box h1 { font-size:28px; color:var(--accent); margin-bottom:6px; }
-  .login-box p  { color:var(--muted); margin-bottom:32px; font-size:13px; }
-  .login-box input {
-    width:100%; padding:12px 16px; margin-bottom:14px;
-    background:#0f1117; border:1px solid var(--border); border-radius:8px;
-    color:var(--text); font-size:14px; outline:none; transition:border .2s;
-  }
-  .login-box input:focus { border-color:var(--accent); }
-  .login-box button {
-    width:100%; padding:13px; background:var(--accent); border:none;
-    border-radius:8px; color:#fff; font-size:15px; font-weight:600;
-    cursor:pointer; transition:opacity .2s;
-  }
-  .login-box button:hover { opacity:.88; }
-  #loginError { color:var(--red); margin-top:12px; font-size:13px; display:none; }
+body {
+  background: #0a0c14;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  /* APP SHELL */
-  #app { display:none; }
-  .sidebar {
-    position:fixed; top:0; right:0; width:230px; height:100vh;
-    background:var(--card); border-left:1px solid var(--border);
-    padding:24px 0; z-index:100; overflow-y:auto;
-  }
-  .sidebar-logo { padding:0 20px 24px; border-bottom:1px solid var(--border); }
-  .sidebar-logo h2 { color:var(--accent); font-size:18px; }
-  .sidebar-logo span { color:var(--muted); font-size:11px; }
-  .nav-item {
-    display:flex; align-items:center; gap:10px;
-    padding:11px 20px; cursor:pointer; color:var(--muted);
-    transition:all .2s; font-size:13.5px; border-right:3px solid transparent;
-  }
-  .nav-item:hover { color:var(--text); background:rgba(79,142,247,.07); }
-  .nav-item.active { color:var(--accent); background:rgba(79,142,247,.12); border-right-color:var(--accent); }
-  .nav-icon { font-size:16px; width:20px; text-align:center; }
-  .main { margin-right:230px; padding:28px 32px; min-height:100vh; }
-  .page { display:none; }
-  .page.active { display:block; }
-  h2.page-title { font-size:22px; font-weight:700; margin-bottom:6px; }
-  p.page-sub   { color:var(--muted); font-size:13px; margin-bottom:24px; }
+/* background dots */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image: radial-gradient(circle, #1e2340 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.4;
+  pointer-events: none;
+}
 
-  /* CARDS */
-  .cards-row { display:grid; gap:16px; margin-bottom:24px; }
-  .cards-row.cols-4 { grid-template-columns:repeat(4,1fr); }
-  .cards-row.cols-3 { grid-template-columns:repeat(3,1fr); }
-  .cards-row.cols-2 { grid-template-columns:repeat(2,1fr); }
-  .kpi-card {
-    background:var(--card); border:1px solid var(--border);
-    border-radius:12px; padding:20px 22px;
-  }
-  .kpi-card .label { color:var(--muted); font-size:12px; margin-bottom:6px; }
-  .kpi-card .value { font-size:22px; font-weight:700; }
-  .kpi-card .sub   { font-size:12px; margin-top:4px; color:var(--muted); }
-  .green { color:var(--green) !important; }
-  .red   { color:var(--red)   !important; }
-  .yellow{ color:var(--yellow)!important; }
+.login-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+}
 
-  /* TABLE */
-  .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:auto; }
-  table { width:100%; border-collapse:collapse; }
-  th { background:#13161f; color:var(--muted); font-weight:600; font-size:12px;
-       padding:11px 14px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
-  td { padding:10px 14px; border-bottom:1px solid #1e2130; font-size:13px; white-space:nowrap; }
-  tr:last-child td { border-bottom:none; }
-  tr:hover td { background:rgba(79,142,247,.04); }
-  .badge {
-    display:inline-block; padding:3px 10px; border-radius:20px;
-    font-size:11px; font-weight:600;
-  }
-  .badge-buy    { background:rgba(34,197,94,.15);  color:var(--green); }
-  .badge-sell   { background:rgba(239,68,68,.15);  color:var(--red); }
-  .badge-acc    { background:rgba(79,142,247,.15); color:var(--accent); }
-  .badge-hold   { background:rgba(148,163,184,.15);color:var(--muted); }
-  .badge-watch  { background:rgba(245,158,11,.15); color:var(--yellow); }
-  .badge-reduce { background:rgba(239,68,68,.12);  color:#fb923c; }
+/* glow */
+.login-wrap::before {
+  content:'';
+  position:absolute;
+  top:-80px; left:50%; transform:translateX(-50%);
+  width:300px; height:300px;
+  background: radial-gradient(circle, rgba(79,142,247,0.15) 0%, transparent 70%);
+  pointer-events:none;
+}
 
-  /* CHART WRAPPER */
-  .chart-card {
-    background:var(--card); border:1px solid var(--border);
-    border-radius:12px; padding:20px; margin-bottom:24px;
-  }
-  .chart-card h3 { font-size:14px; color:var(--muted); margin-bottom:16px; }
-  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.logo {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.logo-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 20px rgba(79,142,247,0.5));
+}
+.logo h1 {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+.logo p {
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 6px;
+}
 
-  /* FORM */
-  .form-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:24px; }
-  .form-card h3 { font-size:15px; font-weight:600; margin-bottom:18px; }
-  .form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:14px; }
-  .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
-  .form-group input, .form-group select {
-    width:100%; padding:9px 12px;
-    background:#0f1117; border:1px solid var(--border);
-    border-radius:7px; color:var(--text); font-size:13px; outline:none;
-  }
-  .form-group input:focus, .form-group select:focus { border-color:var(--accent); }
-  .btn { padding:9px 20px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:600; }
-  .btn-primary { background:var(--accent); color:#fff; }
-  .btn-danger  { background:var(--red);    color:#fff; }
+.card {
+  background: #131722;
+  border: 1px solid #1e2340;
+  border-radius: 20px;
+  padding: 36px 32px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
 
-  /* SEARCH */
-  .search-bar {
-    padding:9px 14px; background:var(--card); border:1px solid var(--border);
-    border-radius:8px; color:var(--text); font-size:13px; outline:none;
-    width:260px; margin-bottom:16px;
-  }
-  .toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.field {
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 7px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.field-wrap {
+  position: relative;
+}
+.field-wrap .icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #374151;
+}
+.field input {
+  width: 100%;
+  padding: 13px 42px 13px 16px;
+  background: #0d0f18;
+  border: 1px solid #1e2340;
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+.field input:focus {
+  border-color: #4f8ef7;
+  box-shadow: 0 0 0 3px rgba(79,142,247,0.1);
+}
+.field input::placeholder { color: #374151; }
 
-  /* LOGOUT */
-  .logout-btn {
-    position:fixed; bottom:20px; right:20px; width:190px;
-    padding:10px; background:#1e2235; border:1px solid var(--border);
-    border-radius:8px; color:var(--muted); font-size:13px; cursor:pointer;
-    text-align:center; transition:all .2s;
-  }
-  .logout-btn:hover { color:var(--red); border-color:var(--red); }
+.btn-login {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #4f8ef7, #6366f1);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+.btn-login:hover  { opacity: 0.92; }
+.btn-login:active { transform: scale(0.99); }
 
-  /* RESPONSIVE */
-  @media(max-width:900px){
-    .sidebar{width:60px;}
-    .nav-item span{display:none;}
-    .sidebar-logo h2,.sidebar-logo span{display:none;}
-    .main{margin-right:60px; padding:16px;}
-    .cards-row.cols-4{grid-template-columns:repeat(2,1fr);}
-    .chart-grid{grid-template-columns:1fr;}
-  }
+.btn-login.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+#errorMsg {
+  display: none;
+  margin-top: 14px;
+  padding: 11px 14px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 13px;
+  text-align: center;
+}
+
+.footer-note {
+  text-align: center;
+  margin-top: 24px;
+  color: #1e2340;
+  font-size: 12px;
+  user-select: none;
+}
+
+/* shake animation */
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-5px)}
+  80%{transform:translateX(5px)}
+}
+.shake { animation: shake 0.4s ease; }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════ LOGIN ═══════════════════════ -->
-<div id="loginScreen">
-  <div class="login-box">
+<div class="login-wrap">
+  <div class="logo">
+    <span class="logo-icon">📈</span>
     <h1>محفظة 2043</h1>
-    <p>رضوان الجهني — خاص</p>
-    <input type="text" id="uInput" placeholder="اسم المستخدم" autocomplete="off">
-    <input type="password" id="pInput" placeholder="كلمة المرور" autocomplete="off">
-    <button onclick="doLogin()">دخول</button>
-    <div id="loginError">❌ بيانات غير صحيحة</div>
+    <p>رضوان الجهني — منصة إدارة الثروة الشخصية</p>
   </div>
+
+  <div class="card" id="loginCard">
+    <div class="field">
+      <label>اسم المستخدم</label>
+      <div class="field-wrap">
+        <span class="icon">👤</span>
+        <input type="text" id="uInput" placeholder="أدخل اسم المستخدم" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>كلمة المرور</label>
+      <div class="field-wrap">
+        <span class="icon" id="eyeIcon" onclick="togglePass()" style="cursor:pointer">🔒</span>
+        <input type="password" id="pInput" placeholder="أدخل كلمة المرور" autocomplete="off">
+      </div>
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      دخول ←
+    </button>
+
+    <div id="errorMsg">❌ اسم المستخدم أو كلمة المرور غير صحيحة</div>
+  </div>
+
+  <div class="footer-note">© 2043 — خاص وسري</div>
 </div>
 
-<!-- ═══════════════════════ APP ═══════════════════════ -->
-<div id="app">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <h2>📈 2043</h2>
-      <span>محفظة رضوان</span>
-    </div>
-    <div class="nav-item active" onclick="showPage('dashboard')">
-      <span class="nav-icon">🏠</span><span>لوحة التحكم</span>
-    </div>
-    <div class="nav-item" onclick="showPage('portfolio')">
-      <span class="nav-icon">💹</span><span>نظرة المحفظة</span>
-    </div>
-    <div class="nav-item" onclick="showPage('transactions')">
-      <span class="nav-icon">🔄</span><span>العمليات</span>
-    </div>
-    <div class="nav-item" onclick="showPage('dividends')">
-      <span class="nav-icon">💰</span><span>التوزيعات</span>
-    </div>
-    <div class="nav-item" onclick="showPage('networth')">
-      <span class="nav-icon">📊</span><span>صافي الثروة</span>
-    </div>
-    <div class="nav-item" onclick="showPage('properties')">
-      <span class="nav-icon">🏠</span><span>العقارات</span>
-    </div>
-    <div class="nav-item" onclick="showPage('cashinvest')">
-      <span class="nav-icon">💵</span><span>السيولة للضخ</span>
-    </div>
-  </div>
-
-  <!-- Main -->
-  <div class="main">
-
-    <!-- ── DASHBOARD ── -->
-    <div class="page active" id="page-dashboard">
-      <h2 class="page-title">لوحة التحكم</h2>
-      <p class="page-sub">نظرة شاملة على محفظتك — آخر تحديث: فبراير 2026</p>
-      <div class="cards-row cols-4" id="db-kpis"></div>
-      <div class="chart-grid">
-        <div class="chart-card"><h3>توزيع القطاعات</h3><canvas id="sectorChart" height="220"></canvas></div>
-        <div class="chart-card"><h3>التخصيص الفعلي مقابل الهدف</h3><canvas id="allocChart" height="220"></canvas></div>
-      </div>
-      <div class="chart-card"><h3>التوزيعات المستلمة بالسنة</h3><canvas id="divYearChart" height="120"></canvas></div>
-    </div>
-
-    <!-- ── PORTFOLIO ── -->
-    <div class="page" id="page-portfolio">
-      <h2 class="page-title">نظرة المحفظة</h2>
-      <p class="page-sub">21 سهم — التحديث الأخير 25 فبراير 2026</p>
-      <div class="toolbar">
-        <input class="search-bar" placeholder="🔍 بحث عن سهم..." oninput="filterPortfolio(this.value)">
-        <div id="port-summary" style="color:var(--muted);font-size:13px;"></div>
-      </div>
-      <div class="table-wrap">
-        <table id="portfolioTable">
-          <thead>
-            <tr>
-              <th>#</th><th>السهم</th><th>التيكر</th><th>القطاع</th>
-              <th>الكمية</th><th>متوسط التكلفة</th><th>السعر الحالي</th>
-              <th>الربح/الخسارة</th><th>%P&L</th>
-              <th>التخصيص الهدف</th><th>التخصيص الحالي</th>
-              <th>منطقة الشراء</th><th>منطقة البيع</th><th>القرار</th>
-            </tr>
-          </thead>
-          <tbody id="portfolioBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── TRANSACTIONS ── -->
-    <div class="page" id="page-transactions">
-      <h2 class="page-title">العمليات</h2>
-      <p class="page-sub">جميع عمليات الشراء والبيع من 01-07-2025</p>
-      <div class="form-card">
-        <h3>➕ إضافة عملية جديدة</h3>
-        <div class="form-row">
-          <div class="form-group"><label>النوع</label>
-            <select id="t-status"><option>Buy</option><option>Sell</option></select>
-          </div>
-          <div class="form-group"><label>التيكر</label><input id="t-ticker" placeholder="ARAMCO"></div>
-          <div class="form-group"><label>الكمية</label><input id="t-qty" type="number" placeholder="100"></div>
-          <div class="form-group"><label>السعر</label><input id="t-price" type="number" step="0.01" placeholder="25.50"></div>
-        </div>
-        <button class="btn btn-primary" onclick="addTransaction()">إضافة</button>
-      </div>
-      <div class="toolbar">
-        <input class="search-bar" placeholder="🔍 بحث..." oninput="filterTransactions(this.value)">
-        <div id="tr-summary" style="color:var(--muted);font-size:13px;"></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>#</th><th>النوع</th><th>التيكر</th><th>الكمية</th>
-            <th>السعر</th><th>الإجمالي</th><th>العمولة</th><th>VAT</th><th>صافي التكلفة</th></tr>
-          </thead>
-          <tbody id="transBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── DIVIDENDS ── -->
-    <div class="page" id="page-dividends">
-      <h2 class="page-title">التوزيعات المستلمة</h2>
-      <p class="page-sub">سجل كامل بالتوزيعات النقدية</p>
-      <div class="form-card">
-        <h3>➕ إضافة توزيع</h3>
-        <div class="form-row">
-          <div class="form-group"><label>التاريخ</label><input id="d-date" type="date"></div>
-          <div class="form-group"><label>السهم</label><input id="d-stock" placeholder="أرامكو"></div>
-          <div class="form-group"><label>المبلغ (SAR)</label><input id="d-amount" type="number" step="0.01" placeholder="500"></div>
-        </div>
-        <button class="btn btn-primary" onclick="addDividend()">إضافة</button>
-      </div>
-      <div class="cards-row cols-3" id="div-kpis"></div>
-      <div class="chart-card" style="margin-top:24px;"><h3>التوزيعات حسب السهم</h3><canvas id="divStockChart" height="150"></canvas></div>
-      <div class="table-wrap" style="margin-top:24px;">
-        <table>
-          <thead><tr><th>#</th><th>التاريخ</th><th>السهم</th><th>المبلغ (SAR)</th><th>حذف</th></tr></thead>
-          <tbody id="divBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── NET WORTH ── -->
-    <div class="page" id="page-networth">
-      <h2 class="page-title">صافي الثروة</h2>
-      <p class="page-sub">احسب ثروتك الصافية الكاملة</p>
-      <div class="cards-row cols-3" id="nw-kpis"></div>
-      <div class="form-card" style="margin-top:24px;">
-        <h3>⚙️ تحديث القيم</h3>
-        <div class="form-row">
-          <div class="form-group"><label>قيمة المحفظة السوقية (SAR)</label><input id="nw-port" type="number" placeholder="221460"></div>
-          <div class="form-group"><label>قيمة العقارات (SAR)</label><input id="nw-prop" type="number" placeholder="0"></div>
-          <div class="form-group"><label>النقد والسيولة (SAR)</label><input id="nw-cash" type="number" placeholder="0"></div>
-          <div class="form-group"><label>الالتزامات / الديون (SAR)</label><input id="nw-debt" type="number" placeholder="0"></div>
-        </div>
-        <button class="btn btn-primary" onclick="calcNetWorth()">احتساب</button>
-      </div>
-      <div class="chart-card" style="margin-top:24px;"><h3>توزيع الأصول</h3><canvas id="nwChart" height="200"></canvas></div>
-    </div>
-
-    <!-- ── PROPERTIES ── -->
-    <div class="page" id="page-properties">
-      <h2 class="page-title">العقارات</h2>
-      <p class="page-sub">سجل ممتلكاتك العقارية</p>
-      <div class="form-card">
-        <h3>➕ إضافة عقار</h3>
-        <div class="form-row">
-          <div class="form-group"><label>اسم العقار</label><input id="pr-name" placeholder="شقة الرياض"></div>
-          <div class="form-group"><label>النوع</label>
-            <select id="pr-type"><option>سكني</option><option>تجاري</option><option>أرض</option><option>صندوق ريت</option></select>
-          </div>
-          <div class="form-group"><label>القيمة السوقية (SAR)</label><input id="pr-value" type="number" placeholder="500000"></div>
-          <div class="form-group"><label>الإيجار السنوي (SAR)</label><input id="pr-rent" type="number" placeholder="30000"></div>
-          <div class="form-group"><label>ملاحظة</label><input id="pr-note" placeholder="اختياري"></div>
-        </div>
-        <button class="btn btn-primary" onclick="addProperty()">إضافة</button>
-      </div>
-      <div class="cards-row cols-3" id="pr-kpis"></div>
-      <div class="table-wrap" style="margin-top:24px;">
-        <table>
-          <thead><tr><th>#</th><th>الاسم</th><th>النوع</th><th>القيمة (SAR)</th><th>الإيجار السنوي</th><th>عائد الإيجار %</th><th>ملاحظة</th><th>حذف</th></tr></thead>
-          <tbody id="prBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── CASH TO INVEST ── -->
-    <div class="page" id="page-cashinvest">
-      <h2 class="page-title">السيولة للضخ</h2>
-      <p class="page-sub">خطط السيولة المراد ضخها في المحفظة</p>
-      <div class="form-card">
-        <h3>➕ إضافة خطة ضخ</h3>
-        <div class="form-row">
-          <div class="form-group"><label>الشهر / السنة</label><input id="ci-date" type="month"></div>
-          <div class="form-group"><label>المبلغ (SAR)</label><input id="ci-amount" type="number" placeholder="5000"></div>
-          <div class="form-group"><label>السهم المستهدف</label><input id="ci-target" placeholder="أرامكو أو متنوع"></div>
-          <div class="form-group"><label>الحالة</label>
-            <select id="ci-stat"><option>مخطط</option><option>منفذ</option><option>ملغي</option></select>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="addCashPlan()">إضافة</button>
-      </div>
-      <div class="cards-row cols-3" id="ci-kpis"></div>
-      <div class="table-wrap" style="margin-top:24px;">
-        <table>
-          <thead><tr><th>#</th><th>التاريخ</th><th>المبلغ</th><th>الهدف</th><th>الحالة</th><th>حذف</th></tr></thead>
-          <tbody id="ciBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-  </div><!-- /main -->
-
-  <div class="logout-btn" onclick="doLogout()">🚪 تسجيل الخروج</div>
-</div><!-- /app -->
-
 <script>
-// ════════════════════════════════════════════════
-//  AUTH
-// ════════════════════════════════════════════════
-const CREDENTIALS = CryptoJS.AES.encrypt(
-  JSON.stringify({u:"radwan aljohani", p:"1117473137"}),
-  "2043_secure_key_radwan"
+// ─── Credentials (AES encrypted) ───────────────────────────────────────────
+const _KEY = "2043_radwan_secure";
+const _C   = CryptoJS.AES.encrypt(
+  JSON.stringify({ u: "radwan aljohani", p: "1117473137" }),
+  _KEY
 ).toString();
 
-function doLogin(){
-  const u = document.getElementById('uInput').value.trim().toLowerCase();
-  const p = document.getElementById('pInput').value.trim();
-  const bytes = CryptoJS.AES.decrypt(CREDENTIALS, "2043_secure_key_radwan");
-  const creds = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-  if(u === creds.u.toLowerCase() && p === creds.p){
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    initApp();
+function verify(u, p) {
+  try {
+    const dec   = CryptoJS.AES.decrypt(_C, _KEY);
+    const creds = JSON.parse(dec.toString(CryptoJS.enc.Utf8));
+    return u.toLowerCase().trim() === creds.u.toLowerCase() &&
+           p.trim() === creds.p;
+  } catch(e) { return false; }
+}
+
+// ─── Already logged in? ─────────────────────────────────────────────────────
+(function(){
+  try {
+    if(sessionStorage.getItem('auth_2043') === '1')
+      window.location.href = 'dashboard.html';
+  } catch(e) {}
+})();
+
+// ─── Login ──────────────────────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('uInput').value;
+  const p = document.getElementById('pInput').value;
+  const btn = document.getElementById('loginBtn');
+
+  btn.textContent = '...جاري التحقق';
+  btn.classList.add('loading');
+
+  setTimeout(() => {
+    if (verify(u, p)) {
+      try { sessionStorage.setItem('auth_2043', '1'); } catch(e) {}
+      btn.textContent = '✅ تم التحقق — جاري التحويل';
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+    } else {
+      btn.textContent = 'دخول ←';
+      btn.classList.remove('loading');
+      const err = document.getElementById('errorMsg');
+      err.style.display = 'block';
+      document.getElementById('loginCard').classList.add('shake');
+      setTimeout(() => {
+        err.style.display = 'none';
+        document.getElementById('loginCard').classList.remove('shake');
+      }, 3500);
+    }
+  }, 500);
+}
+
+// ─── Toggle password ────────────────────────────────────────────────────────
+function togglePass() {
+  const inp  = document.getElementById('pInput');
+  const icon = document.getElementById('eyeIcon');
+  if (inp.type === 'password') {
+    inp.type  = 'text';
+    icon.textContent = '🔓';
   } else {
-    document.getElementById('loginError').style.display = 'block';
-    setTimeout(()=>document.getElementById('loginError').style.display='none', 3000);
+    inp.type  = 'password';
+    icon.textContent = '🔒';
   }
 }
-document.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-function doLogout(){
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('uInput').value='';
-  document.getElementById('pInput').value='';
-}
-
-// ════════════════════════════════════════════════
-//  NAVIGATION
-// ════════════════════════════════════════════════
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  event.currentTarget.classList.add('active');
-  renderPage(id);
-}
-
-// ════════════════════════════════════════════════
-//  DATA — seeded from Excel, stored in localStorage
-// ════════════════════════════════════════════════
-const PORTFOLIO_DATA = [
-  {stock:"الكهرباء السعودية",ticker:"5110",sector:"المرافق العامة",qty:24,avg_cost:14.16,current_price:13.76,goal_alloc:0.05,current_alloc:0.0015,diff:-0.0485,decision:"تجميع",buy_zone:"<14.5",sell_zone:"19-21",eval:"تجميع - الهدف على اليمين"},
-  {stock:"بنك الرياض",ticker:"1010",sector:"البنوك",qty:78,avg_cost:27.85,current_price:27.9,goal_alloc:0.05,current_alloc:0.0094,diff:-0.0406,decision:"تجميع",buy_zone:"<27.5",sell_zone:"33-35",eval:"تجميع - الهدف على اليمين"},
-  {stock:"سدافكو",ticker:"2270",sector:"إنتاج الأغذية",qty:2,avg_cost:236.82,current_price:196.3,goal_alloc:0.04,current_alloc:0.0021,diff:-0.0379,decision:"تجميع",buy_zone:"<225",sell_zone:"305-325",eval:"إحتفاظ وتجميع خفيف"},
-  {stock:"سابك للمغذيات",ticker:"2020",sector:"بتروكيميال",qty:23,avg_cost:116.22,current_price:127,goal_alloc:0.05,current_alloc:0.0125,diff:-0.0375,decision:"تجميع",buy_zone:"<118",sell_zone:"145-150",eval:"تجميع بمناطق الشراء"},
-  {stock:"العثيم",ticker:"4001",sector:"تجزئة",qty:289,avg_cost:6.34,current_price:6.17,goal_alloc:0.04,current_alloc:0.0084,diff:-0.0316,decision:"مراقبة",buy_zone:"<7.8",sell_zone:"9-10.5",eval:"مراقبة نتائج Q1 2026"},
-  {stock:"جرير",ticker:"4190",sector:"تجزئة كمالية",qty:555,avg_cost:12.9,current_price:14.1,goal_alloc:0.05,current_alloc:0.0353,diff:-0.0147,decision:"تجميع",buy_zone:"<13",sell_zone:"15.8-16.5",eval:"تجميع بمناطق الشراء"},
-  {stock:"أسمنت السعودية",ticker:"3030",sector:"إسمنت",qty:317,avg_cost:38.08,current_price:32.9,goal_alloc:0.06,current_alloc:0.0498,diff:-0.0102,decision:"تجميع",buy_zone:"<35",sell_zone:"46.5-48",eval:"احتفاظ ونظر للنتائج"},
-  {stock:"تعليم ريت",ticker:"4333",sector:"صناديق ريت",qty:721,avg_cost:9.89,current_price:9.45,goal_alloc:0.04,current_alloc:0.0318,diff:-0.0082,decision:"احتفاظ",buy_zone:"<10",sell_zone:"11.8-12.5",eval:"احتفاظ"},
-  {stock:"سابك",ticker:"2010",sector:"بتروكيميال",qty:95,avg_cost:54.34,current_price:54.8,goal_alloc:0.03,current_alloc:0.0234,diff:-0.0066,decision:"مراقبة",buy_zone:"<58",sell_zone:"78-85",eval:"مراقبة نتائج Q1 2026"},
-  {stock:"المراكز العربية",ticker:"4321",sector:"عقارات",qty:300,avg_cost:20.47,current_price:18.06,goal_alloc:0.03,current_alloc:0.0258,diff:-0.0042,decision:"تجميع",buy_zone:"<19.8",sell_zone:"26-28",eval:"تجميع بمناطق الشراء"},
-  {stock:"STC",ticker:"7010",sector:"اتصالات",qty:394,avg_cost:42.15,current_price:42.46,goal_alloc:0.08,current_alloc:0.0763,diff:-0.0037,decision:"تجميع",buy_zone:"<42.5",sell_zone:"54-58",eval:"تجميع بمناطق الشراء"},
-  {stock:"المطاحن الحديثة",ticker:"2284",sector:"إنتاج الأغذية",qty:160,avg_cost:31.12,current_price:25.8,goal_alloc:0.02,current_alloc:0.0196,diff:-0.0004,decision:"احتفاظ",buy_zone:"<28.5",sell_zone:"41-43",eval:"احتفاظ"},
-  {stock:"الإنماء",ticker:"1150",sector:"البنوك",qty:533,avg_cost:24.67,current_price:27.94,goal_alloc:0.06,current_alloc:0.0629,diff:0.0029,decision:"احتفاظ",buy_zone:"<25.5",sell_zone:"33-34.5",eval:"احتفاظ"},
-  {stock:"جدوى ريت السعودية",ticker:"4342",sector:"صناديق ريت",qty:1160,avg_cost:10.26,current_price:11.44,goal_alloc:0.05,current_alloc:0.0564,diff:0.0064,decision:"احتفاظ",buy_zone:"<10.5",sell_zone:"13.8-14.5",eval:"احتفاظ"},
-  {stock:"أسمنت القصيم",ticker:"3040",sector:"إسمنت",qty:365,avg_cost:41.55,current_price:42.34,goal_alloc:0.06,current_alloc:0.068,diff:0.008,decision:"احتفاظ",buy_zone:"<41.5",sell_zone:"55-58",eval:"احتفاظ"},
-  {stock:"سيدكو ريت",ticker:"4344",sector:"صناديق ريت",qty:1648,avg_cost:6.89,current_price:7.04,goal_alloc:0.04,current_alloc:0.0494,diff:0.0094,decision:"تخفيف",buy_zone:"<7",sell_zone:"8.5-9",eval:"تخفيف 0.9% عند الهدف"},
-  {stock:"أرامكو السعودية",ticker:"2222",sector:"الطاقة",qty:1186,avg_cost:24.13,current_price:25.74,goal_alloc:0.12,current_alloc:0.1296,diff:0.0096,decision:"احتفاظ",buy_zone:"<24.8",sell_zone:"28-33",eval:"احتفاظ"},
-  {stock:"الخبير ريت",ticker:"4348",sector:"صناديق ريت",qty:2266,avg_cost:5.73,current_price:5.61,goal_alloc:0.04,current_alloc:0.0566,diff:0.0166,decision:"تخفيف",buy_zone:"<6",sell_zone:"7.7-8.2",eval:"تخفيف 1.7% عند الهدف"},
-  {stock:"النهدي",ticker:"4164",sector:"تجزئة",qty:150,avg_cost:96.39,current_price:96,goal_alloc:0.04,current_alloc:0.061,diff:0.021,decision:"تخفيف",buy_zone:"<97",sell_zone:"130-145",eval:"تخفيف 1.7% عند الهدف"},
-  {stock:"سبكيم العالمية",ticker:"2310",sector:"بتروكيميال",qty:1245,avg_cost:16.06,current_price:14.04,goal_alloc:0,current_alloc:0.0823,diff:0.0823,decision:"تخفيف",buy_zone:"<15.1",sell_zone:"20-27.5",eval:"خروج حسب الخطة"},
-  {stock:"المواساة",ticker:"4002",sector:"رعاية صحية",qty:470,avg_cost:73.56,current_price:61.95,goal_alloc:0.05,current_alloc:0.1399,diff:0.0899,decision:"تخفيف",buy_zone:"<72",sell_zone:"90-98",eval:"خروج جزئي حسب الخطة"},
-];
-
-const TRANSACTIONS_SEED = [
-  {no:1,status:"Buy",ticker:"NAHDI",qty:73,price:94.45,total:6894.85,commission:10.69,vat:1.30,total_cost:6882.87},
-  {no:2,status:"Buy",ticker:"NAHDI",qty:21,price:94.45,total:1983.45,commission:3.07,vat:0.37,total_cost:1980.00},
-  {no:3,status:"Buy",ticker:"A.OTHAIM MARKET",qty:47,price:6.11,total:287.17,commission:0.45,vat:0.05,total_cost:286.67},
-  {no:5,status:"Buy",ticker:"Sipchem",qty:985,price:15.2,total:14972,commission:23.21,vat:2.81,total_cost:14945.98},
-  {no:6,status:"Buy",ticker:"ALINMA BANK",qty:283,price:24.5,total:6933.5,commission:10.75,vat:1.30,total_cost:6921.45},
-  {no:10,status:"Sell",ticker:"EXTRA",qty:3,price:90,total:270,commission:0.42,vat:0.05,total_cost:269.53},
-  {no:14,status:"Buy",ticker:"SABIC",qty:95,price:54.25,total:5153.75,commission:7.99,vat:0.97,total_cost:5144.79},
-  {no:34,status:"Buy",ticker:"Qassim Cement",qty:99,price:41.66,total:4124.34,commission:6.39,vat:0.78,total_cost:4117.17},
-  {no:36,status:"Buy",ticker:"STC",qty:22,price:42.84,total:942.48,commission:1.46,vat:0.18,total_cost:940.84},
-  {no:39,status:"Buy",ticker:"SAUDI ARAMCO",qty:100,price:24.93,total:2493,commission:3.86,vat:0.47,total_cost:2488.67},
-  {no:52,status:"Buy",ticker:"MOUWASAT",qty:162,price:72.95,total:11817.9,commission:18.32,vat:2.22,total_cost:11797.36},
-  {no:62,status:"Sell",ticker:"SABIC AGRI-NUTRIENTS",qty:75,price:120.8,total:9060,commission:14.04,vat:1.70,total_cost:9044.25},
-  {no:66,status:"Buy",ticker:"SAUDI ARAMCO",qty:345,price:24.59,total:8483.55,commission:13.15,vat:1.59,total_cost:8468.81},
-  {no:78,status:"Buy",ticker:"JARIR",qty:40,price:13.18,total:527.2,commission:0.82,vat:0.10,total_cost:526.28},
-  {no:113,status:"Buy",ticker:"SAUDI ARAMCO",qty:100,price:23.51,total:2351,commission:3.64,vat:0.44,total_cost:2346.91},
-  {no:126,status:"Buy",ticker:"SAUDI ARAMCO",qty:180,price:23.5,total:4230,commission:6.56,vat:0.80,total_cost:4222.65},
-  {no:130,status:"Buy",ticker:"JARIR",qty:100,price:12.84,total:1284,commission:1.99,vat:0.24,total_cost:1281.77},
-  {no:159,status:"Buy",ticker:"SAUDI ARAMCO",qty:150,price:23.64,total:3546,commission:5.50,vat:0.67,total_cost:3539.84},
-  {no:171,status:"Buy",ticker:"SAUDI ARAMCO",qty:100,price:24.21,total:2421,commission:3.75,vat:0.46,total_cost:2416.79},
-  {no:184,status:"Buy",ticker:"RIYAD BANK",qty:78,price:27.85,total:2172.3,commission:3.37,vat:0.41,total_cost:2168.52},
-  {no:191,status:"Buy",ticker:"SADAFCO",qty:1,price:232.3,total:232.3,commission:0.36,vat:0.04,total_cost:231.90},
-];
-
-const DIVIDENDS_SEED = [
-  {no:1,date:"2025-08-01",stock:"جرير",amount:25.6},
-  {no:2,date:"2025-08-01",stock:"أرامكو",amount:496.47},
-  {no:3,date:"2025-09-01",stock:"دراية ريت",amount:320.75},
-  {no:4,date:"2025-09-01",stock:"جدوى ريت",amount:60.83},
-  {no:5,date:"2025-09-01",stock:"أسمنت القصيم",amount:746.7},
-  {no:6,date:"2025-10-01",stock:"الخبير ريت",amount:65.1},
-  {no:7,date:"2025-11-01",stock:"الإنماء",amount:75},
-  {no:8,date:"2025-11-01",stock:"جرير",amount:155.4},
-  {no:9,date:"2025-11-01",stock:"STC",amount:675.13},
-  {no:10,date:"2025-11-01",stock:"أرامكو",amount:34.82},
-  {no:11,date:"2025-12-01",stock:"جدوى ريت",amount:232},
-  {no:12,date:"2025-12-01",stock:"سبكيم",amount:130},
-  {no:13,date:"2025-12-01",stock:"المواساة",amount:470},
-  {no:14,date:"2025-12-01",stock:"أسمنت القصيم",amount:294.24},
-];
-
-// localStorage helpers
-function getData(key, fallback){ try{ return JSON.parse(localStorage.getItem(key)) || fallback; }catch(e){ return fallback; } }
-function setData(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
-
-function initStorage(){
-  if(!localStorage.getItem('transactions_v1')) setData('transactions_v1', TRANSACTIONS_SEED);
-  if(!localStorage.getItem('dividends_v1'))    setData('dividends_v1',    DIVIDENDS_SEED);
-  if(!localStorage.getItem('properties_v1'))   setData('properties_v1',   []);
-  if(!localStorage.getItem('cashplans_v1'))     setData('cashplans_v1',    []);
-  if(!localStorage.getItem('networth_v1'))      setData('networth_v1',{port:221460.67,prop:0,cash:0,debt:0});
-}
-
-// ════════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════════
-let charts = {};
-function initApp(){
-  initStorage();
-  renderPage('dashboard');
-}
-
-function renderPage(id){
-  if(id==='dashboard')    renderDashboard();
-  if(id==='portfolio')    renderPortfolio(PORTFOLIO_DATA);
-  if(id==='transactions') renderTransactions();
-  if(id==='dividends')    renderDividends();
-  if(id==='networth')     renderNetWorth();
-  if(id==='properties')   renderProperties();
-  if(id==='cashinvest')   renderCashInvest();
-}
-
-// ════════════════════════════════════════════════
-//  HELPERS
-// ════════════════════════════════════════════════
-function fmt(n,d=2){ return Number(n).toLocaleString('ar-SA',{minimumFractionDigits:d,maximumFractionDigits:d}); }
-function pct(n){
-  const cls = n>=0 ? 'green' : 'red';
-  return `<span class="${cls}">${n>=0?'+':''}${(n*100).toFixed(2)}%</span>`;
-}
-function decisionBadge(d){
-  if(d.includes('تجميع')) return `<span class="badge badge-acc">تجميع</span>`;
-  if(d.includes('احتفاظ')||d.includes('إحتفاظ')) return `<span class="badge badge-hold">احتفاظ</span>`;
-  if(d.includes('مراقبة')) return `<span class="badge badge-watch">مراقبة</span>`;
-  if(d.includes('تخفيف')) return `<span class="badge badge-reduce">تخفيف</span>`;
-  return `<span class="badge">${d}</span>`;
-}
-function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
-
-// ════════════════════════════════════════════════
-//  DASHBOARD
-// ════════════════════════════════════════════════
-function renderDashboard(){
-  const divs = getData('dividends_v1', DIVIDENDS_SEED);
-  const nw   = getData('networth_v1',  {port:221460.67,prop:0,cash:0,debt:0});
-  const totalDiv = divs.reduce((s,d)=>s+d.amount,0);
-  const totalInv = PORTFOLIO_DATA.reduce((s,p)=>s+(p.qty*p.avg_cost),0);
-  const totalMkt = PORTFOLIO_DATA.reduce((s,p)=>s+(p.qty*p.current_price),0);
-  const totalPL  = totalMkt - totalInv;
-
-  document.getElementById('db-kpis').innerHTML = `
-    <div class="kpi-card"><div class="label">قيمة المحفظة السوقية</div>
-      <div class="value">${fmt(totalMkt)} <small style="font-size:13px">SAR</small></div>
-      <div class="sub">التكلفة: ${fmt(totalInv)} SAR</div>
-    </div>
-    <div class="kpi-card"><div class="label">الربح / الخسارة الورقية</div>
-      <div class="value ${totalPL>=0?'green':'red'}">${totalPL>=0?'+':''}${fmt(totalPL)} SAR</div>
-      <div class="sub">${pct(totalPL/totalInv)} على التكلفة</div>
-    </div>
-    <div class="kpi-card"><div class="label">التوزيعات المستلمة 2025</div>
-      <div class="value green">${fmt(totalDiv)} SAR</div>
-      <div class="sub">عائد: ${fmt((totalDiv/totalInv)*100,2)}% على التكلفة</div>
-    </div>
-    <div class="kpi-card"><div class="label">عدد الأسهم في المحفظة</div>
-      <div class="value">${PORTFOLIO_DATA.length}</div>
-      <div class="sub">12 قطاع مختلف</div>
-    </div>`;
-
-  // Sector chart
-  const sectors = {};
-  PORTFOLIO_DATA.forEach(p=>{
-    const v = p.qty*p.current_price;
-    sectors[p.sector] = (sectors[p.sector]||0)+v;
-  });
-  destroyChart('sectorChart');
-  charts['sectorChart'] = new Chart(document.getElementById('sectorChart'),{
-    type:'doughnut',
-    data:{
-      labels:Object.keys(sectors),
-      datasets:[{data:Object.values(sectors),borderWidth:1,borderColor:'#1a1d27'}]
-    },
-    options:{plugins:{legend:{position:'right',labels:{color:'#94a3b8',font:{size:11}}}},
-    responsive:true,maintainAspectRatio:false}
-  });
-
-  // Alloc chart
-  const names  = PORTFOLIO_DATA.map(p=>p.stock.substring(0,6));
-  const goals  = PORTFOLIO_DATA.map(p=>p.goal_alloc*100);
-  const actual = PORTFOLIO_DATA.map(p=>p.current_alloc*100);
-  destroyChart('allocChart');
-  charts['allocChart'] = new Chart(document.getElementById('allocChart'),{
-    type:'bar',
-    data:{labels:names,datasets:[
-      {label:'الهدف %',data:goals,backgroundColor:'rgba(79,142,247,0.5)'},
-      {label:'الفعلي %',data:actual,backgroundColor:'rgba(34,197,94,0.5)'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#94a3b8'}}},
-      scales:{x:{ticks:{color:'#94a3b8',font:{size:9}}},y:{ticks:{color:'#94a3b8'}}}}
-  });
-
-  // Div by year
-  const byYear={};
-  divs.forEach(d=>{ const y=d.date.substring(0,4); byYear[y]=(byYear[y]||0)+d.amount; });
-  destroyChart('divYearChart');
-  charts['divYearChart'] = new Chart(document.getElementById('divYearChart'),{
-    type:'bar',
-    data:{labels:Object.keys(byYear),datasets:[{label:'التوزيعات SAR',data:Object.values(byYear),backgroundColor:'rgba(34,197,94,0.6)'}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#94a3b8'}}},
-      scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}
-  });
-}
-
-// ════════════════════════════════════════════════
-//  PORTFOLIO
-// ════════════════════════════════════════════════
-let _portData = [...PORTFOLIO_DATA];
-function renderPortfolio(data){
-  _portData = data;
-  const totalInv = data.reduce((s,p)=>s+(p.qty*p.avg_cost),0);
-  const totalMkt = data.reduce((s,p)=>s+(p.qty*p.current_price),0);
-  document.getElementById('port-summary').textContent =
-    `القيمة السوقية: ${fmt(totalMkt)} SAR | التكلفة: ${fmt(totalInv)} SAR`;
-
-  const tbody = document.getElementById('portfolioBody');
-  tbody.innerHTML = data.map((p,i)=>{
-    const cost = p.qty * p.avg_cost;
-    const mkt  = p.qty * p.current_price;
-    const pl   = mkt - cost;
-    const plPct= cost>0 ? pl/cost : 0;
-    return `<tr>
-      <td>${i+1}</td>
-      <td><strong>${p.stock}</strong></td>
-      <td style="color:var(--accent)">${p.ticker}</td>
-      <td><small>${p.sector}</small></td>
-      <td>${fmt(p.qty,0)}</td>
-      <td>${fmt(p.avg_cost)}</td>
-      <td>${fmt(p.current_price)}</td>
-      <td class="${pl>=0?'green':'red'}">${pl>=0?'+':''}${fmt(pl)}</td>
-      <td>${pct(plPct)}</td>
-      <td>${(p.goal_alloc*100).toFixed(1)}%</td>
-      <td>${(p.current_alloc*100).toFixed(2)}%</td>
-      <td style="color:var(--green)">${p.buy_zone}</td>
-      <td style="color:var(--yellow)">${p.sell_zone}</td>
-      <td>${decisionBadge(p.decision)}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterPortfolio(q){
-  const f = q.toLowerCase();
-  renderPortfolio(PORTFOLIO_DATA.filter(p=>
-    p.stock.includes(q)||p.ticker.includes(q)||p.sector.includes(q)||
-    p.decision.toLowerCase().includes(f)
-  ));
-}
-
-// ════════════════════════════════════════════════
-//  TRANSACTIONS
-// ════════════════════════════════════════════════
-function renderTransactions(filter=''){
-  let data = getData('transactions_v1', TRANSACTIONS_SEED);
-  const totalBuy  = data.filter(t=>t.status==='Buy').reduce((s,t)=>s+t.total,0);
-  const totalSell = data.filter(t=>t.status==='Sell').reduce((s,t)=>s+t.total,0);
-  document.getElementById('tr-summary').textContent =
-    `شراء: ${fmt(totalBuy)} SAR | بيع: ${fmt(totalSell)} SAR | عدد: ${data.length}`;
-
-  if(filter) data = data.filter(t=>
-    t.ticker.toLowerCase().includes(filter.toLowerCase())||
-    t.status.toLowerCase().includes(filter.toLowerCase())
-  );
-  document.getElementById('transBody').innerHTML = data.map(t=>`
-    <tr>
-      <td>${t.no}</td>
-      <td><span class="badge ${t.status==='Buy'?'badge-buy':'badge-sell'}">${t.status}</span></td>
-      <td style="color:var(--accent)">${t.ticker}</td>
-      <td>${fmt(t.qty,0)}</td>
-      <td>${fmt(t.price)}</td>
-      <td><strong>${fmt(t.total)}</strong></td>
-      <td style="color:var(--muted)">${fmt(t.commission)}</td>
-      <td style="color:var(--muted)">${fmt(t.vat)}</td>
-      <td>${fmt(t.total_cost)}</td>
-    </tr>`).join('');
-}
-
-function filterTransactions(q){ renderTransactions(q); }
-
-function addTransaction(){
-  const data = getData('transactions_v1', TRANSACTIONS_SEED);
-  const t = {
-    no: data.length+1,
-    status: document.getElementById('t-status').value,
-    ticker: document.getElementById('t-ticker').value.trim().toUpperCase(),
-    qty:    parseFloat(document.getElementById('t-qty').value)||0,
-    price:  parseFloat(document.getElementById('t-price').value)||0,
-  };
-  if(!t.ticker||!t.qty||!t.price) return alert('أكمل جميع الحقول');
-  t.total = t.qty * t.price;
-  t.commission = parseFloat((t.total * 0.00155).toFixed(4));
-  t.vat        = parseFloat((t.commission * 0.15).toFixed(4));
-  t.total_cost = parseFloat((t.total - t.commission - t.vat).toFixed(4));
-  data.push(t);
-  setData('transactions_v1', data);
-  ['t-ticker','t-qty','t-price'].forEach(id=>document.getElementById(id).value='');
-  renderTransactions();
-}
-
-// ════════════════════════════════════════════════
-//  DIVIDENDS
-// ════════════════════════════════════════════════
-function renderDividends(){
-  const data = getData('dividends_v1', DIVIDENDS_SEED);
-  const total = data.reduce((s,d)=>s+d.amount,0);
-  const byYear={};
-  data.forEach(d=>{ const y=d.date.substring(0,4); byYear[y]=(byYear[y]||0)+d.amount; });
-  const byStock={};
-  data.forEach(d=>{ byStock[d.stock]=(byStock[d.stock]||0)+d.amount; });
-
-  document.getElementById('div-kpis').innerHTML = `
-    <div class="kpi-card"><div class="label">إجمالي التوزيعات</div>
-      <div class="value green">${fmt(total)} SAR</div></div>
-    <div class="kpi-card"><div class="label">عدد مدفوعات 2025</div>
-      <div class="value">${data.filter(d=>d.date.startsWith('2025')).length}</div></div>
-    <div class="kpi-card"><div class="label">أعلى توزيع فردي</div>
-      <div class="value yellow">${fmt(Math.max(...data.map(d=>d.amount)))} SAR</div></div>`;
-
-  destroyChart('divStockChart');
-  const sorted = Object.entries(byStock).sort((a,b)=>b[1]-a[1]);
-  charts['divStockChart'] = new Chart(document.getElementById('divStockChart'),{
-    type:'bar',
-    data:{labels:sorted.map(x=>x[0]),datasets:[{
-      label:'SAR',data:sorted.map(x=>x[1]),backgroundColor:'rgba(79,142,247,0.6)'
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}
-  });
-
-  document.getElementById('divBody').innerHTML = data.map((d,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${d.date}</td>
-      <td>${d.stock}</td>
-      <td class="green"><strong>${fmt(d.amount)}</strong></td>
-      <td><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteDividend(${i})">حذف</button></td>
-    </tr>`).join('');
-}
-
-function addDividend(){
-  const data = getData('dividends_v1', DIVIDENDS_SEED);
-  const d = {
-    no: data.length+1,
-    date:   document.getElementById('d-date').value,
-    stock:  document.getElementById('d-stock').value.trim(),
-    amount: parseFloat(document.getElementById('d-amount').value)||0,
-  };
-  if(!d.date||!d.stock||!d.amount) return alert('أكمل جميع الحقول');
-  data.push(d);
-  setData('dividends_v1', data);
-  ['d-date','d-stock','d-amount'].forEach(id=>document.getElementById(id).value='');
-  renderDividends();
-}
-
-function deleteDividend(i){
-  const data = getData('dividends_v1', DIVIDENDS_SEED);
-  data.splice(i,1);
-  setData('dividends_v1', data);
-  renderDividends();
-}
-
-// ════════════════════════════════════════════════
-//  NET WORTH
-// ════════════════════════════════════════════════
-function renderNetWorth(){
-  const nw = getData('networth_v1',{port:221460.67,prop:0,cash:0,debt:0});
-  const total = nw.port + nw.prop + nw.cash - nw.debt;
-  document.getElementById('nw-kpis').innerHTML = `
-    <div class="kpi-card"><div class="label">صافي الثروة</div>
-      <div class="value green">${fmt(total)} SAR</div></div>
-    <div class="kpi-card"><div class="label">الأصول الكلية</div>
-      <div class="value">${fmt(nw.port+nw.prop+nw.cash)} SAR</div></div>
-    <div class="kpi-card"><div class="label">الالتزامات</div>
-      <div class="value ${nw.debt>0?'red':'muted'}">${fmt(nw.debt)} SAR</div></div>`;
-
-  document.getElementById('nw-port').value = nw.port||'';
-  document.getElementById('nw-prop').value = nw.prop||'';
-  document.getElementById('nw-cash').value = nw.cash||'';
-  document.getElementById('nw-debt').value = nw.debt||'';
-
-  destroyChart('nwChart');
-  charts['nwChart'] = new Chart(document.getElementById('nwChart'),{
-    type:'doughnut',
-    data:{
-      labels:['المحفظة','العقارات','النقد','الديون'],
-      datasets:[{data:[nw.port,nw.prop,nw.cash,nw.debt],
-        backgroundColor:['rgba(79,142,247,0.7)','rgba(34,197,94,0.7)','rgba(245,158,11,0.7)','rgba(239,68,68,0.7)'],
-        borderColor:'#1a1d27',borderWidth:2}]
-    },
-    options:{plugins:{legend:{position:'right',labels:{color:'#94a3b8'}}},responsive:true,maintainAspectRatio:false}
-  });
-}
-
-function calcNetWorth(){
-  const nw = {
-    port: parseFloat(document.getElementById('nw-port').value)||0,
-    prop: parseFloat(document.getElementById('nw-prop').value)||0,
-    cash: parseFloat(document.getElementById('nw-cash').value)||0,
-    debt: parseFloat(document.getElementById('nw-debt').value)||0,
-  };
-  setData('networth_v1', nw);
-  renderNetWorth();
-}
-
-// ════════════════════════════════════════════════
-//  PROPERTIES
-// ════════════════════════════════════════════════
-function renderProperties(){
-  const data = getData('properties_v1',[]);
-  const totalVal  = data.reduce((s,p)=>s+p.value,0);
-  const totalRent = data.reduce((s,p)=>s+p.rent,0);
-  document.getElementById('pr-kpis').innerHTML = `
-    <div class="kpi-card"><div class="label">إجمالي قيمة العقارات</div>
-      <div class="value">${fmt(totalVal)} SAR</div></div>
-    <div class="kpi-card"><div class="label">الإيجار السنوي الكلي</div>
-      <div class="value green">${fmt(totalRent)} SAR</div></div>
-    <div class="kpi-card"><div class="label">عائد الإيجار الكلي</div>
-      <div class="value yellow">${totalVal>0?fmt((totalRent/totalVal)*100,2):'0.00'}%</div></div>`;
-
-  document.getElementById('prBody').innerHTML = data.length===0
-    ? '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:30px">لا توجد عقارات مضافة</td></tr>'
-    : data.map((p,i)=>`<tr>
-        <td>${i+1}</td><td>${p.name}</td><td>${p.type}</td>
-        <td>${fmt(p.value)}</td><td>${fmt(p.rent)}</td>
-        <td class="yellow">${p.value>0?((p.rent/p.value)*100).toFixed(2):0}%</td>
-        <td style="color:var(--muted)">${p.note||'—'}</td>
-        <td><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteProperty(${i})">حذف</button></td>
-      </tr>`).join('');
-}
-
-function addProperty(){
-  const data = getData('properties_v1',[]);
-  const p = {
-    name:  document.getElementById('pr-name').value.trim(),
-    type:  document.getElementById('pr-type').value,
-    value: parseFloat(document.getElementById('pr-value').value)||0,
-    rent:  parseFloat(document.getElementById('pr-rent').value)||0,
-    note:  document.getElementById('pr-note').value.trim(),
-  };
-  if(!p.name||!p.value) return alert('أدخل اسم العقار وقيمته');
-  data.push(p);
-  setData('properties_v1', data);
-  ['pr-name','pr-value','pr-rent','pr-note'].forEach(id=>document.getElementById(id).value='');
-  renderProperties();
-}
-
-function deleteProperty(i){
-  const data = getData('properties_v1',[]);
-  data.splice(i,1);
-  setData('properties_v1', data);
-  renderProperties();
-}
-
-// ════════════════════════════════════════════════
-//  CASH TO INVEST
-// ════════════════════════════════════════════════
-function renderCashInvest(){
-  const data = getData('cashplans_v1',[]);
-  const totalPlan = data.filter(c=>c.stat==='مخطط').reduce((s,c)=>s+c.amount,0);
-  const totalDone = data.filter(c=>c.stat==='منفذ').reduce((s,c)=>s+c.amount,0);
-  document.getElementById('ci-kpis').innerHTML = `
-    <div class="kpi-card"><div class="label">مخطط للضخ</div>
-      <div class="value yellow">${fmt(totalPlan)} SAR</div></div>
-    <div class="kpi-card"><div class="label">تم ضخه فعلاً</div>
-      <div class="value green">${fmt(totalDone)} SAR</div></div>
-    <div class="kpi-card"><div class="label">عدد الخطط</div>
-      <div class="value">${data.length}</div></div>`;
-
-  document.getElementById('ciBody').innerHTML = data.length===0
-    ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">لا توجد خطط مضافة</td></tr>'
-    : data.map((c,i)=>`<tr>
-        <td>${i+1}</td><td>${c.date}</td><td class="yellow"><strong>${fmt(c.amount)} SAR</strong></td>
-        <td>${c.target}</td>
-        <td><span class="badge ${c.stat==='منفذ'?'badge-buy':c.stat==='ملغي'?'badge-sell':'badge-watch'}">${c.stat}</span></td>
-        <td><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="deleteCashPlan(${i})">حذف</button></td>
-      </tr>`).join('');
-}
-
-function addCashPlan(){
-  const data = getData('cashplans_v1',[]);
-  const c = {
-    date:   document.getElementById('ci-date').value,
-    amount: parseFloat(document.getElementById('ci-amount').value)||0,
-    target: document.getElementById('ci-target').value.trim(),
-    stat:   document.getElementById('ci-stat').value,
-  };
-  if(!c.date||!c.amount) return alert('أدخل التاريخ والمبلغ');
-  data.push(c);
-  setData('cashplans_v1', data);
-  ['ci-date','ci-amount','ci-target'].forEach(id=>document.getElementById(id).value='');
-  renderCashInvest();
-}
-
-function deleteCashPlan(i){
-  const data = getData('cashplans_v1',[]);
-  data.splice(i,1);
-  setData('cashplans_v1', data);
-  renderCashInvest();
-}
+// ─── Enter key ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
 </script>
 </body>
 </html>
