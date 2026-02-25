@@ -27,6 +27,25 @@
 .yield-bar-wrap { display:flex; align-items:center; gap:6px; }
 .yield-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
 .yield-bar-fill { height:100%; border-radius:2px; }
+
+/* ── Chart fix ── */
+.chart-card {
+  height: auto !important;
+  display: block !important;
+  overflow: visible !important;
+}
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+}
+.chart-wrap canvas {
+  position: absolute !important;
+  top: 0 !important; left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
 </style>
 </head>
 <body>
@@ -52,11 +71,15 @@
   <div class="chart-grid cols-2">
     <div class="chart-card">
       <div class="chart-title">🥧 توزيع العقارات بالقيمة</div>
-      <canvas id="propChart" height="220"></canvas>
+      <div class="chart-wrap">
+        <canvas id="propChart"></canvas>
+      </div>
     </div>
     <div class="chart-card">
       <div class="chart-title">📊 عائد الإيجار لكل عقار</div>
-      <canvas id="yieldChart" height="220"></canvas>
+      <div class="chart-wrap">
+        <canvas id="yieldChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -356,7 +379,6 @@ function applySearch(q){
 // ── Save ─────────────────────────────────────────────────
 function saveAll(){
   Store.save('properties_v1', prData);
-  // sync with networth
   const nw = Store.load('networth_full_v1',{properties:[],cars:[],cash:[],other:[],liabilities:[]});
   nw.properties = prData;
   Store.save('networth_full_v1', nw);
