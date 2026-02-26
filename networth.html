@@ -14,157 +14,16 @@
 <script src="assets/auth.js"></script>
 <script src="assets/data-sync.js"></script>
 <style>
-.asset-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 20px;
-  overflow: hidden;
+.chart-wrap { position:relative; width:100%; height:300px; }
+.chart-wrap canvas { width:100% !important; height:100% !important; }
+.snapshot-item {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px; margin-bottom:12px;
+  display:flex; justify-content:space-between; align-items:center;
 }
-.asset-header {
-  padding: 14px 20px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  user-select: none;
-}
-.asset-header-left {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 14px; font-weight: 700;
-}
-.asset-header-right {
-  display: flex; align-items: center; gap: 16px;
-}
-.asset-total {
-  font-size: 15px; font-weight: 800;
-}
-.asset-body { padding: 20px; }
-
-.asset-row {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.asset-row:last-child { border-bottom: none; }
-.asset-row-header {
-  font-size: 11px; font-weight: 700;
-  color: var(--text3); text-transform: uppercase;
-  letter-spacing: .4px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-}
-
-.liability-row {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.liability-row:last-child { border-bottom: none; }
-
-.field-inline {
-  padding: 7px 10px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
-  outline: none;
-  width: 100%;
-  font-family: inherit;
-  transition: border-color .2s;
-}
-.field-inline:focus { border-color: var(--accent); }
-.field-inline::placeholder { color: var(--text3); }
-
-select.field-inline option { background: var(--card); }
-
-/* Net Worth summary */
-.nw-summary {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px 32px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-.nw-main-value {
-  font-size: 42px;
-  font-weight: 900;
-  letter-spacing: -1px;
-  background: linear-gradient(135deg, var(--accent), var(--purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.nw-label { font-size: 13px; color: var(--text3); margin-bottom: 4px; }
-
-.progress-row {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 8px;
-}
-.prog-bar-bg {
-  flex: 1; height: 8px;
-  background: var(--border); border-radius: 4px; overflow: hidden;
-}
-.prog-bar-fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--accent), var(--purple));
-  transition: width 1s ease;
-}
-
-.collapse-icon { transition: transform .2s; }
-.collapsed .collapse-icon { transform: rotate(-90deg); }
-.collapsed .asset-body { display: none; }
-
-.linked-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px; border-radius: 10px;
-  font-size: 10px; font-weight: 700;
-  background: rgba(79,142,247,.15); color: var(--accent);
-}
-
-.depreciation-note {
-  font-size: 11px; color: var(--text3); margin-top: 4px;
-}
-
-/* ── Chart fix ── */
-.chart-card {
-  height: auto !important;
-  display: block !important;
-  overflow: visible !important;
-}
-.chart-wrap {
-  position: relative;
-  width: 100%;
-  height: 260px;
-  overflow: hidden;
-}
-.chart-wrap canvas {
-  position: absolute !important;
-  top: 0 !important; left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-@media(max-width:768px){
-  .asset-row { grid-template-columns: 1fr 1fr; gap:8px; }
-  .liability-row { grid-template-columns: 1fr 1fr; gap:8px; }
-  .nw-main-value { font-size: 28px; }
-}
+.snapshot-item .date { font-weight:700; font-size:14px; }
+.snapshot-item .value { font-size:18px; font-weight:800; color:var(--accent); }
+.snapshot-item .delete { cursor:pointer; color:var(--red); }
 </style>
 </head>
 <body>
@@ -172,630 +31,302 @@ select.field-inline option { background: var(--card); }
 
 <div class="main">
 
-  <!-- Header -->
   <div class="page-header">
     <div class="page-header-left">
       <h1>📊 صافي الثروة</h1>
-      <p>حاسبة شاملة — الأصول الكاملة مطروحاً منها الالتزامات</p>
+      <p>تتبع نمو ثروتك عبر الزمن</p>
     </div>
     <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm" onclick="exportPDF()">🖨️ طباعة</button>
-      <button class="btn btn-primary"      onclick="saveAll()">💾 حفظ الكل</button>
+      <button class="btn btn-primary btn-sm" onclick="takeSnapshot()">📸 التقاط لقطة</button>
     </div>
   </div>
 
-  <!-- Net Worth Summary -->
-  <div class="nw-summary" id="nwSummary"></div>
+  <div class="kpi-grid cols-5" id="networthKPIs"></div>
 
-  <!-- KPIs -->
-  <div class="kpi-grid cols-4" id="nwKPIs"></div>
-
-  <!-- Charts -->
-  <div class="chart-grid cols-2" style="margin-bottom:24px">
+  <div class="chart-grid cols-2">
     <div class="chart-card">
-      <div class="chart-title">🥧 توزيع الأصول</div>
-      <div class="chart-wrap">
-        <canvas id="assetsChart"></canvas>
-      </div>
+      <div class="chart-title">📈 تطور صافي الثروة</div>
+      <div class="chart-wrap"><canvas id="networthChart"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">⚖️ الأصول مقابل الالتزامات</div>
-      <div class="chart-wrap">
-        <canvas id="liabChart"></canvas>
-      </div>
+      <div class="chart-title">🍰 التوزيع حسب الفئة</div>
+      <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
     </div>
   </div>
 
-  <!-- ══════════ 1. الأسهم — مربوطة تلقائياً ══════════ -->
-  <div class="asset-section" id="sec-stocks">
-    <div class="asset-header" onclick="toggleSection('stocks')">
-      <div class="asset-header-left">
-        <span>💹</span>
-        <span>محفظة الأسهم</span>
-        <span class="linked-badge">🔗 مربوط تلقائياً</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total pos" id="stocks-total">—</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-stocks">
-      <div class="info-box blue" style="margin-bottom:16px">
-        القيمة محسوبة تلقائياً من صفحة المحفظة. لتحديثها عدّل الأسعار في <a href="portfolio.html" style="color:var(--accent)">صفحة المحفظة</a>.
-      </div>
-      <div id="stocks-breakdown"></div>
-    </div>
+  <div class="chart-card">
+    <div class="chart-title">📸 اللقطات المحفوظة</div>
+    <div id="snapshotsList"></div>
   </div>
 
-  <!-- ══════════ 2. العقارات ══════════ -->
-  <div class="asset-section" id="sec-properties">
-    <div class="asset-header" onclick="toggleSection('properties')">
-      <div class="asset-header-left">
-        <span>🏠</span><span>العقارات</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total" id="properties-total">0.00 SAR</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-properties">
-      <div class="asset-row asset-row-header">
-        <span>الوصف</span><span>النوع</span><span>القيمة السوقية</span><span>الإيجار السنوي</span><span>حذف</span>
-      </div>
-      <div id="prop-rows"></div>
-      <div style="display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
-        <div><input class="field-inline" id="pr-name" placeholder="اسم العقار / الموقع"></div>
-        <div>
-          <select class="field-inline" id="pr-type">
-            <option>شقة سكنية</option><option>فيلا</option><option>أرض</option>
-            <option>محل تجاري</option><option>مستودع</option><option>صندوق ريت</option><option>أخرى</option>
-          </select>
-        </div>
-        <div><input class="field-inline" id="pr-value" type="number" placeholder="القيمة SAR"></div>
-        <div><input class="field-inline" id="pr-rent"  type="number" placeholder="إيجار سنوي"></div>
-        <div><button class="btn btn-primary btn-sm" onclick="addProperty()">➕</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════ 3. السيارات ══════════ -->
-  <div class="asset-section" id="sec-cars">
-    <div class="asset-header" onclick="toggleSection('cars')">
-      <div class="asset-header-left">
-        <span>🚗</span><span>السيارات والمركبات</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total" id="cars-total">0.00 SAR</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-cars">
-      <div class="asset-row asset-row-header">
-        <span>الوصف</span><span>سنة الشراء</span><span>قيمة الشراء</span><span>القيمة الحالية</span><span>حذف</span>
-      </div>
-      <div id="cars-rows"></div>
-      <div style="display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
-        <div><input class="field-inline" id="car-name"  placeholder="موديل السيارة"></div>
-        <div><input class="field-inline" id="car-year"  type="number" placeholder="2023"></div>
-        <div><input class="field-inline" id="car-cost"  type="number" placeholder="تكلفة الشراء SAR"></div>
-        <div><input class="field-inline" id="car-value" type="number" placeholder="القيمة الحالية SAR"></div>
-        <div><button class="btn btn-primary btn-sm" onclick="addCar()">➕</button></div>
-      </div>
-      <div class="depreciation-note">💡 القيمة الحالية تُحسب تلقائياً بمعدل إهلاك 15% سنوياً إذا تركتها فارغة</div>
-    </div>
-  </div>
-
-  <!-- ══════════ 4. النقد والسيولة ══════════ -->
-  <div class="asset-section" id="sec-cash">
-    <div class="asset-header" onclick="toggleSection('cash')">
-      <div class="asset-header-left">
-        <span>💵</span><span>النقد والسيولة والودائع</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total" id="cash-total">0.00 SAR</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-cash">
-      <div class="asset-row asset-row-header">
-        <span>الوصف</span><span>النوع</span><span>المبلغ</span><span>الفائدة %</span><span>حذف</span>
-      </div>
-      <div id="cash-rows"></div>
-      <div style="display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
-        <div><input class="field-inline" id="cash-name" placeholder="بنك الراجحي — حساب جاري"></div>
-        <div>
-          <select class="field-inline" id="cash-type">
-            <option>حساب جاري</option><option>حساب توفير</option>
-            <option>وديعة</option><option>صندوق نقدي</option><option>أخرى</option>
-          </select>
-        </div>
-        <div><input class="field-inline" id="cash-amount" type="number" placeholder="المبلغ SAR"></div>
-        <div><input class="field-inline" id="cash-rate"   type="number" step="0.01" placeholder="0"></div>
-        <div><button class="btn btn-primary btn-sm" onclick="addCash()">➕</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════ 5. أصول أخرى ══════════ -->
-  <div class="asset-section" id="sec-other">
-    <div class="asset-header" onclick="toggleSection('other')">
-      <div class="asset-header-left">
-        <span>📦</span><span>أصول أخرى</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total" id="other-total">0.00 SAR</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-other">
-      <div class="asset-row asset-row-header">
-        <span>الوصف</span><span>النوع</span><span>القيمة</span><span>ملاحظة</span><span>حذف</span>
-      </div>
-      <div id="other-rows"></div>
-      <div style="display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
-        <div><input class="field-inline" id="oth-name" placeholder="ذهب، تحف، إلكترونيات..."></div>
-        <div>
-          <select class="field-inline" id="oth-type">
-            <option>ذهب ومجوهرات</option><option>إلكترونيات</option>
-            <option>أثاث</option><option>معدات</option><option>أخرى</option>
-          </select>
-        </div>
-        <div><input class="field-inline" id="oth-value" type="number" placeholder="القيمة SAR"></div>
-        <div><input class="field-inline" id="oth-note"  placeholder="ملاحظة"></div>
-        <div><button class="btn btn-primary btn-sm" onclick="addOther()">➕</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════ 6. الالتزامات ══════════ -->
-  <div class="asset-section" id="sec-liabilities">
-    <div class="asset-header" onclick="toggleSection('liabilities')">
-      <div class="asset-header-left">
-        <span>🔴</span><span>الالتزامات والديون</span>
-      </div>
-      <div class="asset-header-right">
-        <span class="asset-total neg" id="liabilities-total">0.00 SAR</span>
-        <span class="collapse-icon">▾</span>
-      </div>
-    </div>
-    <div class="asset-body" id="body-liabilities">
-      <div class="liability-row asset-row-header">
-        <span>الوصف</span><span>النوع</span><span>المبلغ الكلي</span>
-        <span>المتبقي</span><span>الفائدة %</span><span>حذف</span>
-      </div>
-      <div id="liab-rows"></div>
-      <div style="display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
-        <div><input class="field-inline" id="liab-name"  placeholder="قرض سيارة — الراجحي"></div>
-        <div>
-          <select class="field-inline" id="liab-type">
-            <option>قرض شخصي</option><option>قرض عقاري</option>
-            <option>قرض سيارة</option><option>بطاقة ائتمان</option>
-            <option>تمويل تجاري</option><option>أخرى</option>
-          </select>
-        </div>
-        <div><input class="field-inline" id="liab-total"   type="number" placeholder="المبلغ الكلي SAR"></div>
-        <div><input class="field-inline" id="liab-remain"  type="number" placeholder="المتبقي SAR"></div>
-        <div><input class="field-inline" id="liab-rate"    type="number" step="0.01" placeholder="0"></div>
-        <div><button class="btn btn-danger btn-sm" onclick="addLiability()">➕</button></div>
-      </div>
-    </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>الفئة</th><th>القيمة (ر.س)</th><th>النسبة %</th>
+        </tr>
+      </thead>
+      <tbody id="breakdownBody"></tbody>
+    </table>
   </div>
 
 </div>
 
 <script>
-// ────────────────────────────────────────────────
+// ══════════════════════════════════════════════
 //  State
-// ────────────────────────────────────────────────
-const NW = Store.load('networth_full_v1', {
-  properties:  [],
-  cars:        [],
-  cash:        [],
-  other:       [],
-  liabilities: [],
-});
+// ══════════════════════════════════════════════
+let snapshots = [];
+let chartNetworth = null, chartCategory = null;
 
-// ────────────────────────────────────────────────
-//  Portfolio (live)
-// ────────────────────────────────────────────────
-function getPortfolioValue() {
-  const port = Store.load('portfolio_v1', APP.portfolio);
-  return port.reduce((s,p) => s + p.qty * p.current_price, 0);
-}
-
-function getPortfolioCost() {
-  const port = Store.load('portfolio_v1', APP.portfolio);
-  return port.reduce((s,p) => s + p.qty * p.avg_cost, 0);
-}
-
-// ────────────────────────────────────────────────
-//  Depreciation
-// ────────────────────────────────────────────────
-function carCurrentValue(car) {
-  if (car.current_value && car.current_value > 0) return car.current_value;
-  const years = new Date().getFullYear() - (car.year || new Date().getFullYear());
-  return car.cost * Math.pow(0.85, Math.max(years, 0));
-}
-
-// ────────────────────────────────────────────────
-//  Totals
-// ────────────────────────────────────────────────
-function totals() {
-  const stocks      = getPortfolioValue();
-  const properties  = NW.properties.reduce((s,p) => s + (p.value||0), 0);
-  const cars        = NW.cars.reduce((s,c) => s + carCurrentValue(c), 0);
-  const cash        = NW.cash.reduce((s,c) => s + (c.amount||0), 0);
-  const other       = NW.other.reduce((s,o) => s + (o.value||0), 0);
-  const liabilities = NW.liabilities.reduce((s,l) => s + (l.remain||l.total||0), 0);
-  const totalAssets = stocks + properties + cars + cash + other;
-  const netWorth    = totalAssets - liabilities;
-  return { stocks, properties, cars, cash, other, liabilities, totalAssets, netWorth };
-}
-
-// ────────────────────────────────────────────────
-//  Render Summary + Charts
-// ────────────────────────────────────────────────
-let chartAssets = null, chartLiab = null;
-
-function renderSummary() {
-  const t      = totals();
-  const target = APP.settings.targetCapital;
-  const pct    = Math.min((t.netWorth / target) * 100, 100);
-  const leverage = t.totalAssets > 0 ? (t.liabilities / t.totalAssets * 100) : 0;
-
-  document.getElementById('nwSummary').innerHTML = `
-    <div>
-      <div class="nw-label">صافي الثروة الكاملة</div>
-      <div class="nw-main-value">${H.fmt(t.netWorth)} SAR</div>
-      <div style="margin-top:8px;font-size:13px;color:var(--text3)">
-        إجمالي الأصول: <span class="pos">${H.fmt(t.totalAssets)}</span> —
-        الالتزامات: <span class="neg">${H.fmt(t.liabilities)}</span>
-      </div>
-      <div class="progress-row" style="margin-top:12px">
-        <span style="font-size:12px;color:var(--text3);white-space:nowrap">هدف ${H.fmt(target)} SAR</span>
-        <div class="prog-bar-bg">
-          <div class="prog-bar-fill" style="width:${pct}%"></div>
-        </div>
-        <span style="font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap">${pct.toFixed(1)}%</span>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;text-align:center">
-      <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">نسبة الرافعة</div>
-        <div style="font-size:20px;font-weight:800;color:${leverage>30?'var(--red)':'var(--yellow)'}">${leverage.toFixed(1)}%</div>
-        <div style="font-size:11px;color:var(--text3)">دين/أصول</div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">الأصول المنتجة</div>
-        <div style="font-size:20px;font-weight:800;color:var(--green)">${H.fmt((t.stocks + t.properties)/t.totalAssets*100||0,1)}%</div>
-        <div style="font-size:11px;color:var(--text3)">أسهم + عقار</div>
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">سنوات للهدف</div>
-        <div style="font-size:20px;font-weight:800;color:var(--accent)">${APP.settings.retirementYear - new Date().getFullYear()}</div>
-        <div style="font-size:11px;color:var(--text3)">${APP.settings.retirementYear}</div>
-      </div>
-    </div>
-  `;
-
-  // KPIs
-  document.getElementById('nwKPIs').innerHTML = `
-    <div class="kpi-card">
-      <div class="kpi-icon">💹</div>
-      <div class="kpi-label">محفظة الأسهم</div>
-      <div class="kpi-value accent">${H.fmt(t.stocks)}</div>
-      <div class="kpi-sub">${H.fmt(t.stocks/t.totalAssets*100||0,1)}% من الأصول</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🏠</div>
-      <div class="kpi-label">العقارات</div>
-      <div class="kpi-value">${H.fmt(t.properties)}</div>
-      <div class="kpi-sub">${H.fmt(t.properties/t.totalAssets*100||0,1)}% من الأصول</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">💵</div>
-      <div class="kpi-label">النقد والسيولة</div>
-      <div class="kpi-value pos">${H.fmt(t.cash)}</div>
-      <div class="kpi-sub">${H.fmt(t.cash/t.totalAssets*100||0,1)}% من الأصول</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🔴</div>
-      <div class="kpi-label">إجمالي الالتزامات</div>
-      <div class="kpi-value neg">${H.fmt(t.liabilities)}</div>
-      <div class="kpi-sub">نسبة ${H.fmt(leverage,1)}% من الأصول</div>
-    </div>
-  `;
-
-  // Doughnut
-  if (chartAssets) chartAssets.destroy();
-  chartAssets = new Chart(document.getElementById('assetsChart'), {
-    type: 'doughnut',
-    data: {
-      labels: ['الأسهم','العقارات','السيارات','النقد','أخرى'],
-      datasets:[{
-        data: [t.stocks, t.properties, t.cars, t.cash, t.other],
-        backgroundColor:['#4f8ef7','#22c55e','#f59e0b','#a78bfa','#06b6d4'],
-        borderColor:'#131722', borderWidth:2
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{ position:'right', labels:{color:'#94a3b8',font:{size:11},padding:10,boxWidth:12} },
-        tooltip:{ callbacks:{ label: ctx=>`${H.fmt(ctx.raw)} SAR` } }
-      }
-    }
-  });
-
-  // Bar
-  if (chartLiab) chartLiab.destroy();
-  chartLiab = new Chart(document.getElementById('liabChart'), {
-    type: 'bar',
-    data: {
-      labels: ['الأسهم','العقارات','السيارات','النقد','أخرى','الالتزامات'],
-      datasets:[{
-        label:'SAR',
-        data: [t.stocks, t.properties, t.cars, t.cash, t.other, -t.liabilities],
-        backgroundColor:['#4f8ef7','#22c55e','#f59e0b','#a78bfa','#06b6d4','#ef4444'],
-        borderRadius:4
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{ ticks:{color:'#64748b',font:{size:11}}, grid:{color:'#1e2340'} },
-        y:{ ticks:{color:'#64748b'}, grid:{color:'#1e2340'} }
-      }
-    }
-  });
-
-  // Section totals
-  document.getElementById('stocks-total').textContent      = H.fmt(t.stocks)      + ' SAR';
-  document.getElementById('properties-total').textContent  = H.fmt(t.properties)  + ' SAR';
-  document.getElementById('cars-total').textContent        = H.fmt(t.cars)        + ' SAR';
-  document.getElementById('cash-total').textContent        = H.fmt(t.cash)        + ' SAR';
-  document.getElementById('other-total').textContent       = H.fmt(t.other)       + ' SAR';
-  document.getElementById('liabilities-total').textContent = H.fmt(t.liabilities) + ' SAR';
-}
-
-// ────────────────────────────────────────────────
-//  Render Rows
-// ────────────────────────────────────────────────
-function renderStocks() {
-  const port     = Store.load('portfolio_v1', APP.portfolio);
-  const totalMkt = port.reduce((s,p) => s + p.qty * p.current_price, 0);
-  const sectors  = {};
-  port.forEach(p => {
-    const v = p.qty * p.current_price;
-    sectors[p.sector] = (sectors[p.sector]||0) + v;
-  });
-
-  document.getElementById('stocks-breakdown').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-      ${Object.entries(sectors).map(([sec,val]) => `
-        <div style="padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${sec}</div>
-          <div style="font-size:15px;font-weight:700;color:var(--accent)">${H.fmt(val)} SAR</div>
-          <div style="font-size:11px;color:var(--text3)">${(val/totalMkt*100).toFixed(1)}%</div>
-        </div>
-      `).join('')}
-    </div>
-    <div style="margin-top:12px;padding:10px 14px;background:var(--bg2);border-radius:8px;font-size:13px">
-      الإجمالي: <strong class="accent">${H.fmt(totalMkt)} SAR</strong> —
-      التكلفة: <strong>${H.fmt(getPortfolioCost())} SAR</strong> —
-      ر/خ: <strong class="${totalMkt-getPortfolioCost()>=0?'pos':'neg'}">${H.fmt(totalMkt-getPortfolioCost())} SAR</strong>
-    </div>
-  `;
-}
-
-function renderProperties() {
-  document.getElementById('prop-rows').innerHTML = NW.properties.map((p,i) => `
-    <div class="asset-row">
-      <span style="font-weight:600">${p.name}</span>
-      <span style="color:var(--text3)">${p.type}</span>
-      <span class="pos">${H.fmt(p.value)} SAR</span>
-      <span style="color:var(--text3)">${p.rent ? H.fmt(p.rent)+' SAR' : '—'}</span>
-      <button class="btn btn-danger btn-sm" onclick="del('properties',${i})">🗑</button>
-    </div>
-  `).join('') || '<div class="empty-state" style="padding:20px"><p>لا يوجد عقارات مسجلة</p></div>';
-}
-
-function renderCars() {
-  document.getElementById('cars-rows').innerHTML = NW.cars.map((c,i) => `
-    <div class="asset-row">
-      <span style="font-weight:600">${c.name}</span>
-      <span style="color:var(--text3)">${c.year||'—'}</span>
-      <span style="color:var(--text3)">${H.fmt(c.cost)} SAR</span>
-      <span class="pos">${H.fmt(carCurrentValue(c))} SAR</span>
-      <button class="btn btn-danger btn-sm" onclick="del('cars',${i})">🗑</button>
-    </div>
-  `).join('') || '<div class="empty-state" style="padding:20px"><p>لا يوجد سيارات مسجلة</p></div>';
-}
-
-function renderCash() {
-  document.getElementById('cash-rows').innerHTML = NW.cash.map((c,i) => `
-    <div class="asset-row">
-      <span style="font-weight:600">${c.name}</span>
-      <span style="color:var(--text3)">${c.type}</span>
-      <span class="pos">${H.fmt(c.amount)} SAR</span>
-      <span style="color:var(--text3)">${c.rate ? c.rate+'%' : '—'}</span>
-      <button class="btn btn-danger btn-sm" onclick="del('cash',${i})">🗑</button>
-    </div>
-  `).join('') || '<div class="empty-state" style="padding:20px"><p>لا يوجد سيولة مسجلة</p></div>';
-}
-
-function renderOther() {
-  document.getElementById('other-rows').innerHTML = NW.other.map((o,i) => `
-    <div class="asset-row">
-      <span style="font-weight:600">${o.name}</span>
-      <span style="color:var(--text3)">${o.type}</span>
-      <span class="pos">${H.fmt(o.value)} SAR</span>
-      <span style="color:var(--text3)">${o.note||'—'}</span>
-      <button class="btn btn-danger btn-sm" onclick="del('other',${i})">🗑</button>
-    </div>
-  `).join('') || '<div class="empty-state" style="padding:20px"><p>لا يوجد أصول أخرى</p></div>';
-}
-
-function renderLiabilities() {
-  document.getElementById('liab-rows').innerHTML = NW.liabilities.map((l,i) => `
-    <div class="liability-row">
-      <span style="font-weight:600">${l.name}</span>
-      <span style="color:var(--text3)">${l.type}</span>
-      <span style="color:var(--text3)">${H.fmt(l.total)} SAR</span>
-      <span class="neg">${H.fmt(l.remain||l.total)} SAR</span>
-      <span style="color:var(--text3)">${l.rate ? l.rate+'%' : '—'}</span>
-      <button class="btn btn-danger btn-sm" onclick="del('liabilities',${i})">🗑</button>
-    </div>
-  `).join('') || '<div class="empty-state" style="padding:20px"><p>لا يوجد التزامات مسجلة 🎉</p></div>';
-}
-
-// ────────────────────────────────────────────────
-//  Add Helpers
-// ────────────────────────────────────────────────
-function addProperty() {
-  const name  = document.getElementById('pr-name').value.trim();
-  const type  = document.getElementById('pr-type').value;
-  const value = parseFloat(document.getElementById('pr-value').value)||0;
-  const rent  = parseFloat(document.getElementById('pr-rent').value)||0;
-  if (!name || !value) return toast('أدخل الاسم والقيمة','error');
-  NW.properties.push({ name, type, value, rent });
-  ['pr-name','pr-value','pr-rent'].forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت الإضافة','success');
-}
-
-function addCar() {
-  const name = document.getElementById('car-name').value.trim();
-  const year = parseInt(document.getElementById('car-year').value)||new Date().getFullYear();
-  const cost = parseFloat(document.getElementById('car-cost').value)||0;
-  const cv   = parseFloat(document.getElementById('car-value').value)||0;
-  if (!name || !cost) return toast('أدخل الاسم والتكلفة','error');
-  NW.cars.push({ name, year, cost, current_value: cv });
-  ['car-name','car-year','car-cost','car-value'].forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت الإضافة','success');
-}
-
-function addCash() {
-  const name   = document.getElementById('cash-name').value.trim();
-  const type   = document.getElementById('cash-type').value;
-  const amount = parseFloat(document.getElementById('cash-amount').value)||0;
-  const rate   = parseFloat(document.getElementById('cash-rate').value)||0;
-  if (!name || !amount) return toast('أدخل الاسم والمبلغ','error');
-  NW.cash.push({ name, type, amount, rate });
-  ['cash-name','cash-amount','cash-rate'].forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت الإضافة','success');
-}
-
-function addOther() {
-  const name  = document.getElementById('oth-name').value.trim();
-  const type  = document.getElementById('oth-type').value;
-  const value = parseFloat(document.getElementById('oth-value').value)||0;
-  const note  = document.getElementById('oth-note').value.trim();
-  if (!name || !value) return toast('أدخل الاسم والقيمة','error');
-  NW.other.push({ name, type, value, note });
-  ['oth-name','oth-value','oth-note'].forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت الإضافة','success');
-}
-
-function addLiability() {
-  const name   = document.getElementById('liab-name').value.trim();
-  const type   = document.getElementById('liab-type').value;
-  const total  = parseFloat(document.getElementById('liab-total').value)||0;
-  const remain = parseFloat(document.getElementById('liab-remain').value)||total;
-  const rate   = parseFloat(document.getElementById('liab-rate').value)||0;
-  if (!name || !total) return toast('أدخل الاسم والمبلغ','error');
-  NW.liabilities.push({ name, type, total, remain, rate });
-  ['liab-name','liab-total','liab-remain','liab-rate'].forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت إضافة الالتزام','warn');
-}
-
-// ────────────────────────────────────────────────
-//  Delete
-// ────────────────────────────────────────────────
-function del(section, idx) {
-  if (!confirm('حذف هذا العنصر؟')) return;
-  NW[section].splice(idx, 1);
-  refreshAll(); toast('🗑 تم الحذف','warn');
-}
-
-// ────────────────────────────────────────────────
-//  Toggle Collapse
-// ────────────────────────────────────────────────
-function toggleSection(id) {
-  document.getElementById(`sec-${id}`).classList.toggle('collapsed');
-}
-
-// ────────────────────────────────────────────────
-//  Save / Print
-// ────────────────────────────────────────────────
-function saveAll() { 
-  updateNetWorth(() => NW); 
-  toast('✅ تم الحفظ الكامل مع المزامنة', 'success');
-  
-  // مزامنة فورية مع جميع الصفحات
-  dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
-}
-function exportPDF() { window.print(); }
-
-// ────────────────────────────────────────────────
-//  Refresh All
-// ────────────────────────────────────────────────
-function refreshAll() {
-  renderStocks();
-  renderProperties();
-  renderCars();
-  renderCash();
-  renderOther();
-  renderLiabilities();
-  renderSummary();
-}
-
-// ────────────────────────────────────────────────
+// ══════════════════════════════════════════════
 //  Init
-// ────────────────────────────────────────────────
-refreshAll();
+// ══════════════════════════════════════════════
+function init() {
+  snapshots = Store.load('networth_snapshots', []);
+  renderKPIs();
+  renderCharts();
+  renderSnapshots();
+  renderBreakdown();
+}
 
-// الاستماع للتغييرات من صفحات أخرى
-dataSync.onDataChanged('portfolio', (data, timestamp) => {
-  console.log('Net Worth: Portfolio updated');
-  renderStocks();
-  renderSummary();
-  toast('🔄 تم تحديث قيمة الأسهم تلقائياً', 'info');
-});
+// ══════════════════════════════════════════════
+//  KPIs
+// ══════════════════════════════════════════════
+function renderKPIs() {
+  const nw = calcNetWorth();
 
-dataSync.onDataChanged('transactions', (data, timestamp) => {
-  console.log('Net Worth: Transactions updated');
-  // إعادة حساب المحفظة أولاً ثم تحديث الصفحة
-  setTimeout(() => {
-    renderStocks();
-    renderSummary();
-    toast('🔄 تم تحديث صافي الثروة من العمليات', 'info');
-  }, 500);
-});
+  const kpis = [
+    { label:'الإجمالي',        value:H.fmt(nw.total, 0) + ' ر.س',           icon:'💎' },
+    { label:'الأسهم',          value:H.fmt(nw.stocksValue, 0) + ' ر.س',     icon:'💹' },
+    { label:'العقارات',        value:H.fmt(nw.propertiesValue, 0) + ' ر.س', icon:'🏠' },
+    { label:'الذهب',           value:H.fmt(nw.goldValue, 0) + ' ر.س',       icon:'🥇' },
+    { label:'السيولة والمدخرات', value:H.fmt(nw.cashValue + nw.savingsValue, 0) + ' ر.س', icon:'💵' }
+  ];
 
-dataSync.onDataChanged('networth', (data, timestamp) => {
-  if (JSON.stringify(data) !== JSON.stringify(NW)) {
-    Object.assign(NW, data);
-    refreshAll();
-    toast('🔄 تم تحديث صافي الثروة تلقائياً', 'info');
+  document.getElementById('networthKPIs').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+//  Charts
+// ══════════════════════════════════════════════
+function renderCharts() {
+  const nw = calcNetWorth();
+
+  // Networth Timeline
+  if (snapshots.length > 0) {
+    const sorted = [...snapshots].sort((a,b) => new Date(a.date) - new Date(b.date));
+    
+    const ctx1 = document.getElementById('networthChart').getContext('2d');
+    if (chartNetworth) chartNetworth.destroy();
+    chartNetworth = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: sorted.map(s => s.date),
+        datasets: [{
+          label: 'صافي الثروة (ر.س)',
+          data: sorted.map(s => s.total),
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,.1)',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${H.fmt(ctx.parsed.y, 0)} ر.س`
+            }
+          }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { color: 'var(--text3)' },
+            grid: { color: 'var(--border)' }
+          },
+          x: { 
+            ticks: { color: 'var(--text3)' },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  } else {
+    document.querySelector('#networthChart').parentElement.innerHTML = 
+      '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد لقطات. التقط لقطة لبدء التتبع.</p>';
   }
-});
 
-// تحديث عند التركيز على الصفحة
-window.addEventListener('focus', () => {
-  const latestNW = Store.load('networth_full_v1', {
-    properties:  [],
-    cars:        [],
-    cash:        [],
-    other:       [],
-    liabilities: [],
-  });
+  // Category Breakdown
+  const data = [
+    { label: 'الأسهم', value: nw.stocksValue },
+    { label: 'العقارات', value: nw.propertiesValue },
+    { label: 'الذهب', value: nw.goldValue },
+    { label: 'السيولة', value: nw.cashValue },
+    { label: 'المدخرات', value: nw.savingsValue }
+  ].filter(d => d.value > 0);
+
+  if (data.length > 0) {
+    const ctx2 = document.getElementById('categoryChart').getContext('2d');
+    if (chartCategory) chartCategory.destroy();
+    chartCategory = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [{
+          data: data.map(d => d.value),
+          backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'],
+          borderWidth: 2,
+          borderColor: 'var(--card)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { 
+            position: 'right', 
+            labels: { color: 'var(--text)', font: { size: 12 } } 
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س`
+            }
+          }
+        }
+      }
+    });
+  } else {
+    document.querySelector('#categoryChart').parentElement.innerHTML = 
+      '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  Breakdown Table
+// ══════════════════════════════════════════════
+function renderBreakdown() {
+  const nw = calcNetWorth();
+  const total = nw.total;
+
+  const rows = [
+    { label: '💹 الأسهم', value: nw.stocksValue },
+    { label: '🏠 العقارات', value: nw.propertiesValue },
+    { label: '🥇 الذهب', value: nw.goldValue },
+    { label: '💵 السيولة', value: nw.cashValue },
+    { label: '🐷 المدخرات', value: nw.savingsValue }
+  ];
+
+  const tbody = document.getElementById('breakdownBody');
+  tbody.innerHTML = rows.map(r => {
+    const pct = total > 0 ? (r.value / total * 100) : 0;
+    return `
+      <tr>
+        <td><strong>${r.label}</strong></td>
+        <td>${H.fmt(r.value, 0)}</td>
+        <td>${pct.toFixed(2)}%</td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.innerHTML += `
+    <tr style="font-weight:700;background:var(--bg2)">
+      <td>الإجمالي</td>
+      <td>${H.fmt(total, 0)}</td>
+      <td>100%</td>
+    </tr>
+  `;
+}
+
+// ══════════════════════════════════════════════
+//  Snapshots
+// ══════════════════════════════════════════════
+function renderSnapshots() {
+  const list = document.getElementById('snapshotsList');
   
-  if (JSON.stringify(latestNW) !== JSON.stringify(NW)) {
-    Object.assign(NW, latestNW);
-    refreshAll();
+  if (!snapshots.length) {
+    list.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px">لا توجد لقطات محفوظة</p>';
+    return;
   }
-});
+
+  const sorted = [...snapshots].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  list.innerHTML = sorted.map(s => `
+    <div class="snapshot-item">
+      <div>
+        <div class="date">${s.date}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.note || 'لقطة تلقائية'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="value">${H.fmt(s.total, 0)} ر.س</div>
+        <div class="delete" onclick="deleteSnapshot('${s.date}')" title="حذف">🗑️</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function takeSnapshot() {
+  const nw = calcNetWorth();
+  const date = H.today();
+  const note = prompt('ملاحظة (اختياري):');
+
+  const existing = snapshots.findIndex(s => s.date === date);
+  if (existing !== -1) {
+    if (!confirm('⚠️ يوجد لقطة لهذا التاريخ. استبدال؟')) return;
+    snapshots.splice(existing, 1);
+  }
+
+  snapshots.push({
+    date,
+    total: nw.total,
+    stocks: nw.stocksValue,
+    properties: nw.propertiesValue,
+    gold: nw.goldValue,
+    cash: nw.cashValue,
+    savings: nw.savingsValue,
+    note: note || ''
+  });
+
+  Store.save('networth_snapshots', snapshots);
+  init();
+  toast('✅ تم التقاط اللقطة بنجاح', 'success');
+}
+
+function deleteSnapshot(date) {
+  if (!confirm('⚠️ هل أنت متأكد من حذف هذه اللقطة؟')) return;
+  
+  snapshots = snapshots.filter(s => s.date !== date);
+  Store.save('networth_snapshots', snapshots);
+  init();
+  toast('✅ تم الحذف بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Sync
+// ══════════════════════════════════════════════
+dataSync.onDataChanged('portfolio', init);
+dataSync.onDataChanged('properties', init);
+dataSync.onDataChanged('gold', init);
+dataSync.onDataChanged('cash', init);
+dataSync.onDataChanged('savings', init);
+
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
 </script>
+
 </body>
 </html>
