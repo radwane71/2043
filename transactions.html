@@ -318,10 +318,8 @@ function renderTable() {
   document.getElementById('trBody').innerHTML = filtered.map(t => {
     const realIdx = trData.indexOf(t);
     const isBuy   = t.status === 'Buy';
-    // الاسم يُجلب دائماً من tickers.js — t.name كـ fallback للعمليات القديمة
-    const name    = H.tickerName(t.ticker) !== t.ticker
-                    ? H.tickerName(t.ticker)
-                    : (t.name || '—');
+    // الاسم دائماً من tickers.js — لا fallback على t.name القديم
+    const name    = H.tickerName(t.ticker);
 
     return `<tr id="row-${realIdx}">
       <td style="color:var(--text3)">${t.no}</td>
@@ -336,7 +334,7 @@ function renderTable() {
         ${t.ticker}
       </td>
 
-      <!-- الاسم — من tickers.js -->
+      <!-- الاسم — من tickers.js دائماً -->
       <td style="color:var(--text3);font-size:12px">${name}</td>
 
       <!-- الكمية — قابلة للتعديل -->
