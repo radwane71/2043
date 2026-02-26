@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>سلم الراتب — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<style>
+.scale-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  margin-bottom: 24px;
+}
+.scale-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 1100px;
+}
+.scale-table-wrap thead th {
+  background: var(--bg2);
+  color: var(--text3);
+  font-weight: 700;
+  font-size: 10px;
+  padding: 10px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.scale-table-wrap tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.scale-table-wrap tbody tr:last-child td { border-bottom: none; }
+.scale-table-wrap tbody tr:hover td      { background: rgba(79,142,247,0.04); }
+
+/* السنة الحالية */
+.row-current td {
+  background: rgba(79,142,247,0.08) !important;
+  font-weight: 700;
+}
+.row-current td:first-child {
+  border-right: 3px solid var(--accent);
+}
+
+/* الماضي */
+.row-past td { opacity: 0.6; }
+
+/* المستقبل */
+.row-future td:nth-child(3) { color: var(--green); }
+
+.badge-year {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.badge-past    { background: rgba(100,116,139,0.15); color: var(--text3); }
+.badge-current { background: rgba(79,142,247,0.2);   color: var(--accent); }
+.badge-future  { background: rgba(34,197,94,0.15);   color: var(--green); }
+</style>
+</head>
+<body>
+<script>initPage('salary-scale');</script>
+
+<div class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>📈 سلم الراتب</h1>
+      <p>أخصائي أول مختبرات — ماجستير — الهيئة الملكية — الدرجة 2 المستوى 3</p>
+    </div>
+    <div class="page-header-right">
+      <span id="currentYearBadge"></span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid cols-4" id="scaleKPIs"></div>
+
+  <!-- Table -->
+  <div class="scale-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>السنة هـ</th>
+          <th>السنة م</th>
+          <th>العمر</th>
+          <th>سنوات الخدمة</th>
+          <th>الأساسي</th>
+          <th>بدل السكن</th>
+          <th>بدل النقل</th>
+          <th>الإجمالي</th>
+          <th>GOSI</th>
+          <th>ساند</th>
+          <th>صافي الراتب</th>
+          <th>أوفر تايم / ساعة</th>
+          <th>تكلفة الساعة</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="scaleBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  بيانات سلم الراتب الكاملة
+// ════════════════════════════════════════════
+const SCALE_DATA = [
+  { hijri:1437, year:2016, age:24, exp:0,  basic:8925,    housing:2083,      transport:700, gross:12708,    gosi:1100.8,    saned:110.08,   net:11607.2,    ot_hr:69.7265625,  cost_hr:46.484375 },
+  { hijri:1438, year:2017, age:25, exp:1,  basic:9399.81, housing:2083,      transport:700, gross:13182.81, gosi:1148.281,  saned:114.8281, net:12034.529,  ot_hr:59.5223385,  cost_hr:48.9573438 },
+  { hijri:1439, year:2018, age:26, exp:2,  basic:9870.17649, housing:2083,   transport:900, gross:13853.1765, gosi:1195.31765, saned:119.531765, net:12657.8588, ot_hr:62.5008364, cost_hr:51.4071692 },
+  { hijri:1440, year:2019, age:27, exp:3,  basic:10364.0801, housing:2083,   transport:900, gross:14347.0801, gosi:1244.70801, saned:124.470801, net:13102.3721, ot_hr:65.6283782, cost_hr:53.979584 },
+  { hijri:1441, year:2020, age:28, exp:4,  basic:10882.6987, housing:2083,   transport:900, gross:13865.6987, gosi:1296.56987, saned:129.656987, net:12569.1288, ot_hr:68.9124222, cost_hr:56.6807224 },
+  { hijri:1442, year:2021, age:29, exp:5,  basic:11427.2689, housing:2083,   transport:900, gross:14410.2689, gosi:1351.02689, saned:135.102689, net:13059.242,  ot_hr:72.3607999, cost_hr:59.5170257 },
+  { hijri:1442, year:2022, age:29, exp:5,  basic:13160,      housing:2193.33333, transport:1200, gross:16553.3333, gosi:1350.90142, saned:135.086303, net:15202.4319, ot_hr:83.3329583, cost_hr:68.5416667 },
+  { hijri:1443, year:2022, age:30, exp:6,  basic:13686.4,    housing:2281.06667, transport:1200, gross:17167.4667, gosi:1556.828, saned:119.756, net:15610.6387, ot_hr:86.6662767, cost_hr:71.2833333 },
+  { hijri:1444, year:2023, age:31, exp:7,  basic:14233.856,  housing:2372.30933, transport:1200, gross:17806.1653, gosi:1619.10112, saned:124.54624, net:16187.0642, ot_hr:90.1329277, cost_hr:74.1346667 },
+  { hijri:1445, year:2024, age:32, exp:8,  basic:14803.2102, housing:2467.20171, transport:1200, gross:18470.4119, gosi:1683.86516, saned:129.52809, net:16786.5468, ot_hr:93.7382448, cost_hr:77.1000533 },
+  { hijri:1446, year:2025, age:33, exp:9,  basic:15394,      housing:2565.66667, transport:1200, gross:19159.6667, gosi:1751.0675,  saned:134.6975,  net:17408.5992, ot_hr:97.4792979, cost_hr:80.1770833 },
+  { hijri:1447, year:2026, age:34, exp:10, basic:16010,      housing:2668.33333, transport:1200, gross:19878.3333, gosi:1821.1375,  saned:140.0875,  net:18057.1958, ot_hr:101.37999,  cost_hr:83.3854167 },
+  { hijri:1448, year:2027, age:35, exp:11, basic:18255,      housing:3042.5,     transport:1200, gross:22497.5,   gosi:2076.50625, saned:159.73125, net:20420.9938, ot_hr:115.595984, cost_hr:95.078125 },
+  { hijri:1449, year:2028, age:36, exp:12, basic:18985.2,    housing:3164.2,     transport:1200, gross:23349.4,   gosi:2159.5665,  saned:166.1205,  net:21189.8335, ot_hr:120.219824, cost_hr:98.88125 },
+  { hijri:1450, year:2029, age:37, exp:13, basic:19744.608,  housing:3290.768,   transport:1200, gross:24235.376, gosi:2245.94916, saned:172.76532, net:21989.4268, ot_hr:125.028617, cost_hr:102.8365 },
+  { hijri:1451, year:2030, age:38, exp:14, basic:20534.3923, housing:3422.39872, transport:1200, gross:25156.791, gosi:2335.78713, saned:179.675933, net:22821.0039, ot_hr:130.029761, cost_hr:106.94996 },
+  { hijri:1452, year:2031, age:39, exp:15, basic:21355.768,  housing:3559.29467, transport:1200, gross:26115.0627, gosi:2429.21861, saned:186.86297, net:23685.8441, ot_hr:135.230952, cost_hr:111.227958 },
+  { hijri:1453, year:2032, age:40, exp:16, basic:22209.9987, housing:3701.66646, transport:1200, gross:27111.6652, gosi:2526.38736, saned:194.337489, net:24585.2778, ot_hr:140.64019,  cost_hr:115.677077 },
+  { hijri:1454, year:2033, age:41, exp:17, basic:23098.3987, housing:3849.73311, transport:1200, gross:28148.1318, gosi:2627.44285, saned:202.110988, net:25520.6889, ot_hr:146.265797, cost_hr:120.30416 },
+  { hijri:1455, year:2034, age:42, exp:18, basic:24022.3346, housing:4003.72244, transport:1200, gross:29226.0571, gosi:2732.54056, saned:210.195428, net:26493.5165, ot_hr:152.116429, cost_hr:125.116326 },
+  { hijri:1456, year:2035, age:43, exp:19, basic:24983.228,  housing:4163.87134, transport:1200, gross:30347.0994, gosi:2841.84219, saned:218.603245, net:27505.2572, ot_hr:158.201087, cost_hr:130.120979 },
+  { hijri:1457, year:2036, age:44, exp:20, basic:25982.5571, housing:4330.42619, transport:1200, gross:31512.9833, gosi:2955.51587, saned:227.347375, net:28557.4675, ot_hr:164.52913,  cost_hr:135.325818 },
+  { hijri:1458, year:2037, age:45, exp:21, basic:27021.8594, housing:4503.64324, transport:1200, gross:32725.5027, gosi:3073.73651, saned:236.44127,  net:29651.7661, ot_hr:171.110295, cost_hr:140.738851 },
+  { hijri:1459, year:2038, age:46, exp:22, basic:28102.7338, housing:4683.78897, transport:1200, gross:33986.5228, gosi:3196.68597, saned:245.898921, net:30789.8368, ot_hr:177.954707, cost_hr:146.368405 },
+  { hijri:1460, year:2039, age:47, exp:23, basic:29226.8431, housing:4871.14052, transport:1200, gross:35297.9837, gosi:3324.55341, saned:255.734878, net:31973.4303, ot_hr:185.072895, cost_hr:152.223141 },
+  { hijri:1461, year:2040, age:48, exp:24, basic:30395.9169, housing:5065.98615, transport:1200, gross:36661.903,  gosi:3457.53554, saned:265.964273, net:33204.3675, ot_hr:192.475811, cost_hr:158.312067 },
+  { hijri:1462, year:2041, age:49, exp:25, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1463, year:2042, age:50, exp:26, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1464, year:2043, age:51, exp:27, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1465, year:2044, age:52, exp:28, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1466, year:2045, age:53, exp:29, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1467, year:2046, age:54, exp:30, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1468, year:2047, age:55, exp:31, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1469, year:2048, age:56, exp:32, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1470, year:2049, age:57, exp:33, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1471, year:2050, age:58, exp:34, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1472, year:2051, age:59, exp:35, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1473, year:2052, age:60, exp:36, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1474, year:2053, age:61, exp:37, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+  { hijri:1475, year:2054, age:62, exp:38, basic:31034,      housing:5172.33333, transport:1200, gross:37406.3333, gosi:3530.1175,  saned:271.5475,  net:33876.2158, ot_hr:196.51634,  cost_hr:161.635417 },
+];
+
+const currentYear = new Date().getFullYear();
+
+// ════════════════════════════════════════════
+//  KPIs
+// ════════════════════════════════════════════
+function renderKPIs() {
+  const curr    = SCALE_DATA.find(d => d.year === currentYear) || SCALE_DATA[SCALE_DATA.length-1];
+  const last    = SCALE_DATA[SCALE_DATA.length-1];
+  const maxNet  = last.net;
+  const totalLifetime = SCALE_DATA
+    .filter(d => d.year >= currentYear)
+    .reduce((s,d) => s + d.net * 12, 0);
+  const retireYear = 2043;
+  const retireRow  = SCALE_DATA.find(d => d.year === retireYear);
+
+  document.getElementById('currentYearBadge').innerHTML =
+    `<span class="badge badge-acc">السنة الحالية: ${currentYear}</span>`;
+
+  document.getElementById('scaleKPIs').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">💵</div>
+      <div class="kpi-label">الراتب الصافي الحالي</div>
+      <div class="kpi-value accent">${H.fmt(curr.net)}</div>
+      <div class="kpi-sub">${curr.year} • خبرة ${curr.exp} سنة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">أعلى راتب في السلم</div>
+      <div class="kpi-value pos">${H.fmt(maxNet)}</div>
+      <div class="kpi-sub">${last.year} م • خبرة ${last.exp} سنة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-label">الراتب عند التقاعد 2043</div>
+      <div class="kpi-value warn">${retireRow ? H.fmt(retireRow.net) : '—'}</div>
+      <div class="kpi-sub">العمر ${retireRow?.age || '—'} • خبرة ${retireRow?.exp || '—'} سنة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">إجمالي الدخل المتوقع</div>
+      <div class="kpi-value" style="font-size:18px;color:var(--purple)">${H.fmt(totalLifetime)}</div>
+      <div class="kpi-sub">من ${currentYear} حتى نهاية السلم</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════
+//  Render Table
+// ════════════════════════════════════════════
+function renderTable() {
+  document.getElementById('scaleBody').innerHTML = SCALE_DATA.map(d => {
+    const isPast    = d.year < currentYear;
+    const isCurrent = d.year === currentYear;
+    const rowClass  = isPast ? 'row-past' : isCurrent ? 'row-current' : 'row-future';
+    const badge     = isPast
+      ? `<span class="badge-year badge-past">ماضي</span>`
+      : isCurrent
+        ? `<span class="badge-year badge-current">الآن ✦</span>`
+        : `<span class="badge-year badge-future">مستقبل</span>`;
+
+    return `<tr class="${rowClass}">
+      <td>${d.hijri}</td>
+      <td style="font-weight:${isCurrent?'800':'400'}">${d.year}</td>
+      <td>${d.age}</td>
+      <td>${d.exp}</td>
+      <td style="color:var(--accent);font-weight:600">${H.fmt(d.basic)}</td>
+      <td>${H.fmt(d.housing)}</td>
+      <td>${H.fmt(d.transport)}</td>
+      <td style="font-weight:700">${H.fmt(d.gross)}</td>
+      <td style="color:var(--red)">${H.fmt(d.gosi)}</td>
+      <td style="color:var(--red)">${H.fmt(d.saned)}</td>
+      <td style="color:var(--green);font-weight:700">${H.fmt(d.net)}</td>
+      <td style="color:var(--yellow)">${d.ot_hr.toFixed(2)}</td>
+      <td style="color:var(--text3)">${d.cost_hr.toFixed(4)}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Init
+renderKPIs();
+renderTable();
+</script>
+</body>
+</html>

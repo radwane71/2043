@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>سجلات الراتب — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="assets/tickers.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<style>
+.salary-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  margin-bottom: 24px;
+}
+.salary-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 1200px;
+}
+.salary-table-wrap thead th {
+  background: var(--bg2);
+  color: var(--text3);
+  font-weight: 700;
+  font-size: 10px;
+  padding: 10px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.salary-table-wrap tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+.salary-table-wrap tbody tr:last-child td { border-bottom: none; }
+.salary-table-wrap tbody tr:hover td { background: rgba(79,142,247,0.03); }
+
+.th-group {
+  background: var(--card2) !important;
+  color: var(--accent) !important;
+  font-size: 10px !important;
+  padding: 6px 10px !important;
+  border-bottom: 1px solid var(--border2) !important;
+}
+
+.col-year    { background: rgba(99,102,241,0.06); font-weight: 700; color: var(--accent); }
+.col-month   { background: rgba(99,102,241,0.04); color: var(--text2); }
+.col-income  { background: rgba(34,197,94,0.04); }
+.col-deduct  { background: rgba(239,68,68,0.04); }
+.col-split   { background: rgba(245,158,11,0.04); }
+.col-net     { background: rgba(79,142,247,0.06); font-weight: 700; }
+.col-invest  { background: rgba(34,197,94,0.06); font-weight: 700; color: var(--green); }
+
+.editable-cell {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border2);
+  display: inline-block;
+  min-width: 50px;
+  transition: border-color 0.2s;
+}
+.editable-cell:hover { border-color: var(--accent); color: var(--accent); }
+
+.cell-input {
+  width: 80px;
+  padding: 3px 5px;
+  background: var(--bg2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-tab {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+.filter-tab:hover  { border-color: var(--accent); color: var(--accent); }
+.filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.month-names {
+  'يناير','فبراير','مارس','أبريل','مايو','يونيو',
+  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
+}
+</style>
+</head>
+<body>
+<script>initPage('salary');</script>
+
+<div class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>💳 سجلات الراتب</h1>
+      <p>تتبع الدخل الشهري وتوزيع الراتب منذ 2019</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 تصدير CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid cols-4" id="salaryKPIs"></div>
+
+  <!-- Add Record Form -->
+  <div class="form-card">
+    <h3>➕ إضافة سجل شهري</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>السنة</label>
+        <input id="s-year" type="number" placeholder="2026" min="2015" max="2060">
+      </div>
+      <div class="form-group">
+        <label>الشهر</label>
+        <select id="s-month">
+          <option value="1">يناير</option>
+          <option value="2">فبراير</option>
+          <option value="3">مارس</option>
+          <option value="4">أبريل</option>
+          <option value="5">مايو</option>
+          <option value="6">يونيو</option>
+          <option value="7">يوليو</option>
+          <option value="8">أغسطس</option>
+          <option value="9">سبتمبر</option>
+          <option value="10">أكتوبر</option>
+          <option value="11">نوفمبر</option>
+          <option value="12">ديسمبر</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الأساسي</label>
+        <input id="s-basic" type="number" step="0.01" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>بدل السكن</label>
+        <input id="s-housing" type="number" step="0.01" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>بدل النقل</label>
+        <input id="s-transport" type="number" step="0.01" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>أوفر تايم</label>
+        <input id="s-overtime" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
+      </div>
+      <div class="form-group">
+        <label>بدلات أخرى</label>
+        <input id="s-other" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
+      </div>
+      <div class="form-group">
+        <label>GOSI</label>
+        <input id="s-gosi" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
+      </div>
+      <div class="form-group">
+        <label>خصم ساند</label>
+        <input id="s-saned" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div id="salaryPreview" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap">
+      <span>الإجمالي: <strong id="prev-gross" class="accent">—</strong></span>
+      <span>الخصومات: <strong id="prev-deduct" style="color:var(--red)">—</strong></span>
+      <span>الصافي: <strong id="prev-net" class="pos">—</strong></span>
+    </div>
+
+    <!-- توزيع الراتب -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">توزيع الراتب</div>
+      <div class="form-row" id="splitFieldsRow"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="addRecord()">➕ إضافة</button>
+      <span id="remainingPreview" style="font-size:13px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="toolbar">
+    <div class="filter-tabs" id="yearTabs"></div>
+    <button class="btn btn-ghost btn-sm" onclick="showManageColumns()">⚙️ إدارة الأعمدة</button>
+  </div>
+
+  <!-- Table -->
+  <div class="salary-table-wrap">
+    <table id="salaryTable">
+      <thead id="salaryHead"></thead>
+      <tbody id="salaryBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Manage Columns Modal -->
+<div id="colModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:560px;max-height:80vh;overflow-y:auto">
+    <h3 style="margin-bottom:16px;font-size:15px">⚙️ إدارة أعمدة التوزيع</h3>
+    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">
+      أضف أو عدّل أو احذف أعمدة التوزيع. الترتيب يعكس ترتيب الجدول.
+    </div>
+    <div id="colList" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <input id="newColName" class="field-inline" placeholder="اسم العمود الجديد" style="flex:1">
+      <button class="btn btn-primary btn-sm" onclick="addColumn()">+ إضافة</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('colModal').style.display='none'">إغلاق</button>
+      <button class="btn btn-primary" onclick="saveColumns()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  Default split columns
+// ════════════════════════════════════════════
+const DEFAULT_COLS = [
+  { id:'col_house_exp',  label:'مصاريف البيت' },
+  { id:'col_wife',       label:'معونة الزوجة' },
+  { id:'col_fun',        label:'حساب الترفيه' },
+  { id:'col_emergency',  label:'الكاش الطارئ' },
+  { id:'col_loan',       label:'تمويل' },
+  { id:'col_rc_house',   label:'بيت الهيئة' },
+];
+
+const MONTHS = [
+  '','يناير','فبراير','مارس','أبريل','مايو','يونيو',
+  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
+];
+
+// ════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════
+let records  = Store.load('salary_v1', []);
+let splitCols = Store.load('salary_cols_v1', DEFAULT_COLS);
+let activeYear = 'all';
+
+// ════════════════════════════════════════════
+//  KPIs
+// ════════════════════════════════════════════
+function renderKPIs() {
+  const allRec = records;
+  const totalNet    = allRec.reduce((s,r) => s + (r.net||0), 0);
+  const totalGross  = allRec.reduce((s,r) => s + (r.gross||0), 0);
+  const totalInvest = allRec.reduce((s,r) => s + (r.col_invest||0), 0);
+  const totalDeduct = allRec.reduce((s,r) => s + (r.gosi||0) + (r.saned||0), 0);
+
+  // آخر راتب
+  const lastRec = [...allRec].sort((a,b)=> b.year*12+b.month - (a.year*12+a.month))[0];
+
+  document.getElementById('salaryKPIs').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">💵</div>
+      <div class="kpi-label">إجمالي الدخل</div>
+      <div class="kpi-value accent">${H.fmt(totalGross)}</div>
+      <div class="kpi-sub">SAR • ${allRec.length} شهر</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">إجمالي الصافي</div>
+      <div class="kpi-value pos">${H.fmt(totalNet)}</div>
+      <div class="kpi-sub">بعد GOSI وساند</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📤</div>
+      <div class="kpi-label">إجمالي الخصومات</div>
+      <div class="kpi-value neg">${H.fmt(totalDeduct)}</div>
+      <div class="kpi-sub">GOSI + ساند</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">محول للمحفظة</div>
+      <div class="kpi-value" style="color:var(--green)">${H.fmt(totalInvest)}</div>
+      <div class="kpi-sub">مرجعي فقط</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════
+//  Calc Preview
+// ════════════════════════════════════════════
+function calcSalaryPreview() {
+  const basic     = parseFloat(document.getElementById('s-basic').value)     || 0;
+  const housing   = parseFloat(document.getElementById('s-housing').value)   || 0;
+  const transport = parseFloat(document.getElementById('s-transport').value) || 0;
+  const overtime  = parseFloat(document.getElementById('s-overtime').value)  || 0;
+  const other     = parseFloat(document.getElementById('s-other').value)     || 0;
+  const gosi      = parseFloat(document.getElementById('s-gosi').value)      || 0;
+  const saned     = parseFloat(document.getElementById('s-saned').value)     || 0;
+
+  const gross = basic + housing + transport + overtime + other;
+  const net   = gross - gosi - saned;
+
+  const prev = document.getElementById('salaryPreview');
+  prev.style.display = 'flex';
+  document.getElementById('prev-gross').textContent  = H.fmt(gross)  + ' SAR';
+  document.getElementById('prev-deduct').textContent = H.fmt(gosi + saned) + ' SAR';
+  document.getElementById('prev-net').textContent    = H.fmt(net)    + ' SAR';
+
+  calcRemaining();
+}
+
+function calcRemaining() {
+  const net = parseFloat(document.getElementById('prev-net')?.textContent) || 0;
+  let spent = 0;
+  splitCols.forEach(c => {
+    const el = document.getElementById('sf-' + c.id);
+    if (el) spent += parseFloat(el.value) || 0;
+  });
+  const invest = parseFloat(document.getElementById('sf-col_invest')?.value) || 0;
+  spent += invest;
+  const rem = net - spent;
+  const el  = document.getElementById('remainingPreview');
+  if (el) {
+    el.textContent = `الصافي بعد التوزيع: ${H.fmt(rem)} SAR`;
+    el.style.color = rem >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+// ════════════════════════════════════════════
+//  Render Split Fields in Form
+// ════════════════════════════════════════════
+function renderSplitFields() {
+  const allCols = [
+    ...splitCols,
+    { id:'col_invest', label:'محفظة التقاعد 📈' }
+  ];
+  document.getElementById('splitFieldsRow').innerHTML = allCols.map(c => `
+    <div class="form-group">
+      <label>${c.label}</label>
+      <input id="sf-${c.id}" type="number" step="0.01" placeholder="0" oninput="calcRemaining()">
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  Add Record
+// ════════════════════════════════════════════
+function addRecord() {
+  const year      = parseInt(document.getElementById('s-year').value)      || 0;
+  const month     = parseInt(document.getElementById('s-month').value)     || 0;
+  const basic     = parseFloat(document.getElementById('s-basic').value)     || 0;
+  const housing   = parseFloat(document.getElementById('s-housing').value)   || 0;
+  const transport = parseFloat(document.getElementById('s-transport').value) || 0;
+  const overtime  = parseFloat(document.getElementById('s-overtime').value)  || 0;
+  const other     = parseFloat(document.getElementById('s-other').value)     || 0;
+  const gosi      = parseFloat(document.getElementById('s-gosi').value)      || 0;
+  const saned     = parseFloat(document.getElementById('s-saned').value)     || 0;
+
+  if (!year || !month) return toast('أدخل السنة والشهر', 'error');
+
+  // التحقق من عدم التكرار
+  if (records.find(r => r.year === year && r.month === month)) {
+    return toast(`${MONTHS[month]} ${year} موجود بالفعل`, 'error');
+  }
+
+  const gross = basic + housing + transport + overtime + other;
+  const net   = gross - gosi - saned;
+
+  const rec = { year, month, basic, housing, transport, overtime, other, gosi, saned, gross, net };
+
+  // توزيع الراتب
+  splitCols.forEach(c => {
+    rec[c.id] = parseFloat(document.getElementById('sf-' + c.id)?.value) || 0;
+  });
+  rec['col_invest'] = parseFloat(document.getElementById('sf-col_invest')?.value) || 0;
+
+  // الصافي بعد الالتزامات
+  let spent = splitCols.reduce((s,c) => s + (rec[c.id]||0), 0) + (rec['col_invest']||0);
+  rec.after_split = parseFloat((net - spent).toFixed(2));
+
+  records.push(rec);
+  records.sort((a,b) => a.year*12+a.month - (b.year*12+b.month));
+
+  // Reset form
+  ['s-basic','s-housing','s-transport','s-overtime','s-other','s-gosi','s-saned'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  splitCols.forEach(c => {
+    const el = document.getElementById('sf-' + c.id);
+    if (el) el.value = '';
+  });
+  const inv = document.getElementById('sf-col_invest');
+  if (inv) inv.value = '';
+
+  document.getElementById('salaryPreview').style.display = 'none';
+  document.getElementById('remainingPreview').textContent = '';
+
+  renderAll();
+  toast(`✅ تمت إضافة ${MONTHS[month]} ${year}`, 'success');
+}
+
+// ════════════════════════════════════════════
+//  Render Year Tabs
+// ════════════════════════════════════════════
+function renderYearTabs() {
+  const years = [...new Set(records.map(r => r.year))].sort();
+  const tabs  = [{ v:'all', l:'الكل' }, ...years.map(y => ({ v:y, l:y })), { v:'add', l:'+ سجل' }];
+
+  document.getElementById('yearTabs').innerHTML = tabs.map(t => {
+    if (t.v === 'add') return '';
+    return `<button class="filter-tab ${activeYear == t.v ? 'active':''}" onclick="setYear(${t.v === 'all' ? "'all'" : t.v}, this)">${t.l}</button>`;
+  }).join('');
+}
+
+function setYear(y, btn) {
+  activeYear = y;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+// ════════════════════════════════════════════
+//  Render Table
+// ════════════════════════════════════════════
+function renderTable() {
+  const filtered = activeYear === 'all'
+    ? records
+    : records.filter(r => r.year == activeYear);
+
+  // Head
+  const allCols = [...splitCols, { id:'col_invest', label:'محفظة التقاعد' }];
+  document.getElementById('salaryHead').innerHTML = `
+    <tr>
+      <th class="th-group" colspan="2">📅 التاريخ</th>
+      <th class="th-group" colspan="5">💵 الدخل</th>
+      <th class="th-group" colspan="2">📤 الخصومات</th>
+      <th class="th-group" colspan="2">✅ الصافي</th>
+      <th class="th-group" colspan="${allCols.length}">🔀 التوزيع</th>
+      <th class="th-group" colspan="2">📊 المتبقي</th>
+    </tr>
+    <tr>
+      <th>السنة</th>
+      <th>الشهر</th>
+      <th>الأساسي</th>
+      <th>السكن</th>
+      <th>النقل</th>
+      <th>أوفر تايم</th>
+      <th>بدلات أخرى</th>
+      <th>GOSI</th>
+      <th>ساند</th>
+      <th>الإجمالي</th>
+      <th>الصافي</th>
+      ${allCols.map(c => `<th>${c.label}</th>`).join('')}
+      <th>الصافي بعد التوزيع</th>
+      <th>إجراء</th>
+    </tr>`;
+
+  // Body
+  if (!filtered.length) {
+    document.getElementById('salaryBody').innerHTML = `
+      <tr><td colspan="${14 + allCols.length}">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>لا توجد سجلات بعد</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  // Totals row helper
+  const totals = {};
+  const numFields = ['basic','housing','transport','overtime','other','gosi','saned','gross','net','after_split',...allCols.map(c=>c.id)];
+  numFields.forEach(f => { totals[f] = filtered.reduce((s,r)=>s+(r[f]||0),0); });
+
+  document.getElementById('salaryBody').innerHTML =
+    filtered.map((r, idx) => {
+      const realIdx = records.indexOf(r);
+      return `<tr>
+        <td class="col-year">${r.year}</td>
+        <td class="col-month">${MONTHS[r.month]}</td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'basic')">${H.fmt(r.basic||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'housing')">${H.fmt(r.housing||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'transport')">${H.fmt(r.transport||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'overtime')">${H.fmt(r.overtime||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'other')">${H.fmt(r.other||0,0)}</span></td>
+        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${realIdx},'gosi')">${H.fmt(r.gosi||0,0)}</span></td>
+        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${realIdx},'saned')">${H.fmt(r.saned||0,0)}</span></td>
+        <td class="col-net" style="color:var(--accent)">${H.fmt(r.gross||0,0)}</td>
+        <td class="col-net" style="color:var(--green)">${H.fmt(r.net||0,0)}</td>
+        ${allCols.map(c => `
+          <td class="col-split">
+            <span class="editable-cell" onclick="editCell(this,${realIdx},'${c.id}')">${H.fmt(r[c.id]||0,0)}</span>
+          </td>`).join('')}
+        <td class="col-net" style="color:${(r.after_split||0)>=0?'var(--green)':'var(--red)'}">${H.fmt(r.after_split||0,0)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRecord(${realIdx})">🗑</button></td>
+      </tr>`;
+    }).join('') +
+    // Totals
+    `<tr style="background:var(--bg2);font-weight:700;border-top:2px solid var(--border2)">
+      <td colspan="2" style="color:var(--text3);font-size:11px;text-align:center">الإجمالي</td>
+      <td class="col-income">${H.fmt(totals.basic,0)}</td>
+      <td class="col-income">${H.fmt(totals.housing,0)}</td>
+      <td class="col-income">${H.fmt(totals.transport,0)}</td>
+      <td class="col-income">${H.fmt(totals.overtime,0)}</td>
+      <td class="col-income">${H.fmt(totals.other,0)}</td>
+      <td class="col-deduct" style="color:var(--red)">${H.fmt(totals.gosi,0)}</td>
+      <td class="col-deduct" style="color:var(--red)">${H.fmt(totals.saned,0)}</td>
+      <td class="col-net" style="color:var(--accent)">${H.fmt(totals.gross,0)}</td>
+      <td class="col-net" style="color:var(--green)">${H.fmt(totals.net,0)}</td>
+      ${allCols.map(c => `<td class="col-split">${H.fmt(totals[c.id]||0,0)}</td>`).join('')}
+      <td class="col-net">${H.fmt(totals.after_split,0)}</td>
+      <td></td>
+    </tr>`;
+}
+
+// ════════════════════════════════════════════
+//  Inline Edit Cell
+// ════════════════════════════════════════════
+function editCell(span, idx, field) {
+  if (span.querySelector('input')) return;
+  const input = document.createElement('input');
+  input.className = 'cell-input';
+  input.type  = 'number';
+  input.value = records[idx][field] || 0;
+  input.step  = '0.01';
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus(); input.select();
+
+  function commit() {
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) {
+      records[idx][field] = parseFloat(val.toFixed(2));
+      // إعادة حساب الإجماليات
+      const r = records[idx];
+      r.gross       = (r.basic||0)+(r.housing||0)+(r.transport||0)+(r.overtime||0)+(r.other||0);
+      r.net         = r.gross - (r.gosi||0) - (r.saned||0);
+      const allCols = [...splitCols, { id:'col_invest' }];
+      let spent     = allCols.reduce((s,c)=>s+(r[c.id]||0),0);
+      r.after_split = parseFloat((r.net - spent).toFixed(2));
+    }
+    renderTable();
+    renderKPIs();
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  input.blur();
+    if (e.key === 'Escape') renderTable();
+  });
+}
+
+// ════════════════════════════════════════════
+//  Delete Record
+// ════════════════════════════════════════════
+function deleteRecord(idx) {
+  const r = records[idx];
+  if (!confirm(`حذف سجل ${MONTHS[r.month]} ${r.year}؟`)) return;
+  records.splice(idx, 1);
+  renderAll();
+  toast('🗑 تم الحذف', 'warn');
+}
+
+// ════════════════════════════════════════════
+//  Manage Columns Modal
+// ════════════════════════════════════════════
+function showManageColumns() {
+  renderColList();
+  document.getElementById('colModal').style.display = 'flex';
+}
+
+function renderColList() {
+  document.getElementById('colList').innerHTML = splitCols.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <input class="field-inline" style="flex:1" value="${c.label}"
+        onchange="splitCols[${i}].label=this.value">
+      <button class="btn btn-danger btn-sm" onclick="removeColumn(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function addColumn() {
+  const name = document.getElementById('newColName').value.trim();
+  if (!name) return toast('أدخل اسم العمود', 'error');
+  const id = 'col_' + Date.now();
+  splitCols.push({ id, label: name });
+  document.getElementById('newColName').value = '';
+  renderColList();
+  toast('✅ تمت الإضافة', 'success');
+}
+
+function removeColumn(i) {
+  if (!confirm(`حذف عمود "${splitCols[i].label}"؟`)) return;
+  splitCols.splice(i, 1);
+  renderColList();
+}
+
+function saveColumns() {
+  Store.save('salary_cols_v1', splitCols);
+  document.getElementById('colModal').style.display = 'none';
+  renderSplitFields();
+  renderTable();
+  toast('✅ تم حفظ الأعمدة', 'success');
+}
+
+// ════════════════════════════════════════════
+//  Export CSV
+// ════════════════════════════════════════════
+function exportCSV() {
+  const allCols  = [...splitCols, { id:'col_invest', label:'محفظة التقاعد' }];
+  const baseH    = ['year','month','basic','housing','transport','overtime','other','gosi','saned','gross','net'];
+  const splitH   = allCols.map(c => c.id);
+  const headers  = [...baseH, ...splitH, 'after_split'];
+  const labelRow = ['السنة','الشهر','الأساسي','السكن','النقل','أوفر تايم','بدلات أخرى','GOSI','ساند','الإجمالي','الصافي',...allCols.map(c=>c.label),'الصافي بعد التوزيع'];
+  const rows = records.map(r => headers.map(h => r[h]??'').join(','));
+  const csv  = '\uFEFF' + [labelRow.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `salary_records_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('📥 تم التصدير', 'success');
+}
+
+// ════════════════════════════════════════════
+//  Save
+// ════════════════════════════════════════════
+function saveAll() {
+  Store.save('salary_v1', records);
+  Store.save('salary_cols_v1', splitCols);
+  toast('✅ تم الحفظ', 'success');
+}
+
+// ════════════════════════════════════════════
+//  Render All
+// ════════════════════════════════════════════
+function renderAll() {
+  renderKPIs();
+  renderYearTabs();
+  renderTable();
+}
+
+// Init
+renderSplitFields();
+renderAll();
+</script>
+</body>
+</html>
