@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>السيولة — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/tickers.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
+<style>
+.chart-wrap { position:relative; width:100%; height:280px; }
+.chart-wrap canvas { width:100% !important; height:100% !important; }
+.editable {
+  cursor:pointer; border-bottom:1px dashed var(--border2);
+  display:inline-block; min-width:60px; transition:border-color .2s;
+}
+.editable:hover { border-color:var(--accent); color:var(--accent); }
+.edit-input {
+  width:120px; padding:4px 8px; background:var(--bg2);
+  border:1px solid var(--accent); border-radius:4px;
+  color:var(--text); font-size:12px; text-align:center;
+  outline:none; font-family:inherit;
+}
+</style>
+</head>
+<body>
+<script>initPage('cash');</script>
+
+<div class="main">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>💵 السيولة النقدية</h1>
+      <p>إدارة الحسابات البنكية والنقد — انقر على أي قيمة لتعديلها</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid cols-3" id="cashKPIs"></div>
+
+  <div class="form-card">
+    <h3>➕ إضافة حساب جديد</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>نوع الحساب</label>
+        <select id="c-type">
+          <option value="حساب جاري">حساب جاري</option>
+          <option value="حساب توفير">حساب توفير</option>
+          <option value="نقد">نقد</option>
+          <option value="محفظة رقمية">محفظة رقمية</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>اسم الحساب</label>
+        <input id="c-name" placeholder="الأهلي - جاري">
+      </div>
+      <div class="form-group">
+        <label>الرصيد (ر.س)</label>
+        <input id="c-balance" type="number" step="0.01" placeholder="15000">
+      </div>
+      <div class="form-group">
+        <label>البنك</label>
+        <input id="c-bank" placeholder="البنك الأهلي">
+      </div>
+      <div class="form-group">
+        <label>العملة</label>
+        <select id="c-currency">
+          <option value="SAR">ريال سعودي (SAR)</option>
+          <option value="USD">دولار أمريكي (USD)</option>
+          <option value="EUR">يورو (EUR)</option>
+          <option value="GBP">جنيه إسترليني (GBP)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ملاحظات</label>
+      <textarea id="c-notes" rows="2" placeholder="ملاحظات إضافية"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addAccount()">➕ إضافة</button>
+  </div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">📊 التوزيع حسب النوع</div>
+      <div class="chart-wrap"><canvas id="byTypeChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🏦 التوزيع حسب البنك</div>
+      <div class="chart-wrap"><canvas id="byBankChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
+    <span id="trCount" style="color:var(--text3);font-size:13px"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>النوع</th><th>اسم الحساب</th><th>الرصيد</th>
+          <th>البنك</th><th>العملة</th><th>ملاحظات</th>
+          <th>حذف</th>
+        </tr>
+      </thead>
+      <tbody id="cashBody"></tbody>
+      <tfoot id="cashFoot"></tfoot>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════
+let cash = [];
+let filtered = [];
+let searchQ = '';
+let chartType = null, chartBank = null;
+
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+function init() {
+  cash = APP.cash;
+  filtered = [...cash];
+  renderKPIs();
+  renderTable();
+  renderCharts();
+}
+
+// ══════════════════════════════════════════════
+//  KPIs
+// ══════════════════════════════════════════════
+function renderKPIs() {
+  const total = cash.reduce((s, c) => s + (parseFloat(c.balance) || 0), 0);
+  const count = cash.length;
+  const avg = count > 0 ? total / count : 0;
+
+  const kpis = [
+    { label:'الإجمالي',        value:H.fmt(total, 0) + ' ر.س', icon:'💰' },
+    { label:'عدد الحسابات',    value:count.toString(),          icon:'🏦' },
+    { label:'متوسط الرصيد',    value:H.fmt(avg, 0) + ' ر.س',   icon:'📊' }
+  ];
+
+  document.getElementById('cashKPIs').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+//  Add Account
+// ══════════════════════════════════════════════
+function addAccount() {
+  const type = document.getElementById('c-type').value;
+  const name = document.getElementById('c-name').value.trim();
+  const balance = parseFloat(document.getElementById('c-balance').value) || 0;
+  const bank = document.getElementById('c-bank').value.trim();
+  const currency = document.getElementById('c-currency').value;
+  const notes = document.getElementById('c-notes').value.trim();
+
+  if (!name) {
+    toast('⚠️ اسم الحساب مطلوب', 'warn');
+    return;
+  }
+
+  const newAccount = {
+    id: Date.now(),
+    type,
+    name,
+    balance,
+    bank,
+    currency,
+    notes
+  };
+
+  cash.push(newAccount);
+
+  // Clear
+  document.getElementById('c-name').value = '';
+  document.getElementById('c-balance').value = '';
+  document.getElementById('c-bank').value = '';
+  document.getElementById('c-notes').value = '';
+
+  saveAll();
+  init();
+  toast('✅ تمت الإضافة بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Table
+// ══════════════════════════════════════════════
+function renderTable() {
+  const tbody = document.getElementById('cashBody');
+  const tfoot = document.getElementById('cashFoot');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">لا توجد حسابات</td></tr>';
+    tfoot.innerHTML = '';
+    updateCount();
+    return;
+  }
+
+  let total = 0;
+
+  tbody.innerHTML = filtered.map(c => {
+    const balance = parseFloat(c.balance) || 0;
+    total += balance;
+
+    return `
+      <tr>
+        <td>${c.type}</td>
+        <td><strong>${c.name}</strong></td>
+        <td>
+          <span class="editable" onclick="editBalance(${c.id}, ${c.balance})">${H.fmt(c.balance, 2)}</span>
+        </td>
+        <td>${c.bank || '-'}</td>
+        <td>${c.currency}</td>
+        <td>${c.notes || '-'}</td>
+        <td><button class="btn btn-danger btn-xs" onclick="deleteAccount(${c.id})">🗑️</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  tfoot.innerHTML = `
+    <tr style="font-weight:700;background:var(--bg2)">
+      <td colspan="2">الإجمالي</td>
+      <td>${H.fmt(total, 2)}</td>
+      <td colspan="4"></td>
+    </tr>
+  `;
+
+  updateCount();
+}
+
+// ══════════════════════════════════════════════
+//  Edit Balance
+// ══════════════════════════════════════════════
+function editBalance(id, currentBalance) {
+  const span = event.target;
+  const input = document.createElement('input');
+  input.className = 'edit-input';
+  input.type = 'number';
+  input.step = '0.01';
+  input.value = currentBalance;
+
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const newBalance = parseFloat(input.value) || currentBalance;
+    const idx = cash.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      cash[idx].balance = newBalance;
+    }
+    renderTable();
+    renderKPIs();
+    renderCharts();
+  };
+
+  input.onblur = save;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') renderTable();
+  };
+}
+
+// ══════════════════════════════════════════════
+//  Delete Account
+// ══════════════════════════════════════════════
+function deleteAccount(id) {
+  if (!confirm('⚠️ هل أنت متأكد من حذف هذا الحساب؟')) return;
+
+  cash = cash.filter(c => c.id !== id);
+
+  saveAll();
+  init();
+  toast('✅ تم الحذف بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Search
+// ══════════════════════════════════════════════
+function applySearch(q) {
+  searchQ = q.trim().toLowerCase();
+  filtered = searchQ
+    ? cash.filter(c =>
+        (c.name || '').toLowerCase().includes(searchQ) ||
+        (c.type || '').toLowerCase().includes(searchQ) ||
+        (c.bank || '').toLowerCase().includes(searchQ)
+      )
+    : [...cash];
+  renderTable();
+}
+
+function updateCount() {
+  document.getElementById('trCount').textContent =
+    `${filtered.length} من ${cash.length} حساب`;
+}
+
+// ══════════════════════════════════════════════
+//  Charts
+// ══════════════════════════════════════════════
+function renderCharts() {
+  if (!cash.length) {
+    document.querySelector('#byTypeChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    document.querySelector('#byBankChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    return;
+  }
+
+  // By Type
+  const byType = {};
+  cash.forEach(c => {
+    const type = c.type || 'غير محدد';
+    byType[type] = (byType[type] || 0) + (parseFloat(c.balance) || 0);
+  });
+
+  const typeData = Object.entries(byType).sort((a,b) => b[1] - a[1]);
+
+  const ctx1 = document.getElementById('byTypeChart').getContext('2d');
+  if (chartType) chartType.destroy();
+  chartType = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: typeData.map(t => t[0]),
+      datasets: [{
+        data: typeData.map(t => t[1]),
+        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'],
+        borderWidth: 2,
+        borderColor: 'var(--card)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: 'var(--text)', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` } }
+      }
+    }
+  });
+
+  // By Bank
+  const byBank = {};
+  cash.forEach(c => {
+    const bank = c.bank || 'غير محدد';
+    byBank[bank] = (byBank[bank] || 0) + (parseFloat(c.balance) || 0);
+  });
+
+  const bankData = Object.entries(byBank).sort((a,b) => b[1] - a[1]);
+
+  const ctx2 = document.getElementById('byBankChart').getContext('2d');
+  if (chartBank) chartBank.destroy();
+  chartBank = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: bankData.map(b => b[0]),
+      datasets: [{
+        label: 'الرصيد (ر.س)',
+        data: bankData.map(b => b[1]),
+        backgroundColor: '#6366f1',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: 'var(--text3)' }, grid: { color: 'var(--border)' } },
+        x: { ticks: { color: 'var(--text3)' }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+//  Save
+// ══════════════════════════════════════════════
+function saveAll() {
+  Store.save('cash_v1', cash);
+  toast('✅ تم الحفظ بنجاح', 'success');
+  dataSync.emit('cash');
+}
+
+// ══════════════════════════════════════════════
+//  Sync
+// ══════════════════════════════════════════════
+dataSync.onDataChanged('cash', init);
+
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
+</script>
+
+</body>
+</html>
