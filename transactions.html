@@ -11,6 +11,7 @@
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
 <style>
 .editable {
   cursor: pointer;
@@ -463,7 +464,7 @@ function addTransaction() {
   const total = qty * price;
   const fees  = H.calcCommission(total);
 
-  trData.push({
+  const newTransaction = {
     no:         trData.length + 1,
     status,
     ticker:     code,
@@ -474,7 +475,13 @@ function addTransaction() {
     vat:        parseFloat(fees.vat.toFixed(4)),
     total_cost: parseFloat(fees.net.toFixed(4)),
     date,
-  });
+  };
+
+  // إضافة العملية مع المزامنة
+  updateTransactions(current => [...current, newTransaction]);
+
+  // إعادة حساب المحفظة تلقائياً
+  recalculatePortfolioFromTransactions();
 
   // Reset form
   document.getElementById('t-ticker').value = '';
@@ -487,6 +494,9 @@ function addTransaction() {
   applyFilters();
   renderKPIs();
   toast(`✅ تمت إضافة ${status === 'Buy' ? 'شراء' : 'بيع'} ${code} — ${found.name}`, 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
+  syncAfterTransactionChange();
 }
 
 // ────────────────────────────────────────────────
@@ -494,11 +504,28 @@ function addTransaction() {
 // ────────────────────────────────────────────────
 function deleteRow(idx) {
   if (!confirm(`حذف العملية #${trData[idx].no} — ${trData[idx].ticker}؟`)) return;
+  
+  // حذف مع المزامنة
+  updateTransactions(current => {
+    const newData = [...current];
+    newData.splice(idx, 1);
+    // إعادة ترقيم
+    newData.forEach((t, i) => t.no = i + 1);
+    return newData;
+  });
+  
   trData.splice(idx, 1);
   trData.forEach((t, i) => t.no = i + 1);
+  
+  // إعادة حساب المحفظة
+  recalculatePortfolioFromTransactions();
+  
   applyFilters();
   renderKPIs();
-  toast('🗑 تم الحذف', 'warn');
+  toast('🗑 تم الحذف مع المزامنة', 'warn');
+  
+  // مزامنة فورية مع جميع الصفحات
+  syncAfterTransactionChange();
 }
 
 // ────────────────────────────────────────────────
@@ -529,8 +556,11 @@ function applyFilters() {
 //  Save
 // ────────────────────────────────────────────────
 function saveAll() {
-  Store.save('transactions_v1', trData);
-  toast('✅ تم الحفظ', 'success');
+  updateTransactions(() => trData);
+  toast('✅ تم الحفظ مع المزامنة', 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
+  syncAfterTransactionChange();
 }
 
 // ────────────────────────────────────────────────
@@ -658,6 +688,29 @@ if (zone) {
 renderKPIs();
 applyFilters();
 document.getElementById('t-date').value = H.today();
+
+// الاستماع للتغييرات من صفحات أخرى
+dataSync.onDataChanged('transactions', (data, timestamp) => {
+  trData = [...data];
+  applyFilters();
+  renderKPIs();
+  toast('🔄 تم تحديث العمليات تلقائياً', 'info');
+});
+
+dataSync.onDataChanged('portfolio', (data, timestamp) => {
+  // تحديث أسماء الشركات إذا تغيرت
+  applyFilters();
+});
+
+// تحديث عند التركيز على الصفحة
+window.addEventListener('focus', () => {
+  const latestData = Store.load('transactions_v1', APP.transactions);
+  if (JSON.stringify(latestData) !== JSON.stringify(trData)) {
+    trData = [...latestData];
+    applyFilters();
+    renderKPIs();
+  }
+});
 </script>
 </body>
 </html>

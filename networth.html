@@ -12,6 +12,7 @@
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
 <style>
 .asset-section {
   background: var(--card);
@@ -727,7 +728,13 @@ function toggleSection(id) {
 // ────────────────────────────────────────────────
 //  Save / Print
 // ────────────────────────────────────────────────
-function saveAll()   { Store.save('networth_full_v1', NW); toast('✅ تم الحفظ الكامل','success'); }
+function saveAll() { 
+  updateNetWorth(() => NW); 
+  toast('✅ تم الحفظ الكامل مع المزامنة', 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
+  dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
+}
 function exportPDF() { window.print(); }
 
 // ────────────────────────────────────────────────
@@ -747,6 +754,48 @@ function refreshAll() {
 //  Init
 // ────────────────────────────────────────────────
 refreshAll();
+
+// الاستماع للتغييرات من صفحات أخرى
+dataSync.onDataChanged('portfolio', (data, timestamp) => {
+  console.log('Net Worth: Portfolio updated');
+  renderStocks();
+  renderSummary();
+  toast('🔄 تم تحديث قيمة الأسهم تلقائياً', 'info');
+});
+
+dataSync.onDataChanged('transactions', (data, timestamp) => {
+  console.log('Net Worth: Transactions updated');
+  // إعادة حساب المحفظة أولاً ثم تحديث الصفحة
+  setTimeout(() => {
+    renderStocks();
+    renderSummary();
+    toast('🔄 تم تحديث صافي الثروة من العمليات', 'info');
+  }, 500);
+});
+
+dataSync.onDataChanged('networth', (data, timestamp) => {
+  if (JSON.stringify(data) !== JSON.stringify(NW)) {
+    Object.assign(NW, data);
+    refreshAll();
+    toast('🔄 تم تحديث صافي الثروة تلقائياً', 'info');
+  }
+});
+
+// تحديث عند التركيز على الصفحة
+window.addEventListener('focus', () => {
+  const latestNW = Store.load('networth_full_v1', {
+    properties:  [],
+    cars:        [],
+    cash:        [],
+    other:       [],
+    liabilities: [],
+  });
+  
+  if (JSON.stringify(latestNW) !== JSON.stringify(NW)) {
+    Object.assign(NW, latestNW);
+    refreshAll();
+  }
+});
 </script>
 </body>
 </html>

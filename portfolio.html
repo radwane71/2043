@@ -11,6 +11,7 @@
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
 <style>
 .price-up   { color: var(--green); }
 .price-down { color: var(--red);   }
@@ -401,20 +402,34 @@ function closeQP() {
 
 function applyQuickPrices() {
   let changed = 0;
-  document.querySelectorAll('#qpRows .qp-input').forEach(inp => {
-    const val = parseFloat(inp.value);
-    const idx = parseInt(inp.dataset.idx);
-    const old = parseFloat(inp.dataset.old);
-    if (!isNaN(val) && val > 0 && val !== old) {
-      portData[idx].current_price = val;
-      changed++;
+  const updatedData = portData.map((p, i) => {
+    const inp = document.querySelectorAll('#qpRows .qp-input')[i];
+    if (inp) {
+      const val = parseFloat(inp.value);
+      const old = parseFloat(inp.dataset.old);
+      if (!isNaN(val) && val > 0 && val !== old) {
+        changed++;
+        return { ...p, current_price: val };
+      }
     }
+    return p;
   });
-  closeQP();
-  Store.save('portfolio_v1', portData);
-  renderKPIs();
-  applyFilters();
-  toast(`✅ تم تحديث ${changed} سعر وحفظ التغييرات`, 'success');
+
+  if (changed > 0) {
+    portData = updatedData;
+    updatePortfolio(() => portData);
+    closeQP();
+    renderKPIs();
+    applyFilters();
+    toast(`✅ تم تحديث ${changed} سعر وحفظ التغييرات مع المزامنة`, 'success');
+    
+    // مزامنة فورية مع جميع الصفحات
+    dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
+    dataSync.notifyDataChanged('networth', { action: 'refresh' });
+  } else {
+    closeQP();
+    toast('لم يتم تغيير أي أسعار', 'info');
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -445,8 +460,12 @@ function applyFilters() {
 //  Save
 // ══════════════════════════════════════════════
 function saveAll() {
-  Store.save('portfolio_v1', portData);
-  toast('✅ تم حفظ التغييرات', 'success');
+  updatePortfolio(() => portData);
+  toast('✅ تم حفظ التغييرات مع المزامنة', 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
+  dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
+  dataSync.notifyDataChanged('networth', { action: 'refresh' });
 }
 
 // ══════════════════════════════════════════════
@@ -476,6 +495,41 @@ function exportCSV() {
 // ══════════════════════════════════════════════
 renderKPIs();
 applyFilters();
+
+// الاستماع للتغييرات من صفحات أخرى
+dataSync.onDataChanged('transactions', (data, timestamp) => {
+  console.log('Portfolio: Transactions updated, recalculating...');
+  // إعادة حساب المحفظة بناءً على العمليات الجديدة
+  const updatedPortfolio = recalculatePortfolioFromTransactions();
+  portData = updatedPortfolio;
+  renderKPIs();
+  applyFilters();
+  toast('🔄 تم تحديث المحفظة تلقائياً من العمليات', 'info');
+});
+
+dataSync.onDataChanged('portfolio', (data, timestamp) => {
+  if (JSON.stringify(data) !== JSON.stringify(portData)) {
+    portData = [...data];
+    renderKPIs();
+    applyFilters();
+    toast('🔄 تم تحديث المحفظة تلقائياً', 'info');
+  }
+});
+
+dataSync.onDataChanged('dividends', (data, timestamp) => {
+  // تحديث مؤشرات YOC عند تغيير التوزيعات
+  renderKPIs();
+});
+
+// تحديث عند التركيز على الصفحة
+window.addEventListener('focus', () => {
+  const latestPortfolio = Store.load('portfolio_v1', APP.portfolio);
+  if (JSON.stringify(latestPortfolio) !== JSON.stringify(portData)) {
+    portData = [...latestPortfolio];
+    renderKPIs();
+    applyFilters();
+  }
+});
 </script>
 </body>
 </html>
