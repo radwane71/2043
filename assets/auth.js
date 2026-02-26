@@ -1,14 +1,16 @@
 function renderSidebar(activePage) {
   const pages = [
-    { id:'dashboard',    icon:'🏠', label:'لوحة التحكم',     file:'dashboard.html'    },
-    { id:'portfolio',    icon:'💹', label:'المحفظة',          file:'portfolio.html'    },
-    { id:'transactions', icon:'🔄', label:'العمليات',          file:'transactions.html' },
-    { id:'dividends',    icon:'💰', label:'التوزيعات',         file:'dividends.html'    },
-    { id:'networth',     icon:'📊', label:'صافي الثروة',      file:'networth.html'     },
-    { id:'properties',   icon:'🏢', label:'العقارات',          file:'properties.html'   },
-    { id:'cashinvest',   icon:'💵', label:'السيولة للضخ',     file:'cashinvest.html'   },
-    { id:'forecast',     icon:'🔭', label:'مستقبل المحفظة',   file:'forecast.html'     },
-    { id:'settings',     icon:'⚙️', label:'الإعدادات',         file:'settings.html'     },
+    { id:'dashboard',     icon:'🏠', label:'لوحة التحكم',       file:'dashboard.html'     },
+    { id:'portfolio',     icon:'💹', label:'المحفظة',            file:'portfolio.html'     },
+    { id:'transactions',  icon:'🔄', label:'العمليات',            file:'transactions.html'  },
+    { id:'dividends',     icon:'💰', label:'التوزيعات',           file:'dividends.html'     },
+    { id:'networth',      icon:'📊', label:'صافي الثروة',        file:'networth.html'      },
+    { id:'properties',    icon:'🏢', label:'العقارات',            file:'properties.html'    },
+    { id:'cashinvest',    icon:'💵', label:'السيولة للضخ',       file:'cashinvest.html'    },
+    { id:'forecast',      icon:'🔭', label:'مستقبل المحفظة',    file:'forecast.html'      },
+    { id:'salary',        icon:'💳', label:'سجلات الراتب',        file:'salary.html'        },
+    { id:'salary-scale',  icon:'📈', label:'سلم الراتب',            file:'salary-scale.html'  },
+    { id:'settings',      icon:'⚙️', label:'الإعدادات',           file:'settings.html'      },
   ];
 
   const navHTML = pages.map(p => `
