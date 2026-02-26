@@ -11,6 +11,34 @@
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
+<style>
+.settings-section {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px; margin-bottom:20px;
+}
+.settings-section h3 { margin:0 0 16px; font-size:18px; }
+.settings-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 0; border-bottom:1px solid var(--border);
+}
+.settings-item:last-child { border-bottom:none; }
+.settings-label { font-size:14px; font-weight:600; }
+.settings-desc { font-size:12px; color:var(--text3); margin-top:4px; }
+.theme-switch {
+  display:flex; gap:8px; background:var(--bg2);
+  border-radius:20px; padding:4px;
+}
+.theme-switch button {
+  padding:8px 16px; border-radius:16px; border:none;
+  background:transparent; color:var(--text3);
+  cursor:pointer; transition:all .2s; font-family:inherit;
+  font-size:13px; font-weight:600;
+}
+.theme-switch button.active {
+  background:var(--accent); color:#fff;
+}
+</style>
 </head>
 <body>
 <script>initPage('settings');</script>
@@ -19,407 +47,272 @@
 
   <div class="page-header">
     <div class="page-header-left">
-      <h1>⚙️ الإعدادات والمتغيرات</h1>
-      <p>تحكم كامل في كل معاملات الموقع — التغييرات تنعكس فوراً على كل الصفحات</p>
-    </div>
-    <div class="page-header-right">
-      <button class="btn btn-danger btn-sm" onclick="resetAll()">🔄 استعادة الافتراضي</button>
-      <button class="btn btn-primary"       onclick="saveAll()">💾 حفظ الكل</button>
+      <h1>⚙️ الإعدادات</h1>
+      <p>تخصيص التطبيق وإدارة البيانات</p>
     </div>
   </div>
 
-  <!-- ══ 1. إعدادات عامة ══ -->
   <div class="settings-section">
-    <div class="settings-section-header">👤 إعدادات عامة</div>
-    <div class="settings-section-body">
-      <div class="setting-row">
-        <div class="setting-row-info"><label>اسم المالك</label><small>يظهر في الـ Sidebar</small></div>
-        <input type="text" id="s-ownerName">
+    <h3>🎨 المظهر</h3>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">الثيم</div>
+        <div class="settings-desc">اختر المظهر المفضل</div>
       </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>سنة التقاعد المستهدفة</label><small>المحور الزمني الرئيسي</small></div>
-        <input type="number" id="s-retirementYear">
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>رأس المال المستهدف (SAR)</label><small>هدف صافي الثروة الكامل</small></div>
-        <input type="number" id="s-targetCapital">
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>عائد التوزيعات المستهدف %</label><small>النسبة السنوية المطلوبة</small></div>
-        <input type="number" id="s-targetYield" step="0.01">
+      <div class="theme-switch">
+        <button onclick="setTheme('light')" id="theme-light">☀️ فاتح</button>
+        <button onclick="setTheme('dark')" id="theme-dark">🌙 داكن</button>
       </div>
     </div>
   </div>
 
-  <!-- ══ 2. العمولات والضرائب ══ -->
   <div class="settings-section">
-    <div class="settings-section-header">💸 العمولات والضرائب</div>
-    <div class="settings-section-body">
-      <div class="setting-row">
-        <div class="setting-row-info"><label>نسبة عمولة التداول %</label><small>تطبق على كل عملية</small></div>
-        <input type="number" id="s-commissionRate" step="0.00001">
+    <h3>🔐 الأمان</h3>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">تغيير رمز الدخول</div>
+        <div class="settings-desc">تحديث رمز PIN الخاص بك</div>
       </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>نسبة VAT على العمولة %</label><small>ضريبة القيمة المضافة</small></div>
-        <input type="number" id="s-vatRate" step="0.01">
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>الحد الأدنى للعمولة (SAR)</label><small>0 = لا يوجد حد أدنى</small></div>
-        <input type="number" id="s-minCommission" step="0.01">
-      </div>
+      <button class="btn btn-primary btn-sm" onclick="changePin()">تغيير</button>
     </div>
   </div>
 
-  <!-- ══ 3. قواعد المحفظة ══ -->
   <div class="settings-section">
-    <div class="settings-section-header">📐 قواعد المحفظة</div>
-    <div class="settings-section-body">
-      <div class="setting-row">
-        <div class="setting-row-info"><label>أقصى تخصيص لسهم واحد %</label><small>تجاوزه = تركيز مرتفع</small></div>
-        <input type="number" id="s-maxPositionPct" step="0.01">
+    <h3>💾 البيانات</h3>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">تصدير جميع البيانات</div>
+        <div class="settings-desc">احفظ نسخة احتياطية كاملة (JSON)</div>
       </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>أقصى تخصيص لقطاع واحد %</label><small>حماية من تركيز القطاع</small></div>
-        <input type="number" id="s-maxSectorPct" step="0.01">
+      <button class="btn btn-ghost btn-sm" onclick="exportAll()">📦 تصدير</button>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">استيراد البيانات</div>
+        <div class="settings-desc">استعادة نسخة احتياطية</div>
       </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>أقصى تخصيص للبلو شيب %</label><small>أرامكو / STC</small></div>
-        <input type="number" id="s-blueChipMaxPct" step="0.01">
+      <button class="btn btn-warn btn-sm" onclick="showImport()">📤 استيراد</button>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">حذف جميع البيانات</div>
+        <div class="settings-desc">⚠️ لا يمكن التراجع عن هذا الإجراء</div>
       </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>الحد الأدنى لعدد المراكز</label><small>تنويع كافٍ</small></div>
-        <input type="number" id="s-minPositions">
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>الحد الأقصى لعدد المراكز</label><small>لتجنب التشتت</small></div>
-        <input type="number" id="s-maxPositions">
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-info"><label>عتبة إعادة التوازن %</label><small>تفاوت مقبول قبل إعادة التوازن</small></div>
-        <input type="number" id="s-rebalanceThresh" step="0.01">
-      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteAll()">🗑️ حذف</button>
     </div>
   </div>
 
-  <!-- ══ 4. إعدادات الأسهم ══ -->
   <div class="settings-section">
-    <div class="settings-section-header">📋 إعدادات الأسهم — مناطق الشراء والبيع والهدف</div>
-    <div class="settings-section-body">
-      <div class="info-box blue" style="margin-bottom:16px">
-        هذه البيانات مربوطة مباشرة بصفحة المحفظة. التعديل هنا يحدّث الجدول الرئيسي فوراً عند الحفظ.
-      </div>
-      <div style="overflow:auto">
-        <table style="min-width:900px">
-          <thead>
-            <tr>
-              <th>السهم</th><th>التيكر</th><th>الهدف %</th>
-              <th>شراء &lt;</th><th>بيع من</th><th>بيع إلى</th>
-              <th>القرار</th><th>التقييم</th>
-            </tr>
-          </thead>
-          <tbody id="stocksSettingsBody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:12px;text-align:left">
-        <button class="btn btn-success" onclick="saveStocksSettings()">💾 حفظ إعدادات الأسهم</button>
+    <h3>ℹ️ معلومات</h3>
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">الإصدار</div>
+        <div class="settings-desc">2043 v1.0.0</div>
       </div>
     </div>
-  </div>
-
-  <!-- ══ 5. النسخ الاحتياطي — 0% فقد ══ -->
-  <div class="settings-section">
-    <div class="settings-section-header">🧰 النسخ الاحتياطي الكامل — 0% فقد</div>
-    <div class="settings-section-body">
-
-      <div class="info-box blue" style="margin-bottom:16px">
-        🔵 <strong>التصدير:</strong> يُصدّر <strong>كل</strong> مفاتيح localStorage دون استثناء —
-        يشمل تلقائياً كل صفحة حالية أو مستقبلية.
-        <br>
-        🟡 <strong>الاستعادة:</strong> تمسح localStorage ثم تُعيد كل مفتاح بقيمته الأصلية — نسبة فقد صفر.
+    <div class="settings-item">
+      <div>
+        <div class="settings-label">تاريخ آخر نسخة احتياطية</div>
+        <div class="settings-desc" id="lastBackup">لم يتم أخذ نسخة بعد</div>
       </div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-        <button class="btn btn-primary" onclick="exportFullBackup()">
-          📦 تصدير نسخة احتياطية كاملة (JSON)
-        </button>
-        <label class="btn btn-warn" style="cursor:pointer">
-          📤 اختيار ملف للاستعادة
-          <input id="restoreInput" type="file" accept=".json" style="display:none"
-                 onchange="handleRestoreFile(this)">
-        </label>
-        <button class="btn btn-danger btn-sm" onclick="clearSession()">🗑 مسح sessionStorage</button>
-        <button class="btn btn-danger btn-sm" onclick="clearLocalStorage()">🗑 مسح localStorage كاملاً</button>
-      </div>
-
-      <div id="backupFileInfo" style="display:none;margin-bottom:12px;padding:10px 14px;
-           background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.25);
-           border-radius:8px;font-size:13px">
-      </div>
-
-      <div id="restoreBtnWrap" style="display:none;margin-bottom:16px">
-        <button class="btn btn-danger" onclick="confirmRestore()">
-          ♻️ استعادة كاملة (سيُعاد كل شيء كما كان)
-        </button>
-      </div>
-
-      <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">
-        📋 البيانات الموجودة حالياً في localStorage:
-      </div>
-      <div id="sessionStatus"
-           style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
-      </div>
-
     </div>
   </div>
 
 </div>
 
+<!-- Import Modal -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:500px">
+    <h3 style="margin-bottom:16px">📤 استيراد البيانات</h3>
+    <div class="info-box blue" style="margin-bottom:14px">سيتم <strong>استبدال</strong> جميع البيانات الحالية.</div>
+    <div style="border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text3);cursor:pointer"
+         onclick="document.getElementById('importFileInput').click()">📁 اضغط لاختيار ملف JSON</div>
+    <input id="importFileInput" type="file" accept=".json" style="display:none" onchange="handleImportFile(this)">
+    <textarea id="importPaste" rows="8"
+      style="width:100%;margin-top:14px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;font-family:monospace;outline:none;resize:vertical"
+      placeholder='{"transactions":[],"portfolio":[],...}'></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeImport()">إلغاء</button>
+      <button class="btn btn-danger" onclick="doImport()">استيراد واستبدال</button>
+    </div>
+  </div>
+</div>
+
 <script>
-let _pendingRestore = null;
-
-// ═══════════════════════════════════════════════
-//  1. إعدادات عامة
-// ═══════════════════════════════════════════════
-function loadSettings() {
-  const s = Store.load('app_settings_v1', APP.settings);
-  const f = Store.load('app_fees_v1',     APP.fees);
-  document.getElementById('s-ownerName').value       = s.ownerName        || APP.settings.ownerName       || '';
-  document.getElementById('s-retirementYear').value  = s.retirementYear   || APP.settings.retirementYear;
-  document.getElementById('s-targetCapital').value   = s.targetCapital    || APP.settings.targetCapital;
-  document.getElementById('s-targetYield').value     = ((s.targetYield    || APP.settings.targetYield)*100).toFixed(2);
-  document.getElementById('s-commissionRate').value  = ((f.commissionRate || APP.fees.commissionRate)*100).toFixed(4);
-  document.getElementById('s-vatRate').value         = ((f.vatRate        || APP.fees.vatRate)*100).toFixed(0);
-  document.getElementById('s-minCommission').value   = f.minCommission    ?? APP.fees.minCommission;
-  document.getElementById('s-maxPositionPct').value  = ((s.maxPositionPct || APP.settings.maxPositionPct)*100).toFixed(0);
-  document.getElementById('s-maxSectorPct').value    = ((s.maxSectorPct   || APP.settings.maxSectorPct)*100).toFixed(0);
-  document.getElementById('s-blueChipMaxPct').value  = ((s.blueChipMaxPct || APP.settings.blueChipMaxPct)*100).toFixed(0);
-  document.getElementById('s-minPositions').value    = s.minPositions     || APP.settings.minPositions;
-  document.getElementById('s-maxPositions').value    = s.maxPositions     || APP.settings.maxPositions;
-  document.getElementById('s-rebalanceThresh').value = ((s.rebalanceThresh|| APP.settings.rebalanceThresh)*100).toFixed(0);
-}
-
-function saveAll() {
-  const newSettings = {
-    ownerName:       document.getElementById('s-ownerName').value,
-    retirementYear:  parseInt(document.getElementById('s-retirementYear').value),
-    targetCapital:   parseFloat(document.getElementById('s-targetCapital').value),
-    targetYield:     parseFloat(document.getElementById('s-targetYield').value)/100,
-    maxPositionPct:  parseFloat(document.getElementById('s-maxPositionPct').value)/100,
-    maxSectorPct:    parseFloat(document.getElementById('s-maxSectorPct').value)/100,
-    blueChipMaxPct:  parseFloat(document.getElementById('s-blueChipMaxPct').value)/100,
-    minPositions:    parseInt(document.getElementById('s-minPositions').value),
-    maxPositions:    parseInt(document.getElementById('s-maxPositions').value),
-    rebalanceThresh: parseFloat(document.getElementById('s-rebalanceThresh').value)/100,
-  };
-  const newFees = {
-    commissionRate: parseFloat(document.getElementById('s-commissionRate').value)/100,
-    vatRate:        parseFloat(document.getElementById('s-vatRate').value)/100,
-    minCommission:  parseFloat(document.getElementById('s-minCommission').value)||0,
-  };
-  Object.assign(APP.settings, newSettings);
-  Object.assign(APP.fees,     newFees);
-  Store.save('app_settings_v1', newSettings);
-  Store.save('app_fees_v1',     newFees);
-  toast('✅ تم الحفظ — الإعدادات مفعّلة الآن','success');
-  renderSessionStatus();
-}
-
-function resetAll() {
-  if (!confirm('استعادة جميع الإعدادات الافتراضية؟')) return;
-  Store.save('app_settings_v1', APP.settings);
-  Store.save('app_fees_v1',     APP.fees);
-  loadSettings();
-  toast('🔄 تمت الاستعادة','warn');
-}
-
-// ═══════════════════════════════════════════════
-//  2. إعدادات الأسهم — يستخدم H.tickerName(p.ticker)
-// ═══════════════════════════════════════════════
-function loadStocksSettings() {
-  const port = Store.load('portfolio_v1', APP.portfolio);
-  const decisions = ['تجميع','احتفاظ','مراقبة','تخفيف','بيع'];
-  document.getElementById('stocksSettingsBody').innerHTML = port.map((p,i) => `
-    <tr>
-      <td style="font-weight:600">${H.tickerName(p.ticker)}</td>
-      <td class="accent">${p.ticker}</td>
-      <td><input class="field-inline" style="width:70px;text-align:center" id="sp-goal-${i}"  type="number" step="0.1"    value="${(p.goal_alloc*100).toFixed(1)}"></td>
-      <td><input class="field-inline" style="width:80px;text-align:center" id="sp-buy-${i}"   type="number" step="0.01"   value="${p.buy_zone_max}"></td>
-      <td><input class="field-inline" style="width:80px;text-align:center" id="sp-sellL-${i}" type="number" step="0.01"   value="${p.sell_zone_low}"></td>
-      <td><input class="field-inline" style="width:80px;text-align:center" id="sp-sellH-${i}" type="number" step="0.01"   value="${p.sell_zone_high}"></td>
-      <td>
-        <select class="field-inline" style="width:100px" id="sp-dec-${i}">
-          ${decisions.map(d => `<option ${d===p.decision?'selected':''}>${d}</option>`).join('')}
-        </select>
-      </td>
-      <td><input class="field-inline" style="width:160px" id="sp-eval-${i}" type="text" value="${p.eval || ''}"></td>
-    </tr>
-  `).join('');
-}
-
-function saveStocksSettings() {
-  const port = Store.load('portfolio_v1', APP.portfolio);
-  port.forEach((p,i) => {
-    p.goal_alloc     = parseFloat(document.getElementById(`sp-goal-${i}`).value)/100  || p.goal_alloc;
-    p.buy_zone_max   = parseFloat(document.getElementById(`sp-buy-${i}`).value)        || p.buy_zone_max;
-    p.sell_zone_low  = parseFloat(document.getElementById(`sp-sellL-${i}`).value)      || p.sell_zone_low;
-    p.sell_zone_high = parseFloat(document.getElementById(`sp-sellH-${i}`).value)      || p.sell_zone_high;
-    p.decision       = document.getElementById(`sp-dec-${i}`).value;
-    p.eval           = document.getElementById(`sp-eval-${i}`).value;
-  });
-  Store.save('portfolio_v1', port);
-  toast('✅ تم حفظ إعدادات الأسهم وتحديث المحفظة','success');
-}
-
-// ═══════════════════════════════════════════════
-//  3. النسخ الاحتياطي
-// ═══════════════════════════════════════════════
-function exportFullBackup() {
-  const lsData = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    lsData[k] = localStorage.getItem(k);
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+function init() {
+  const currentTheme = Store.load('theme', 'light');
+  document.getElementById('theme-' + currentTheme).classList.add('active');
+  
+  const lastBackupDate = Store.load('last_backup_date', null);
+  if (lastBackupDate) {
+    document.getElementById('lastBackup').textContent = lastBackupDate;
   }
-  const payload = {
-    app:        '2043',
-    version:    2,
-    exportedAt: new Date().toISOString(),
-    keysCount:  Object.keys(lsData).length,
-    localStorage: lsData
-  };
-  const json = JSON.stringify(payload, null, 2);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  a.download = `2043_full_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  toast(`📦 تم التصدير — ${Object.keys(lsData).length} عنصر محفوظ`, 'success');
-  renderSessionStatus();
 }
 
-function handleRestoreFile(input) {
+// ══════════════════════════════════════════════
+//  Theme
+// ══════════════════════════════════════════════
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  Store.save('theme', theme);
+  
+  document.querySelectorAll('.theme-switch button').forEach(b => b.classList.remove('active'));
+  document.getElementById('theme-' + theme).classList.add('active');
+  
+  toast('✅ تم تغيير المظهر', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Change PIN
+// ══════════════════════════════════════════════
+function changePin() {
+  const oldPin = prompt('أدخل رمز PIN القديم:');
+  if (!oldPin) return;
+  
+  if (!AUTH.login(oldPin)) {
+    toast('❌ رمز PIN القديم غير صحيح', 'error');
+    return;
+  }
+  
+  const newPin = prompt('أدخل رمز PIN الجديد (4 أرقام):');
+  if (!newPin || newPin.length < 4) {
+    toast('⚠️ رمز PIN غير صحيح', 'warn');
+    return;
+  }
+  
+  const confirmPin = prompt('تأكيد رمز PIN الجديد:');
+  if (newPin !== confirmPin) {
+    toast('⚠️ الرمزان غير متطابقان', 'warn');
+    return;
+  }
+  
+  AUTH.changePin(newPin);
+  toast('✅ تم تغيير رمز PIN بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Export All
+// ══════════════════════════════════════════════
+function exportAll() {
+  const backup = {
+    version: '1.0.0',
+    date: H.today(),
+    data: {
+      transactions: APP.transactions,
+      portfolio: APP.portfolio,
+      dividends: APP.dividends,
+      properties: APP.properties,
+      gold: APP.gold,
+      cash: APP.cash,
+      cashinvest: APP.cashinvest,
+      savings: APP.savings,
+      goals: APP.goals
+    }
+  };
+  
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `2043_backup_${H.today()}.json`;
+  link.click();
+  
+  Store.save('last_backup_date', H.today());
+  document.getElementById('lastBackup').textContent = H.today();
+  
+  toast('✅ تم تصدير البيانات بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Import
+// ══════════════════════════════════════════════
+function showImport() {
+  document.getElementById('importModal').style.display = 'flex';
+}
+
+function closeImport() {
+  document.getElementById('importModal').style.display = 'none';
+  document.getElementById('importPaste').value = '';
+}
+
+function handleImportFile(input) {
   const file = input.files[0];
   if (!file) return;
+  
   const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const obj = JSON.parse(reader.result);
-      if (obj.version === 2 && obj.localStorage && typeof obj.localStorage === 'object') {
-        _pendingRestore = { type: 'v2', data: obj };
-      } else if (!obj.version && typeof obj === 'object') {
-        _pendingRestore = { type: 'v1', data: obj };
-      } else {
-        toast('ملف غير صالح أو تنسيق غير معروف', 'error');
-        return;
-      }
-      const count = _pendingRestore.type === 'v2'
-        ? Object.keys(obj.localStorage).length
-        : Object.keys(obj).filter(k => !k.startsWith('_')).length;
-      const info = document.getElementById('backupFileInfo');
-      info.style.display = 'block';
-      info.innerHTML = `
-        ✅ <strong>الملف محمّل بنجاح</strong><br>
-        📅 تاريخ النسخة: <strong>${(obj.exportedAt || obj._exported || '—').split('T')[0]}</strong><br>
-        🗂 عدد العناصر: <strong>${count}</strong><br>
-        📦 الإصدار: <strong>${obj.version || 'v1 قديم'}</strong>
-      `;
-      document.getElementById('restoreBtnWrap').style.display = 'block';
-      toast('✅ ملف النسخة الاحتياطية جاهز للاستعادة','success');
-    } catch (e) {
-      toast('خطأ في قراءة الملف — تأكد أنه JSON صالح','error');
-    }
+  reader.onload = (e) => {
+    document.getElementById('importPaste').value = e.target.result;
   };
   reader.readAsText(file);
 }
 
-function confirmRestore() {
-  if (!_pendingRestore) return toast('اختر ملف الاستعادة أولاً','error');
-  if (!confirm('⚠️ سيتم مسح كل البيانات الحالية واستعادة النسخة الاحتياطية.\nهذا لا يمكن التراجع عنه. هل أنت متأكد؟')) return;
-  localStorage.clear();
-  if (_pendingRestore.type === 'v2') {
-    const lsData = _pendingRestore.data.localStorage;
-    Object.keys(lsData).forEach(k => localStorage.setItem(k, lsData[k]));
-  } else {
-    const obj = _pendingRestore.data;
-    Object.keys(obj).forEach(k => {
-      if (!k.startsWith('_')) {
-        const val = typeof obj[k] === 'string' ? obj[k] : JSON.stringify(obj[k]);
-        localStorage.setItem(k, val);
-      }
-    });
-  }
-  toast('♻️ تمت الاستعادة بالكامل — جاري إعادة التحميل','success');
-  setTimeout(() => location.reload(), 1000);
-}
-
-// ═══════════════════════════════════════════════
-//  4. مسح
-// ═══════════════════════════════════════════════
-function clearSession() {
-  if (!confirm('مسح sessionStorage؟ البيانات في localStorage ستبقى.')) return;
-  try { sessionStorage.clear(); } catch(e) {}
-  toast('🗑 تم مسح sessionStorage','warn');
-  setTimeout(() => location.reload(), 1000);
-}
-
-function clearLocalStorage() {
-  if (!confirm('⚠️ مسح كل localStorage؟\n\nستُحذف جميع البيانات وتعود من data.js.\nصدّر نسخة احتياطية أولاً!')) return;
-  try { localStorage.clear(); } catch(e) {}
-  toast('🗑 تم مسح localStorage — إعادة التحميل','warn');
-  setTimeout(() => location.reload(), 1000);
-}
-
-// ═══════════════════════════════════════════════
-//  5. حالة localStorage
-// ═══════════════════════════════════════════════
-function renderSessionStatus() {
-  const container = document.getElementById('sessionStatus');
-  if (!localStorage.length) {
-    container.innerHTML = '<p style="color:var(--text3);font-size:13px">localStorage فارغ — كل البيانات تأتي من data.js</p>';
+function doImport() {
+  const raw = document.getElementById('importPaste').value.trim();
+  if (!raw) {
+    toast('⚠️ لا توجد بيانات للاستيراد', 'warn');
     return;
   }
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-  keys.sort();
-  const labels = {
-    'portfolio_v1':     'المحفظة',
-    'transactions_v1':  'العمليات',
-    'dividends_v1':     'التوزيعات',
-    'cashinvest_v1':    'السيولة للضخ',
-    'networth_full_v1': 'صافي الثروة',
-    'properties_v1':    'العقارات',
-    'app_settings_v1':  'الإعدادات العامة',
-    'app_fees_v1':      'العمولات',
-    'salary_v1':        'سجلات الراتب',
-    'salary_scale_v1':  'سلم الرواتب',
-    'custom_tickers':   'تيكرات مخصصة',
-    'forecast_v1':      'التوقعات',
-  };
-  container.innerHTML = keys.map(k => {
-    const raw = localStorage.getItem(k);
-    let sizeKB = (new Blob([raw]).size / 1024).toFixed(1);
-    let count  = '';
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) count = ` • ${parsed.length} عنصر`;
-    } catch(e) {}
-    return `
-      <div style="padding:10px 14px;background:var(--bg2);border:1px solid rgba(34,197,94,.3);
-                  border-radius:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:13px;font-weight:600">${labels[k] || k}</span>
-          <span style="font-size:10px;color:var(--green);font-weight:700">✅</span>
-        </div>
-        <div style="font-size:11px;color:var(--text3)">${sizeKB} KB${count}</div>
-        ${k !== (labels[k] || k) ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:monospace">${k}</div>` : ''}
-      </div>`;
-  }).join('');
+  
+  try {
+    const backup = JSON.parse(raw);
+    
+    if (!backup.data) {
+      toast('❌ تنسيق غير صحيح', 'error');
+      return;
+    }
+    
+    if (!confirm('⚠️ سيتم استبدال جميع البيانات الحالية. هل أنت متأكد؟')) return;
+    
+    // Save all data
+    Store.save('transactions_v1', backup.data.transactions || []);
+    Store.save('portfolio_v1', backup.data.portfolio || []);
+    Store.save('dividends_v1', backup.data.dividends || []);
+    Store.save('properties_v1', backup.data.properties || []);
+    Store.save('gold_v1', backup.data.gold || []);
+    Store.save('cash_v1', backup.data.cash || []);
+    Store.save('cashinvest_v1', backup.data.cashinvest || []);
+    Store.save('savings_v1', backup.data.savings || []);
+    Store.save('goals_v1', backup.data.goals || []);
+    
+    closeImport();
+    toast('✅ تم استيراد البيانات بنجاح', 'success');
+    
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 1500);
+    
+  } catch(e) {
+    toast('❌ خطأ في تنسيق البيانات', 'error');
+  }
 }
 
-// ═══════════════════════════════════════════════
-//  Init
-// ═══════════════════════════════════════════════
-loadSettings();
-loadStocksSettings();
-renderSessionStatus();
+// ══════════════════════════════════════════════
+//  Delete All
+// ══════════════════════════════════════════════
+function deleteAll() {
+  if (!confirm('⚠️ سيتم حذف جميع البيانات بشكل نهائي. هل أنت متأكد؟')) return;
+  if (!confirm('⚠️ تأكيد نهائي: لا يمكن التراجع!')) return;
+  
+  // Keep auth only
+  const pinHash = localStorage.getItem('pin_hash');
+  localStorage.clear();
+  if (pinHash) localStorage.setItem('pin_hash', pinHash);
+  
+  toast('✅ تم حذف جميع البيانات', 'success');
+  
+  setTimeout(() => {
+    window.location.href = 'dashboard.html';
+  }, 1500);
+}
+
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
 </script>
+
 </body>
 </html>
