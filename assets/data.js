@@ -72,8 +72,6 @@ const Store = (() => {
 //  يُستخدم في كل الصفحات — لا تُعرَّف محلياً
 // ─────────────────────────────────────────────
 const TickerDB = (() => {
-  // بناء Map من tickers.js (محمّل قبل data.js)
-  // في حال تكرار الكود، نحتفظ بأول إدخال فقط
   const _map = new Map();
 
   function _build() {
@@ -89,7 +87,6 @@ const TickerDB = (() => {
         });
       }
     });
-    // دمج التيكرات المخصصة من الإعدادات
     const custom = Store.load('custom_tickers', []);
     custom.forEach(t => {
       const code = String(t.code).trim().toUpperCase();
@@ -105,37 +102,29 @@ const TickerDB = (() => {
   _build();
 
   return {
-    // إعادة بناء بعد إضافة تيكرات مخصصة
     rebuild() { _map.clear(); _build(); },
-
     lookup(code) {
       if (!code) return null;
       return _map.get(String(code).trim().toUpperCase()) || null;
     },
-
     name(code) {
       const t = this.lookup(code);
       return t ? t.name : String(code).trim().toUpperCase();
     },
-
     sector(code) {
       const t = this.lookup(code);
       return t ? t.sector : 'غير محدد';
     },
-
     coverage(code) {
       const t = this.lookup(code);
       return t ? t.coverage : 'محلي';
     },
-
     exists(code) {
       return this.lookup(code) !== null;
     },
-
     all() {
       return Array.from(_map.values());
     },
-
     search(query) {
       const q = query.trim().toLowerCase();
       if (!q) return this.all();
@@ -149,10 +138,80 @@ const TickerDB = (() => {
 })();
 
 // ─────────────────────────────────────────────
+//  CHART CONFIG — إعدادات موحّدة للرسوم البيانية
+// ─────────────────────────────────────────────
+const CHART_COLORS = [
+  '#818CF8','#A78BFA','#F472B6','#FBBF24',
+  '#34D399','#22D3EE','#FB7185','#A3E635',
+  '#C084FC','#2DD4BF','#60A5FA','#FCD34D'
+];
+
+const CHART_FONT_COLOR = '#E2E8F0';
+const CHART_GRID_COLOR = 'rgba(148,163,184,0.12)';
+const CHART_TICK_COLOR = '#94A3B8';
+const CHART_BORDER_COLOR = '#0F172A';
+
+function getChartOptions(type = 'default') {
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { 
+        position: 'right', 
+        labels: { 
+          color: CHART_FONT_COLOR,
+          font: { size: 12, weight: '600' },
+          padding: 14,
+          usePointStyle: true,
+          pointStyle: 'circle'
+        } 
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15,23,42,0.96)',
+        titleColor: '#F1F5F9',
+        bodyColor: '#E2E8F0',
+        borderColor: '#475569',
+        borderWidth: 1,
+        padding: 14,
+        displayColors: true,
+        boxPadding: 8,
+        titleFont: { size: 13, weight: '700' },
+        bodyFont: { size: 12, weight: '600' }
+      }
+    }
+  };
+
+  if (type === 'bar' || type === 'line') {
+    baseOptions.scales = {
+      y: { 
+        ticks: { 
+          color: CHART_TICK_COLOR,
+          font: { size: 11, weight: '600' }
+        },
+        grid: { 
+          color: CHART_GRID_COLOR,
+          drawBorder: false
+        }
+      },
+      x: { 
+        ticks: { 
+          color: CHART_TICK_COLOR,
+          font: { size: 11, weight: '600' }
+        },
+        grid: { 
+          display: false 
+        }
+      }
+    };
+  }
+
+  return baseOptions;
+}
+
+// ─────────────────────────────────────────────
 //  H — أدوات مساعدة موحّدة
 // ─────────────────────────────────────────────
 const H = {
-  // تنسيق الأرقام
   fmt(n, decimals = 2) {
     const num = parseFloat(n) || 0;
     return num.toLocaleString('ar-SA', {
@@ -161,33 +220,29 @@ const H = {
     });
   },
 
-  // نسبة مئوية بإشارة
   pct(n, decimals = 2) {
     const num = parseFloat(n) || 0;
     const sign = num >= 0 ? '+' : '';
     return `${sign}${num.toFixed(decimals)}%`;
   },
 
-  // اليوم بصيغة YYYY-MM-DD
   today() {
     return new Date().toISOString().split('T')[0];
   },
 
-  // ── Ticker Shortcuts (تُوجَّه لـ TickerDB دائماً) ──
   tickerName(code)     { return TickerDB.name(code); },
   tickerSector(code)   { return TickerDB.sector(code); },
   tickerCoverage(code) { return TickerDB.coverage(code); },
   tickerExists(code)   { return TickerDB.exists(code); },
 
-  // ── حساب العمولات (تداول — السوق السعودي) ──
   calcCommission(total) {
     const settings = Store.load('settings_v1', {});
     const rate = (settings.commissionRate !== undefined)
       ? parseFloat(settings.commissionRate) / 100
-      : 0.0015;  // 0.15% افتراضي
+      : 0.0015;
     const vatRate = (settings.vatRate !== undefined)
       ? parseFloat(settings.vatRate) / 100
-      : 0.15;    // 15% VAT افتراضي
+      : 0.15;
     const commission = total * rate;
     const vat        = commission * vatRate;
     const net        = total + commission + vat;
@@ -198,12 +253,11 @@ const H = {
     };
   },
 
-  // ── لون حسب القيمة ──
   colorClass(n) {
     const num = parseFloat(n) || 0;
-    if (num > 0)  return 'pos';
-    if (num < 0)  return 'neg';
-    return 'text3';
+    if (num > 0)  return 'green';
+    if (num < 0)  return 'red';
+    return '';
   },
 
   colorStyle(n) {
@@ -213,7 +267,6 @@ const H = {
     return 'color:var(--text3)';
   },
 
-  // ── normalize helpers — لمعالجة البيانات القديمة ──
   normalizeTransaction(t) {
     if (!t) return null;
     return {
@@ -241,13 +294,12 @@ const H = {
 
   normalizeDividend(d) {
     if (!d) return null;
-    // دعم البيانات القديمة: stock → ticker
     const ticker = (d.ticker || d.stock || '').toString().trim().toUpperCase();
     return {
       no:     d.no     || 0,
       date:   d.date   || H.today(),
       ticker: ticker,
-      stock:  TickerDB.name(ticker),  // دائماً من TickerDB
+      stock:  TickerDB.name(ticker),
       amount: parseFloat(d.amount)  || 0,
       note:   d.note   || ''
     };
@@ -282,8 +334,7 @@ const H = {
 };
 
 // ─────────────────────────────────────────────
-//  APP — البيانات الافتراضية (seed)
-//  تُستخدم فقط عند أول تشغيل قبل أي إدخال
+//  APP — البيانات الافتراضية
 // ─────────────────────────────────────────────
 const APP = {
   get portfolio() {
@@ -304,8 +355,14 @@ const APP = {
   get cash() {
     return Store.load('cash_v1', _DEFAULT_CASH);
   },
+  get cashinvest() {
+    return Store.load('cashinvest_v1', []);
+  },
   get savings() {
     return Store.load('savings_v1', _DEFAULT_SAVINGS);
+  },
+  get goals() {
+    return Store.load('goals_v1', []);
   },
   get settings() {
     return Store.load('settings_v1', _DEFAULT_SETTINGS);
@@ -347,33 +404,30 @@ const _DEFAULT_GOLD = [
 ];
 
 const _DEFAULT_CASH = [
-  { id:1, name:'البنك الأهلي', type:'حساب جاري',   amount:45000, currency:'SAR', notes:'' },
-  { id:2, name:'الراجحي',     type:'حساب توفير',   amount:28000, currency:'SAR', notes:'' }
+  { id:1, type:'حساب جاري',   name:'البنك الأهلي', balance:45000, bank:'البنك الأهلي', currency:'SAR', notes:'' },
+  { id:2, type:'حساب توفير',   name:'الراجحي',     balance:28000, bank:'الراجحي',     currency:'SAR', notes:'' }
 ];
 
 const _DEFAULT_SAVINGS = [
-  { id:1, name:'صندوق الطوارئ', target:100000, current:65000, monthly_contribution:2000, start_date:'2023-01-01', notes:'' }
+  { id:1, name:'صندوق الطوارئ', goal:100000, amount:65000, type:'صندوق طوارئ', notes:'' }
 ];
 
 const _DEFAULT_SETTINGS = {
-  commissionRate: 0.15,   // %
-  vatRate:        15,     // %
+  commissionRate: 0.15,
+  vatRate:        15,
   currency:       'SAR',
   theme:          'dark',
   language:       'ar'
 };
 
 // ─────────────────────────────────────────────
-//  recalculatePortfolioFromTransactions
-//  يُعيد بناء المحفظة من العمليات مع الحفاظ
-//  على current_price الموجود
+//  Portfolio Recalculation
 // ─────────────────────────────────────────────
 function recalculatePortfolioFromTransactions() {
   const transactions = H.normalizeTransactions(
     Store.load('transactions_v1', [])
   );
 
-  // قراءة current_price الحالية قبل الكتابة
   const currentPortfolio = H.normalizePortfolio(
     Store.load('portfolio_v1', [])
   );
@@ -382,7 +436,6 @@ function recalculatePortfolioFromTransactions() {
     priceMap[p.ticker] = p.current_price;
   });
 
-  // حساب المراكز
   const positions = {};
 
   transactions.forEach(t => {
@@ -410,18 +463,15 @@ function recalculatePortfolioFromTransactions() {
       pos.totalQty  -= t.qty;
       pos.totalCost -= avgBeforeSell * t.qty;
       pos.realizedPnL += (t.total - avgBeforeSell * t.qty);
-      // لا تجعل التكلفة سالبة
       if (pos.totalCost < 0) pos.totalCost = 0;
       if (pos.totalQty  < 0) pos.totalQty  = 0;
     }
   });
 
-  // بناء المحفظة الجديدة
   const newPortfolio = Object.values(positions)
     .filter(p => p.totalQty > 0)
     .map(p => {
       const avg_cost = p.totalQty > 0 ? p.totalCost / p.totalQty : 0;
-      // احتفظ بـ current_price السابق، إن لم يوجد استخدم avg_cost
       const current_price = priceMap[p.ticker] || avg_cost;
       return {
         ticker:        p.ticker,
@@ -437,9 +487,6 @@ function recalculatePortfolioFromTransactions() {
   return newPortfolio;
 }
 
-// ─────────────────────────────────────────────
-//  updateTransactions — تحديث موحّد مع مزامنة
-// ─────────────────────────────────────────────
 function updateTransactions(updaterFn) {
   const current = H.normalizeTransactions(
     Store.load('transactions_v1', [])
@@ -448,7 +495,6 @@ function updateTransactions(updaterFn) {
   const normalized = H.normalizeTransactions(updated);
   Store.save('transactions_v1', normalized);
 
-  // إطلاق حدث مزامنة للصفحات الأخرى
   try {
     window.dispatchEvent(new StorageEvent('storage', {
       key:      'transactions_v1',
@@ -459,9 +505,6 @@ function updateTransactions(updaterFn) {
   return normalized;
 }
 
-// ─────────────────────────────────────────────
-//  syncAfterTransactionChange — مزامنة شاملة
-// ─────────────────────────────────────────────
 function syncAfterTransactionChange() {
   recalculatePortfolioFromTransactions();
   try {
@@ -472,7 +515,7 @@ function syncAfterTransactionChange() {
 }
 
 // ─────────────────────────────────────────────
-//  TOAST — إشعارات موحّدة
+//  TOAST
 // ─────────────────────────────────────────────
 function toast(msg, type = 'success', duration = 3000) {
   const existing = document.getElementById('toast_2043');
@@ -502,7 +545,7 @@ function toast(msg, type = 'success', duration = 3000) {
 }
 
 // ─────────────────────────────────────────────
-//  NET WORTH — حساب صافي الثروة الكامل
+//  NET WORTH
 // ─────────────────────────────────────────────
 function calcNetWorth() {
   const portfolio   = APP.portfolio;
@@ -518,18 +561,16 @@ function calcNetWorth() {
     (s, p) => s + (parseFloat(p.value) || 0), 0
   );
 
-  // حساب الذهب: الوزن × سعر الجرام الحالي
   const goldValue = gold.reduce((s, g) => {
     const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
     return s + weightInGrams * (parseFloat(g.current_price) || 0);
   }, 0);
 
-  const cashValue    = cash.reduce(   (s, c) => s + (parseFloat(c.amount)   || 0), 0);
-  const savingsValue = savings.reduce((s, sv) => s + (parseFloat(sv.current) || 0), 0);
+  const cashValue    = cash.reduce((s, c) => s + (parseFloat(c.balance) || 0), 0);
+  const savingsValue = savings.reduce((s, sv) => s + (parseFloat(sv.amount) || 0), 0);
 
   const total = stocksValue + propertiesValue + goldValue + cashValue + savingsValue;
 
-  // تكلفة المحفظة
   const stocksCost = portfolio.reduce(
     (s, p) => s + p.qty * p.avg_cost, 0
   );
