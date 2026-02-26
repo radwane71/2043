@@ -212,7 +212,7 @@ document.getElementById('kpiRow3').innerHTML = `
   <div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-label">إشارات فعّالة</div><div class="kpi-value accent">${toAccum+toReduce}</div><div class="kpi-sub">${toAccum} تجميع • ${toReduce} تخفيف</div></div>
   <div class="kpi-card"><div class="kpi-icon">📬</div><div class="kpi-label">آخر توزيع</div><div class="kpi-value pos" style="font-size:18px">${lastDiv?H.fmt(lastDiv.amount):'—'}</div><div class="kpi-sub">${lastDiv?((lastDiv.ticker?H.tickerName(lastDiv.ticker):lastDiv.stock)+' • '+lastDiv.date):'لا يوجد'}</div></div>`;
 
-// Signals — يستخدم H.tickerName
+// Signals
 const buyList  = portfolio.filter(p=>p.decision?.includes('تجميع')&&p.current_price<=p.buy_zone_max);
 const sellList = portfolio.filter(p=>p.decision?.includes('تخفيف')&&p.current_price>=p.sell_zone_low);
 
@@ -234,7 +234,7 @@ document.getElementById('sellSignals').innerHTML = sellList.length
     </div>`).join('')
   : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد أسهم في منطقة تخفيف</p>';
 
-// Sector Doughnut — H.tickerSector
+// Sector Doughnut
 const sectorMap = {};
 portfolio.forEach(p=>{
   const s = H.tickerSector(p.ticker);
@@ -307,7 +307,7 @@ document.getElementById('goalProgress').innerHTML = `
     </div>
   </div>`;
 
-// Top Stocks — H.tickerName + H.tickerSector
+// Top Stocks
 const sortedPL=[...portfolio].map(p=>({...p,pl:p.avg_cost>0?(p.current_price-p.avg_cost)/p.avg_cost:0})).sort((a,b)=>b.pl-a.pl);
 const topN=sortedPL.slice(0,4); const worstN=sortedPL.slice(-3);
 function stockRow(p){
@@ -324,8 +324,8 @@ document.getElementById('topStocks').innerHTML=`
   <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">أسوأ 3</div>
   ${worstN.map(p=>stockRow(p)).join('')}`;
 
-// Last Tx
-const lastTxList=[...transactions].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,7);
+// آخر العمليات — مرتبة بـ no (رقم العملية) تنازلياً لأن date غير موجود
+const lastTxList=[...transactions].sort((a,b)=>(b.no||0)-(a.no||0)).slice(0,7);
 document.getElementById('lastTx').innerHTML=lastTxList.length
   ?lastTxList.map(t=>`
     <div class="tx-row">
@@ -336,14 +336,18 @@ document.getElementById('lastTx').innerHTML=lastTxList.length
       </div>
       <div style="text-align:left">
         <div style="font-weight:700;font-size:13px">${H.fmt(t.total_cost||0)} SAR</div>
-        <div style="font-size:11px;color:var(--text3)">${t.date||'—'} • ${H.fmt(t.qty,0)} سهم</div>
+        <div style="font-size:11px;color:var(--text3)">عملية #${t.no||'—'} • ${H.fmt(t.qty,0)} سهم</div>
       </div>
     </div>`).join('')
   :'<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد عمليات</p>';
 
-// Dividends Bar — d.stock مازال نصي في dividends
+// شارت التوزيعات — يقرأ d.ticker (الجديد) مع دعم d.stock (القديم) كـ fallback
 const divMap={};
-divs.forEach(d=>{ divMap[d.stock]=(divMap[d.stock]||0)+d.amount; });
+divs.forEach(d=>{
+  const key   = d.ticker || d.stock;
+  const label = key ? H.tickerName(key) : '—';
+  divMap[label] = (divMap[label]||0) + d.amount;
+});
 const divSorted=Object.entries(divMap).sort((a,b)=>b[1]-a[1]);
 new Chart(document.getElementById('divChart'),{
   type:'bar',

@@ -151,20 +151,17 @@
         <button class="btn btn-danger btn-sm" onclick="clearLocalStorage()">🗑 مسح localStorage كاملاً</button>
       </div>
 
-      <!-- معلومات الملف المحمّل -->
       <div id="backupFileInfo" style="display:none;margin-bottom:12px;padding:10px 14px;
            background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.25);
            border-radius:8px;font-size:13px">
       </div>
 
-      <!-- زر الاستعادة يظهر فقط بعد تحميل الملف -->
       <div id="restoreBtnWrap" style="display:none;margin-bottom:16px">
         <button class="btn btn-danger" onclick="confirmRestore()">
           ♻️ استعادة كاملة (سيُعاد كل شيء كما كان)
         </button>
       </div>
 
-      <!-- حالة localStorage الحالية -->
       <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">
         📋 البيانات الموجودة حالياً في localStorage:
       </div>
@@ -178,9 +175,6 @@
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-//  0. متغيّر الملف المحمّل
-// ═══════════════════════════════════════════════
 let _pendingRestore = null;
 
 // ═══════════════════════════════════════════════
@@ -239,14 +233,14 @@ function resetAll() {
 }
 
 // ═══════════════════════════════════════════════
-//  2. إعدادات الأسهم
+//  2. إعدادات الأسهم — يستخدم H.tickerName(p.ticker)
 // ═══════════════════════════════════════════════
 function loadStocksSettings() {
   const port = Store.load('portfolio_v1', APP.portfolio);
   const decisions = ['تجميع','احتفاظ','مراقبة','تخفيف','بيع'];
   document.getElementById('stocksSettingsBody').innerHTML = port.map((p,i) => `
     <tr>
-      <td style="font-weight:600">${p.stock}</td>
+      <td style="font-weight:600">${H.tickerName(p.ticker)}</td>
       <td class="accent">${p.ticker}</td>
       <td><input class="field-inline" style="width:70px;text-align:center" id="sp-goal-${i}"  type="number" step="0.1"    value="${(p.goal_alloc*100).toFixed(1)}"></td>
       <td><input class="field-inline" style="width:80px;text-align:center" id="sp-buy-${i}"   type="number" step="0.01"   value="${p.buy_zone_max}"></td>
@@ -277,10 +271,8 @@ function saveStocksSettings() {
 }
 
 // ═══════════════════════════════════════════════
-//  3. النسخ الاحتياطي — DUMP كامل (0% فقد)
+//  3. النسخ الاحتياطي
 // ═══════════════════════════════════════════════
-
-// تصدير: dump كل localStorage بدون استثناء
 function exportFullBackup() {
   const lsData = {};
   for (let i = 0; i < localStorage.length; i++) {
@@ -303,7 +295,6 @@ function exportFullBackup() {
   renderSessionStatus();
 }
 
-// تحميل ملف الاستعادة (قراءة فقط — لم نغيّر localStorage بعد)
 function handleRestoreFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -311,21 +302,17 @@ function handleRestoreFile(input) {
   reader.onload = () => {
     try {
       const obj = JSON.parse(reader.result);
-      // نقبل v1 (القديم بمفاتيح مباشرة) و v2 (localStorage محاط بغلاف)
       if (obj.version === 2 && obj.localStorage && typeof obj.localStorage === 'object') {
         _pendingRestore = { type: 'v2', data: obj };
       } else if (!obj.version && typeof obj === 'object') {
-        // نسخة v1 قديمة: المفاتيح مباشرة في الجذر
         _pendingRestore = { type: 'v1', data: obj };
       } else {
         toast('ملف غير صالح أو تنسيق غير معروف', 'error');
         return;
       }
-
       const count = _pendingRestore.type === 'v2'
         ? Object.keys(obj.localStorage).length
         : Object.keys(obj).filter(k => !k.startsWith('_')).length;
-
       const info = document.getElementById('backupFileInfo');
       info.style.display = 'block';
       info.innerHTML = `
@@ -343,18 +330,14 @@ function handleRestoreFile(input) {
   reader.readAsText(file);
 }
 
-// استعادة كاملة: clear ثم كتابة كل شيء
 function confirmRestore() {
   if (!_pendingRestore) return toast('اختر ملف الاستعادة أولاً','error');
   if (!confirm('⚠️ سيتم مسح كل البيانات الحالية واستعادة النسخة الاحتياطية.\nهذا لا يمكن التراجع عنه. هل أنت متأكد؟')) return;
-
   localStorage.clear();
-
   if (_pendingRestore.type === 'v2') {
     const lsData = _pendingRestore.data.localStorage;
     Object.keys(lsData).forEach(k => localStorage.setItem(k, lsData[k]));
   } else {
-    // v1 قديم
     const obj = _pendingRestore.data;
     Object.keys(obj).forEach(k => {
       if (!k.startsWith('_')) {
@@ -363,7 +346,6 @@ function confirmRestore() {
       }
     });
   }
-
   toast('♻️ تمت الاستعادة بالكامل — جاري إعادة التحميل','success');
   setTimeout(() => location.reload(), 1000);
 }
@@ -386,7 +368,7 @@ function clearLocalStorage() {
 }
 
 // ═══════════════════════════════════════════════
-//  5. عرض حالة localStorage — ديناميكي كامل
+//  5. حالة localStorage
 // ═══════════════════════════════════════════════
 function renderSessionStatus() {
   const container = document.getElementById('sessionStatus');
@@ -394,13 +376,9 @@ function renderSessionStatus() {
     container.innerHTML = '<p style="color:var(--text3);font-size:13px">localStorage فارغ — كل البيانات تأتي من data.js</p>';
     return;
   }
-
-  // اجمع كل المفاتيح وصنّفها
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
   keys.sort();
-
-  // خريطة تسميات ودية
   const labels = {
     'portfolio_v1':     'المحفظة',
     'transactions_v1':  'العمليات',
@@ -415,7 +393,6 @@ function renderSessionStatus() {
     'custom_tickers':   'تيكرات مخصصة',
     'forecast_v1':      'التوقعات',
   };
-
   container.innerHTML = keys.map(k => {
     const raw = localStorage.getItem(k);
     let sizeKB = (new Blob([raw]).size / 1024).toFixed(1);
@@ -424,7 +401,6 @@ function renderSessionStatus() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) count = ` • ${parsed.length} عنصر`;
     } catch(e) {}
-
     return `
       <div style="padding:10px 14px;background:var(--bg2);border:1px solid rgba(34,197,94,.3);
                   border-radius:8px">
