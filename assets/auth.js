@@ -1,43 +1,3 @@
-// ═══════════════════════════════════════════════════════════
-//  auth.js — نظام الحماية المشترك
-// ═══════════════════════════════════════════════════════════
-
-// ── التحقق من الجلسة ────────────────────────────────────────
-function requireAuth() {
-  try {
-    if (sessionStorage.getItem('auth_2043') !== '1')
-      window.location.href = 'index.html';
-  } catch(e) {
-    window.location.href = 'index.html';
-  }
-}
-
-// ── تسجيل الخروج ────────────────────────────────────────────
-function doLogout() {
-  try { sessionStorage.removeItem('auth_2043'); } catch(e) {}
-  window.location.href = 'index.html';
-}
-
-// ── Store — localStorage wrapper ────────────────────────────
-const Store = {
-  load: (key, fallback) => {
-    try {
-      const v = localStorage.getItem(key);
-      return v ? JSON.parse(v) : fallback;
-    } catch(e) { return fallback; }
-  },
-  save: (key, val) => {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
-  },
-  get: (key) => {
-    try { return localStorage.getItem(key); } catch(e) { return null; }
-  },
-  set: (key, val) => {
-    try { localStorage.setItem(key, val); } catch(e) {}
-  }
-};
-
-// ── Sidebar HTML ─────────────────────────────────────────────
 function renderSidebar(activePage) {
   const pages = [
     { id:'dashboard',    icon:'🏠', label:'لوحة التحكم',     file:'dashboard.html'    },
@@ -79,7 +39,6 @@ function renderSidebar(activePage) {
   `;
 }
 
-// ── Toast ────────────────────────────────────────────────────
 function toast(msg, type = 'success') {
   let el = document.getElementById('toast');
   if (!el) {
@@ -93,7 +52,6 @@ function toast(msg, type = 'success') {
   el._t = setTimeout(() => { el.className = ''; }, 2800);
 }
 
-// ── initPage ─────────────────────────────────────────────────
 function initPage(pageId) {
   requireAuth();
   document.body.insertAdjacentHTML('afterbegin', renderSidebar(pageId));
