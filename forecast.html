@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>مستقبل المحفظة — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/tickers.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<style>
+/* ── Scenario Toggle ── */
+.scenario-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.scenario-tab {
+  padding:8px 20px; border-radius:20px;
+  border:1px solid var(--border); background:transparent;
+  color:var(--text3); font-size:13px; font-weight:700;
+  cursor:pointer; transition:all .18s; font-family:inherit;
+}
+.scenario-tab:hover { border-color:var(--accent); color:var(--accent); }
+.scenario-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* ── Milestone Cards ── */
+.milestone-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:14px;
+  margin-bottom:24px;
+}
+.milestone-card {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.milestone-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0;
+  height:3px;
+  background:linear-gradient(90deg, var(--accent), var(--purple));
+}
+.milestone-year  { font-size:28px; font-weight:900; color:var(--accent); }
+.milestone-label { font-size:12px; color:var(--text3); margin-top:4px; }
+.milestone-val   { font-size:14px; font-weight:700; margin-top:8px; }
+
+/* ── Goal Progress ── */
+.goal-banner {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:24px 28px;
+  margin-bottom:24px;
+}
+.goal-bar-bg {
+  width:100%; height:12px;
+  background:var(--border); border-radius:6px;
+  overflow:hidden; margin:12px 0 6px;
+}
+.goal-bar-fill {
+  height:100%; border-radius:6px;
+  background:linear-gradient(90deg,var(--accent),var(--purple));
+  transition:width 1s ease;
+}
+
+/* ── Settings Panel ── */
+.settings-panel {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 24px;
+  margin-bottom:24px;
+}
+.settings-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:14px;
+  margin-top:14px;
+}
+.setting-item label {
+  display:block; font-size:11px;
+  color:var(--text3); font-weight:700;
+  text-transform:uppercase; letter-spacing:.4px;
+  margin-bottom:6px;
+}
+.setting-item input {
+  width:100%; padding:8px 10px;
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:6px; color:var(--text);
+  font-size:13px; font-family:inherit; outline:none;
+  transition:border-color .2s;
+}
+.setting-item input:focus { border-color:var(--accent); }
+
+/* ── Timeline Table ── */
+.tbl-forecast { font-size:12px; }
+.tbl-forecast td, .tbl-forecast th { padding:8px 12px; }
+.yr-actual { background:rgba(79,142,247,.07); }
+.yr-retire { background:rgba(245,158,11,.1); font-weight:700; }
+
+/* ── Chart fix ── */
+.chart-card { height:auto !important; display:block !important; overflow:visible !important; }
+.chart-wrap { position:relative; width:100%; height:320px; overflow:hidden; }
+.chart-wrap canvas {
+  position:absolute !important; top:0 !important; left:0 !important;
+  width:100% !important; height:100% !important;
+}
+
+.section-title {
+  font-size:14px; font-weight:700; color:var(--text2);
+  margin-bottom:16px; display:flex; align-items:center; gap:7px;
+  padding-bottom:10px; border-bottom:1px solid var(--border);
+}
+.badge-actual  { background:rgba(79,142,247,.2);  color:var(--accent); padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+.badge-forecast{ background:rgba(34,197,94,.2);   color:var(--green);  padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+
+@media(max-width:768px){
+  .milestone-grid { grid-template-columns:repeat(2,1fr); }
+  .settings-grid  { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<script>initPage('forecast');</script>
+
+<div class="main">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>🔭 مستقبل المحفظة</h1>
+      <p>توقع مبني على الضخ المخطط + الأداء التاريخي — حتى 2053</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ طباعة</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel">
+    <div class="section-title">⚙️ معاملات التوقع — يمكنك تعديلها</div>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <label>نمو رأس المال السنوي %</label>
+        <input id="s-growth" type="number" step="0.1" value="5" oninput="refreshAll()">
+      </div>
+      <div class="setting-item">
+        <label>معدل العائد التوزيعي %</label>
+        <input id="s-yield" type="number" step="0.1" value="6" oninput="refreshAll()">
+      </div>
+      <div class="setting-item">
+        <label>نسبة إعادة استثمار التوزيعات %</label>
+        <input id="s-drip" type="number" step="1" min="0" max="100" value="80" oninput="refreshAll()">
+      </div>
+      <div class="setting-item">
+        <label>هدف رأس المال (SAR)</label>
+        <input id="s-target" type="number" value="1000000" oninput="refreshAll()">
+      </div>
+      <div class="setting-item">
+        <label>سنة التقاعد</label>
+        <input id="s-retire" type="number" value="2043" oninput="refreshAll()">
+      </div>
+      <div class="setting-item">
+        <label>الدخل الشهري المستهدف (SAR)</label>
+        <input id="s-income" type="number" value="10000" oninput="refreshAll()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenario Tabs -->
+  <div class="scenario-tabs" id="scenarioTabs">
+    <button class="scenario-tab" onclick="setScenario(3,this)">📉 متحفظ 3%</button>
+    <button class="scenario-tab active" onclick="setScenario(5,this)">📊 متوسط 5%</button>
+    <button class="scenario-tab" onclick="setScenario(8,this)">📈 متفائل 8%</button>
+    <button class="scenario-tab" onclick="setScenario('custom',this)">⚙️ مخصص</button>
+  </div>
+
+  <!-- Goal Banner -->
+  <div class="goal-banner" id="goalBanner"></div>
+
+  <!-- KPIs Row 1 — Actual -->
+  <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+    <span class="badge-actual">Actual — الآن</span>
+  </div>
+  <div class="kpi-grid cols-4" id="kpiActual"></div>
+
+  <!-- KPIs Row 2 — Forecast at Retirement -->
+  <div style="margin-bottom:8px;margin-top:16px;display:flex;align-items:center;gap:8px">
+    <span class="badge-forecast">Forecast — عند التقاعد</span>
+  </div>
+  <div class="kpi-grid cols-4" id="kpiForecast"></div>
+
+  <!-- Main Timeline Chart -->
+  <div class="chart-card" style="margin-bottom:24px">
+    <div class="section-title">📈 الخط الزمني للمحفظة</div>
+    <div class="chart-wrap" style="height:360px">
+      <canvas id="timelineChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Secondary Charts -->
+  <div class="chart-grid cols-2" style="margin-bottom:24px">
+    <div class="chart-card">
+      <div class="section-title">💰 التوزيعات السنوية المتوقعة</div>
+      <div class="chart-wrap">
+        <canvas id="divChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="section-title">🏦 تراكم رأس المال</div>
+      <div class="chart-wrap">
+        <canvas id="capChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Milestones -->
+  <div class="chart-card" style="margin-bottom:24px">
+    <div class="section-title">🏁 المحطات الرئيسية</div>
+    <div class="milestone-grid" id="milestones"></div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="chart-card" style="margin-bottom:24px">
+    <div class="section-title">📋 جدول التوقع السنوي التفصيلي</div>
+    <div class="table-wrap">
+      <table class="tbl-forecast">
+        <thead>
+          <tr>
+            <th>السنة</th>
+            <th>الضخ المخطط</th>
+            <th>قيمة المحفظة</th>
+            <th>التوزيعات السنوية</th>
+            <th>YOC %</th>
+            <th>العائد الشهري</th>
+            <th>الربح الورقي</th>
+            <th>نسبة الهدف %</th>
+            <th>الحالة</th>
+          </tr>
+        </thead>
+        <tbody id="forecastBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════
+const SAVED = Store.load('forecast_settings_v1', {});
+let activeGrowth = SAVED.growth || 5;
+
+let chartTimeline = null;
+let chartDiv      = null;
+let chartCap      = null;
+
+// ══════════════════════════════════════════════
+//  Load Saved Settings into Inputs
+// ══════════════════════════════════════════════
+(function loadSettings() {
+  // أولوية: forecast_settings → app_settings → افتراضي
+  const appS = Store.load('app_settings_v1', APP.settings);
+
+  document.getElementById('s-growth').value  = SAVED.growth  || 5;
+  document.getElementById('s-yield').value   = SAVED.yield   || (appS.targetYield  * 100) || 6;
+  document.getElementById('s-drip').value    = SAVED.drip    || 80;
+  document.getElementById('s-target').value  = SAVED.target  || appS.targetCapital || 1_000_000;
+  document.getElementById('s-retire').value  = SAVED.retire  || appS.retirementYear || 2043;
+  document.getElementById('s-income').value  = SAVED.income  || 10_000;
+})();
+
+// ══════════════════════════════════════════════
+//  Save Settings
+// ══════════════════════════════════════════════
+function saveSettings() {
+  Store.save('forecast_settings_v1', {
+    growth:  parseFloat(document.getElementById('s-growth').value),
+    yield:   parseFloat(document.getElementById('s-yield').value),
+    drip:    parseFloat(document.getElementById('s-drip').value),
+    target:  parseFloat(document.getElementById('s-target').value),
+    retire:  parseInt(document.getElementById('s-retire').value),
+    income:  parseFloat(document.getElementById('s-income').value),
+  });
+  toast('✅ تم حفظ الإعدادات', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Scenario Tabs
+// ══════════════════════════════════════════════
+function setScenario(growth, btn) {
+  document.querySelectorAll('.scenario-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (growth !== 'custom') {
+    activeGrowth = growth;
+    document.getElementById('s-growth').value = growth;
+  }
+  refreshAll();
+}
+
+// ══════════════════════════════════════════════
+//  Read Inputs
+// ══════════════════════════════════════════════
+function getParams() {
+  return {
+    growthRate:  (parseFloat(document.getElementById('s-growth').value) || 5) / 100,
+    yieldRate:   (parseFloat(document.getElementById('s-yield').value)  || 6) / 100,
+    dripPct:     (parseFloat(document.getElementById('s-drip').value)   || 80) / 100,
+    targetCap:   parseFloat(document.getElementById('s-target').value)  || 1_000_000,
+    retireYear:  parseInt(document.getElementById('s-retire').value)    || 2043,
+    targetIncome:parseFloat(document.getElementById('s-income').value)  || 10_000,
+  };
+}
+
+// ══════════════════════════════════════════════
+//  Actual Portfolio Data
+// ══════════════════════════════════════════════
+function getActual() {
+  const port     = Store.load('portfolio_v1', APP.portfolio);
+  const divs     = Store.load('dividends_v1', APP.dividends);
+  const cashPlans= Store.load('cashinvest_v1', APP.cashPlans || []);
+
+  const mktValue = port.reduce((s,p) => s + p.qty * p.current_price, 0);
+  const cost     = port.reduce((s,p) => s + p.qty * p.avg_cost,      0);
+  const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
+
+  // YOC from last 12 months
+  const ago12 = new Date(); ago12.setFullYear(ago12.getFullYear() - 1);
+  const div12m = divs
+    .filter(d => d.date && new Date(d.date) >= ago12)
+    .reduce((s,d) => s + d.amount, 0);
+  const yoc12m = cost > 0 ? div12m / cost : 0;
+
+  return { mktValue, cost, totalDiv, div12m, yoc12m, cashPlans };
+}
+
+// ══════════════════════════════════════════════
+//  Build Annual Cash Injection Map from cashinvest
+// ══════════════════════════════════════════════
+function buildInjectionMap(cashPlans) {
+  const map = {};
+  cashPlans
+    .filter(c => c.status !== 'ملغي' && c.amount > 0)
+    .forEach(c => {
+      if (!c.date) return;
+      const yr = parseInt(c.date.substring(0, 4));
+      if (!isNaN(yr)) map[yr] = (map[yr] || 0) + c.amount;
+    });
+  return map;
+}
+
+// ══════════════════════════════════════════════
+//  Forecast Engine
+// ══════════════════════════════════════════════
+function buildForecast() {
+  const p       = getParams();
+  const actual  = getActual();
+  const injMap  = buildInjectionMap(actual.cashPlans);
+
+  const startYear = new Date().getFullYear();
+  const endYear   = Math.max(p.retireYear + 10, 2053);
+
+  const rows = [];
+  let capital = actual.mktValue;
+  let totalInjected = actual.cost; // نقطة البداية
+
+  for (let yr = startYear; yr <= endYear; yr++) {
+    const isActual  = yr === startYear;
+    const injection = injMap[yr] || 0;
+
+    // التوزيعات المتوقعة
+    const dividends = capital * p.yieldRate;
+
+    // إعادة الاستثمار
+    const reinvested = dividends * p.dripPct;
+    const cashOut    = dividends * (1 - p.dripPct);
+
+    // نمو رأس المال
+    const capitalGrowth = capital * p.growthRate;
+
+    // رأس المال نهاية السنة
+    const endCapital = capital + capitalGrowth + injection + reinvested;
+
+    const yoc        = totalInjected > 0 ? dividends / totalInjected * 100 : 0;
+    const monthlyInc = cashOut / 12;
+    const paperPL    = capital - totalInjected;
+    const goalPct    = Math.min(capital / p.targetCap * 100, 999);
+
+    rows.push({
+      year: yr,
+      injection,
+      startCapital: capital,
+      endCapital,
+      capitalGrowth,
+      dividends,
+      reinvested,
+      cashOut,
+      yoc,
+      monthlyInc,
+      paperPL,
+      goalPct,
+      isActual,
+      isRetire: yr === p.retireYear,
+    });
+
+    totalInjected += injection;
+    capital = endCapital;
+  }
+
+  return rows;
+}
+
+// ══════════════════════════════════════════════
+//  Render Goal Banner
+// ══════════════════════════════════════════════
+function renderGoalBanner(rows, params) {
+  const actual   = getActual();
+  const target   = params.targetCap;
+  const pct      = Math.min(actual.mktValue / target * 100, 100);
+  const hitYear  = rows.find(r => r.endCapital >= target);
+  const retireRow= rows.find(r => r.year === params.retireYear);
+
+  document.getElementById('goalBanner').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:2px">التقدم نحو الهدف</div>
+        <div style="font-size:26px;font-weight:900;color:var(--accent)">${H.fmt(actual.mktValue)} <span style="font-size:14px;color:var(--text3)">من ${H.fmt(target)} SAR</span></div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text3)">موعد بلوغ الهدف</div>
+        <div style="font-size:22px;font-weight:900;color:${hitYear && hitYear.year <= params.retireYear ? 'var(--green)' : 'var(--yellow)'}">
+          ${hitYear ? hitYear.year : '—'}
+        </div>
+        <div style="font-size:11px;color:var(--text3)">${hitYear ? (hitYear.year <= params.retireYear ? '✅ قبل التقاعد' : '⚠️ بعد التقاعد') : 'لم يُحقق'}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text3)">العائد الشهري عند التقاعد</div>
+        <div style="font-size:22px;font-weight:900;color:var(--green)">${retireRow ? H.fmt(retireRow.monthlyInc) : '—'} SAR</div>
+        <div style="font-size:11px;color:var(--text3)">من ${H.fmt(params.targetIncome)} SAR هدف</div>
+      </div>
+    </div>
+    <div class="goal-bar-bg">
+      <div class="goal-bar-fill" style="width:${pct}%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)">
+      <span>${pct.toFixed(1)}% مكتمل</span>
+      <span>متبقي ${H.fmt(target - actual.mktValue)} SAR</span>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════
+//  KPIs
+// ══════════════════════════════════════════════
+function renderKPIs(rows, params) {
+  const actual    = getActual();
+  const retireRow = rows.find(r => r.year === params.retireYear) || rows[rows.length-1];
+
+  // Actual KPIs
+  document.getElementById('kpiActual').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">💼</div>
+      <div class="kpi-label">القيمة الحالية</div>
+      <div class="kpi-value accent">${H.fmt(actual.mktValue)}</div>
+      <div class="kpi-sub">SAR — القيمة السوقية</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">التوزيعات الفعلية</div>
+      <div class="kpi-value pos">${H.fmt(actual.div12m)}</div>
+      <div class="kpi-sub">آخر 12 شهر</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">YOC الحالي</div>
+      <div class="kpi-value warn">${H.fmt(actual.yoc12m * 100, 2)}%</div>
+      <div class="kpi-sub">على التكلفة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-label">العائد الشهري الحالي</div>
+      <div class="kpi-value">${H.fmt(actual.div12m / 12)}</div>
+      <div class="kpi-sub">SAR / شهر</div>
+    </div>`;
+
+  // Forecast KPIs at Retirement
+  const incomeGap = params.targetIncome - retireRow.monthlyInc;
+  document.getElementById('kpiForecast').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-label">القيمة عند التقاعد</div>
+      <div class="kpi-value accent">${H.fmt(retireRow.endCapital)}</div>
+      <div class="kpi-sub">SAR — ${params.retireYear}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💸</div>
+      <div class="kpi-label">التوزيعات السنوية</div>
+      <div class="kpi-value pos">${H.fmt(retireRow.dividends)}</div>
+      <div class="kpi-sub">SAR / سنة عند التقاعد</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🏦</div>
+      <div class="kpi-label">العائد الشهري</div>
+      <div class="kpi-value ${retireRow.monthlyInc >= params.targetIncome ? 'pos' : 'warn'}">${H.fmt(retireRow.monthlyInc)}</div>
+      <div class="kpi-sub">فجوة الهدف: ${incomeGap > 0 ? H.fmt(incomeGap) + ' SAR' : '✅ محقق'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">YOC عند التقاعد</div>
+      <div class="kpi-value">${H.fmt(retireRow.yoc, 2)}%</div>
+      <div class="kpi-sub">على التكلفة الأصلية</div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════
+//  Charts
+// ══════════════════════════════════════════════
+function renderCharts(rows, params) {
+  const labels     = rows.map(r => r.year);
+  const capitals   = rows.map(r => Math.round(r.endCapital));
+  const dividends  = rows.map(r => Math.round(r.dividends));
+  const injections = rows.map(r => Math.round(r.injection));
+  const retireIdx  = rows.findIndex(r => r.year === params.retireYear);
+
+  // ── Timeline Chart ──
+  if (chartTimeline) chartTimeline.destroy();
+  chartTimeline = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'قيمة المحفظة',
+          data: capitals,
+          borderColor: '#4f8ef7',
+          backgroundColor: 'rgba(79,142,247,0.08)',
+          borderWidth: 2.5, fill: true, tension: 0.4,
+          pointRadius: capitals.map((_, i) => i === 0 || i === retireIdx ? 6 : 2),
+          pointBackgroundColor: capitals.map((_, i) =>
+            i === 0 ? '#4f8ef7' : i === retireIdx ? '#f59e0b' : '#4f8ef7'),
+        },
+        {
+          label: 'الهدف',
+          data: labels.map(() => params.targetCap),
+          borderColor: 'rgba(245,158,11,0.5)',
+          borderWidth: 1.5, segment: { borderDash: () => [6, 4] },
+          fill: false, pointRadius: 0,
+        },
+        {
+          label: 'الضخ التراكمي',
+          data: rows.reduce((acc, r) => {
+            acc.push((acc.length ? acc[acc.length-1] : 0) + r.injection);
+            return acc;
+          }, []),
+          borderColor: 'rgba(34,197,94,0.7)',
+          backgroundColor: 'rgba(34,197,94,0.05)',
+          borderWidth: 1.5, fill: true, tension: 0.4,
+          pointRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { labels:{color:'#94a3b8', font:{size:12}, padding:16} },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${H.fmt(ctx.raw)} SAR` } },
+      },
+      scales: {
+        x: { ticks:{color:'#64748b', font:{size:11}}, grid:{color:'#1e2340'} },
+        y: { ticks:{color:'#64748b', callback: v => H.fmt(v)}, grid:{color:'#1e2340'} }
+      }
+    }
+  });
+
+  // ── Dividends Chart ──
+  if (chartDiv) chartDiv.destroy();
+  chartDiv = new Chart(document.getElementById('divChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'توزيعات نقدية',
+          data: rows.map(r => Math.round(r.cashOut)),
+          backgroundColor: 'rgba(34,197,94,0.7)', borderRadius: 3,
+        },
+        {
+          label: 'إعادة استثمار',
+          data: rows.map(r => Math.round(r.reinvested)),
+          backgroundColor: 'rgba(79,142,247,0.5)', borderRadius: 3,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{labels:{color:'#94a3b8',font:{size:11}}} },
+      scales: {
+        x: { stacked:true, ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1e2340'} },
+        y: { stacked:true, ticks:{color:'#64748b'}, grid:{color:'#1e2340'} }
+      }
+    }
+  });
+
+  // ── Capital Accumulation Chart ──
+  if (chartCap) chartCap.destroy();
+  chartCap = new Chart(document.getElementById('capChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'ضخ',
+          data: injections,
+          backgroundColor: 'rgba(168,139,250,0.7)', borderRadius: 3,
+          stack: 'a',
+        },
+        {
+          label: 'نمو + توزيعات مُعاد استثمارها',
+          data: rows.map(r => Math.round(r.capitalGrowth + r.reinvested || 0)),
+          backgroundColor: 'rgba(6,182,212,0.6)', borderRadius: 3,
+          stack: 'a',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{labels:{color:'#94a3b8',font:{size:11}}} },
+      scales: {
+        x: { stacked:true, ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1e2340'} },
+        y: { stacked:true, ticks:{color:'#64748b'}, grid:{color:'#1e2340'} }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+//  Milestones
+// ══════════════════════════════════════════════
+function renderMilestones(rows, params) {
+  const milestones = [];
+
+  // أول سنة يتجاوز فيها الدخل الشهري 5000
+  const m5k = rows.find(r => r.monthlyInc >= 5000);
+  if (m5k) milestones.push({ year: m5k.year, label: 'دخل شهري 5,000 SAR', val: H.fmt(m5k.endCapital) + ' SAR رأس مال' });
+
+  // أول سنة يتجاوز فيها الدخل الشهري الهدف
+  const mTarget = rows.find(r => r.monthlyInc >= params.targetIncome);
+  if (mTarget) milestones.push({ year: mTarget.year, label: `دخل ${H.fmt(params.targetIncome)} SAR/شهر`, val: '🎯 هدف الدخل محقق' });
+
+  // بلوغ 500k
+  const m500 = rows.find(r => r.endCapital >= 500_000);
+  if (m500) milestones.push({ year: m500.year, label: 'محفظة نصف مليون', val: H.fmt(m500.endCapital) + ' SAR' });
+
+  // بلوغ المليون
+  const m1M = rows.find(r => r.endCapital >= 1_000_000);
+  if (m1M) milestones.push({ year: m1M.year, label: 'محفظة مليون SAR', val: '🏆 ميلستون كبير' });
+
+  // بلوغ 2 مليون
+  const m2M = rows.find(r => r.endCapital >= 2_000_000);
+  if (m2M) milestones.push({ year: m2M.year, label: 'محفظة مليونين SAR', val: '🚀 ' + H.fmt(m2M.dividends) + ' توزيعات/سنة' });
+
+  // سنة التقاعد
+  const retireRow = rows.find(r => r.year === params.retireYear);
+  if (retireRow) milestones.push({ year: params.retireYear, label: '🎓 التقاعد', val: H.fmt(retireRow.endCapital) + ' SAR' });
+
+  document.getElementById('milestones').innerHTML = milestones
+    .sort((a,b) => a.year - b.year)
+    .map(m => `
+      <div class="milestone-card">
+        <div class="milestone-year">${m.year}</div>
+        <div class="milestone-label">${m.label}</div>
+        <div class="milestone-val">${m.val}</div>
+      </div>`).join('') || '<p style="color:var(--text3);padding:12px">لا توجد محطات مكتملة بالمعاملات الحالية</p>';
+}
+
+// ══════════════════════════════════════════════
+//  Forecast Table
+// ══════════════════════════════════════════════
+function renderTable(rows, params) {
+  document.getElementById('forecastBody').innerHTML = rows.map(r => {
+    const cls = r.isActual ? 'yr-actual' : r.isRetire ? 'yr-retire' : '';
+    const statusIcon =
+      r.endCapital >= params.targetCap ? '✅' :
+      r.isRetire ? '🎓' :
+      r.isActual ? '📍' : '—';
+    return `<tr class="${cls}">
+      <td style="font-weight:700">${r.year}${r.isActual ? ' <span class="badge-actual">الآن</span>' : ''}${r.isRetire ? ' <span style="color:var(--yellow)">🎓</span>' : ''}</td>
+      <td class="accent">${H.fmt(r.injection)}</td>
+      <td style="font-weight:700">${H.fmt(r.endCapital)}</td>
+      <td class="pos">${H.fmt(r.dividends)}</td>
+      <td>${H.fmt(r.yoc, 2)}%</td>
+      <td style="font-weight:600">${H.fmt(r.monthlyInc)}</td>
+      <td class="${r.paperPL >= 0 ? 'pos' : 'neg'}">${r.paperPL >= 0 ? '+' : ''}${H.fmt(r.paperPL)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="height:100%;background:var(--accent);border-radius:2px;width:${Math.min(r.goalPct,100)}%"></div>
+          </div>
+          <span style="font-size:11px;white-space:nowrap">${r.goalPct.toFixed(1)}%</span>
+        </div>
+      </td>
+      <td>${statusIcon}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  Refresh All
+// ══════════════════════════════════════════════
+function refreshAll() {
+  const params = getParams();
+  const rows   = buildForecast();
+  renderGoalBanner(rows, params);
+  renderKPIs(rows, params);
+  renderCharts(rows, params);
+  renderMilestones(rows, params);
+  renderTable(rows, params);
+}
+
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+refreshAll();
+</script>
+</body>
+</html>
