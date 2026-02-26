@@ -73,6 +73,14 @@
 }
 
 .row-deleted { opacity: 0.4; text-decoration: line-through; }
+
+.ticker-name-preview {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 16px;
+  font-weight: 600;
+  transition: color 0.2s;
+}
 </style>
 </head>
 <body>
@@ -109,8 +117,9 @@
         </select>
       </div>
       <div class="form-group">
-        <label>التيكر / الاسم</label>
-        <input id="t-ticker" placeholder="SAUDI ARAMCO" autocomplete="off">
+        <label>كود التيكر</label>
+        <input id="t-ticker" placeholder="2222" autocomplete="off" oninput="fetchTickerName()" style="text-transform:uppercase;letter-spacing:1px">
+        <div class="ticker-name-preview" id="t-name-preview"></div>
       </div>
       <div class="form-group">
         <label>الكمية</label>
@@ -155,6 +164,7 @@
           <th>#</th>
           <th>النوع</th>
           <th>التيكر</th>
+          <th>الاسم</th>
           <th>الكمية</th>
           <th>السعر</th>
           <th>الإجمالي</th>
@@ -193,7 +203,7 @@
       </label>
       <textarea id="jsonPaste" rows="5"
         style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;outline:none;resize:vertical"
-        placeholder='[{"no":1,"status":"Buy","ticker":"ARAMCO",...}]'></textarea>
+        placeholder='[{"no":1,"status":"Buy","ticker":"2222","name":"أرامكو السعودية",...}]'></textarea>
     </div>
 
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
@@ -212,6 +222,38 @@ let trData     = Store.load('transactions_v1', APP.transactions).map(t => ({...t
 let filtered   = [...trData];
 let activeF    = 'all';
 let searchQ    = '';
+
+// ────────────────────────────────────────────────
+//  Helper: دمج التيكرات الأصلية مع المخصصة
+// ────────────────────────────────────────────────
+function getAllTickers() {
+  return [...TICKERS, ...Store.load('custom_tickers', [])];
+}
+
+function lookupTicker(code) {
+  return getAllTickers().find(t => t.code === code.toString().trim().toUpperCase());
+}
+
+// ────────────────────────────────────────────────
+//  Auto-fetch ticker name on input
+// ────────────────────────────────────────────────
+function fetchTickerName() {
+  const code    = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const preview = document.getElementById('t-name-preview');
+  const found   = lookupTicker(code);
+
+  if (!code) {
+    preview.textContent = '';
+    return;
+  }
+  if (found) {
+    preview.textContent = '✓ ' + found.name;
+    preview.style.color = 'var(--green)';
+  } else {
+    preview.innerHTML = '⚠️ غير معرّف — <a href="settings.html" style="color:var(--accent)">أضفه من الإعدادات</a>';
+    preview.style.color = 'var(--red)';
+  }
+}
 
 // ────────────────────────────────────────────────
 //  KPIs
@@ -264,7 +306,7 @@ function renderKPIs() {
 function renderTable() {
   if (filtered.length === 0) {
     document.getElementById('trBody').innerHTML = `
-      <tr><td colspan="11">
+      <tr><td colspan="12">
         <div class="empty-state">
           <div class="empty-icon">🔍</div>
           <p>لا توجد نتائج</p>
@@ -276,6 +318,7 @@ function renderTable() {
   document.getElementById('trBody').innerHTML = filtered.map(t => {
     const realIdx = trData.indexOf(t);
     const isBuy   = t.status === 'Buy';
+    const name    = t.name || (lookupTicker(t.ticker)?.name) || '—';
 
     return `<tr id="row-${realIdx}">
       <td style="color:var(--text3)">${t.no}</td>
@@ -285,10 +328,13 @@ function renderTable() {
         </span>
       </td>
 
-      <!-- التيكر — قابل للتعديل -->
+      <!-- التيكر — كود فقط -->
       <td class="accent" style="font-weight:700">
-        <span class="editable" onclick="editText(this,${realIdx},'ticker')">${t.ticker}</span>
+        ${t.ticker}
       </td>
+
+      <!-- الاسم — عرض فقط -->
+      <td style="color:var(--text3);font-size:12px">${name}</td>
 
       <!-- الكمية — قابلة للتعديل -->
       <td>
@@ -335,7 +381,6 @@ function editNum(span, idx, field) {
     const val = parseFloat(input.value);
     if (!isNaN(val) && val >= 0) {
       trData[idx][field] = val;
-      // إعادة حساب الإجمالي والعمولة تلقائياً
       if (field === 'qty' || field === 'price') {
         const total = trData[idx].qty * trData[idx].price;
         const fees  = H.calcCommission(total);
@@ -347,32 +392,6 @@ function editNum(span, idx, field) {
     }
     applyFilters();
     renderKPIs();
-  }
-  input.addEventListener('blur',    commit);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  input.blur();
-    if (e.key === 'Escape') applyFilters();
-  });
-}
-
-// ────────────────────────────────────────────────
-//  Inline Edit — Text
-// ────────────────────────────────────────────────
-function editText(span, idx, field) {
-  if (span.querySelector('input')) return;
-  const input = document.createElement('input');
-  input.className   = 'edit-input';
-  input.style.width = '120px';
-  input.type  = 'text';
-  input.value = trData[idx][field];
-  span.textContent = '';
-  span.appendChild(input);
-  input.focus(); input.select();
-
-  function commit() {
-    const val = input.value.trim();
-    if (val) trData[idx][field] = val.toUpperCase();
-    applyFilters();
   }
   input.addEventListener('blur',    commit);
   input.addEventListener('keydown', e => {
@@ -426,14 +445,19 @@ function calcPreview() {
 
 function addTransaction() {
   const status = document.getElementById('t-status').value;
-  const ticker = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const code   = document.getElementById('t-ticker').value.trim().toUpperCase();
   const qty    = parseFloat(document.getElementById('t-qty').value)   || 0;
   const price  = parseFloat(document.getElementById('t-price').value) || 0;
   const date   = document.getElementById('t-date').value || H.today();
 
-  if (!ticker) return toast('أدخل اسم التيكر', 'error');
-  if (!qty)    return toast('أدخل الكمية', 'error');
-  if (!price)  return toast('أدخل السعر', 'error');
+  if (!code)  return toast('أدخل كود التيكر', 'error');
+  if (!qty)   return toast('أدخل الكمية', 'error');
+  if (!price) return toast('أدخل السعر', 'error');
+
+  const found = lookupTicker(code);
+  if (!found) {
+    return toast('❌ كود التيكر غير معرّف — اذهب للإعدادات وأضفه أولاً', 'error');
+  }
 
   const total = qty * price;
   const fees  = H.calcCommission(total);
@@ -441,7 +465,8 @@ function addTransaction() {
   trData.push({
     no:         trData.length + 1,
     status,
-    ticker,
+    ticker:     code,
+    name:       found.name,
     qty,
     price,
     total:      parseFloat(total.toFixed(4)),
@@ -452,12 +477,16 @@ function addTransaction() {
   });
 
   // Reset form
-  ['t-ticker','t-qty','t-price','t-date'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('t-ticker').value = '';
+  document.getElementById('t-qty').value    = '';
+  document.getElementById('t-price').value  = '';
+  document.getElementById('t-date').value   = '';
+  document.getElementById('t-name-preview').textContent = '';
   document.getElementById('addPreview').style.display = 'none';
 
   applyFilters();
   renderKPIs();
-  toast(`✅ تمت إضافة ${status === 'Buy' ? 'شراء' : 'بيع'} ${ticker}`, 'success');
+  toast(`✅ تمت إضافة ${status === 'Buy' ? 'شراء' : 'بيع'} ${code} — ${found.name}`, 'success');
 }
 
 // ────────────────────────────────────────────────
@@ -466,7 +495,6 @@ function addTransaction() {
 function deleteRow(idx) {
   if (!confirm(`حذف العملية #${trData[idx].no} — ${trData[idx].ticker}؟`)) return;
   trData.splice(idx, 1);
-  // إعادة ترقيم
   trData.forEach((t, i) => t.no = i + 1);
   applyFilters();
   renderKPIs();
@@ -488,7 +516,9 @@ function applySearch(q) { searchQ = q; applyFilters(); }
 function applyFilters() {
   filtered = trData.filter(t => {
     const mF = activeF === 'all' || t.status === activeF;
-    const mS = !searchQ || t.ticker.toLowerCase().includes(searchQ.toLowerCase());
+    const mS = !searchQ ||
+               t.ticker.toLowerCase().includes(searchQ.toLowerCase()) ||
+               (t.name || '').toLowerCase().includes(searchQ.toLowerCase());
     return mF && mS;
   });
   renderTable();
@@ -506,7 +536,7 @@ function saveAll() {
 //  Export CSV
 // ────────────────────────────────────────────────
 function exportCSV() {
-  const headers = ['no','status','ticker','qty','price','total','commission','vat','total_cost','date'];
+  const headers = ['no','status','ticker','name','qty','price','total','commission','vat','total_cost','date'];
   const rows = trData.map(t => headers.map(h => t[h]??'').join(','));
   const csv  = '\uFEFF' + [headers.join(','), ...rows].join('\n');
   downloadFile(csv, `transactions_${H.today()}.csv`, 'text/csv');
@@ -548,10 +578,8 @@ function parseImportData() {
   if (!raw) { toast('لا يوجد بيانات للاستيراد', 'error'); return null; }
 
   try {
-    // JSON
     return JSON.parse(raw);
   } catch(e) {
-    // CSV
     try {
       const lines   = raw.split('\n').filter(l => l.trim());
       const headers = lines[0].split(',').map(h => h.trim());
@@ -571,12 +599,16 @@ function parseImportData() {
   }
 }
 
-// دمج
 function doImport() {
   const data = parseImportData();
   if (!data || !Array.isArray(data)) return;
   const startNo = trData.length + 1;
   data.forEach((t, i) => {
+    // إضافة الاسم تلقائياً إن لم يكن موجوداً
+    if (!t.name && t.ticker) {
+      const found = lookupTicker(t.ticker);
+      if (found) t.name = found.name;
+    }
     t.no = startNo + i;
     trData.push(t);
   });
@@ -586,12 +618,17 @@ function doImport() {
   toast(`✅ تم استيراد ${data.length} عملية (دمج)`, 'success');
 }
 
-// استبدال
 function doImportReplace() {
   if (!confirm('سيتم حذف كل البيانات الحالية واستبدالها. هل أنت متأكد؟')) return;
   const data = parseImportData();
   if (!data || !Array.isArray(data)) return;
-  trData = data.map((t, i) => ({ ...t, no: i + 1 }));
+  trData = data.map((t, i) => {
+    if (!t.name && t.ticker) {
+      const found = lookupTicker(t.ticker);
+      if (found) t.name = found.name;
+    }
+    return { ...t, no: i + 1 };
+  });
   closeImport();
   applyFilters();
   renderKPIs();
@@ -627,8 +664,6 @@ if (zone) {
 // ────────────────────────────────────────────────
 renderKPIs();
 applyFilters();
-
-// تعيين تاريخ اليوم افتراضياً
 document.getElementById('t-date').value = H.today();
 </script>
 </body>
