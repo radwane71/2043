@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<title>الأهداف — 2043</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="assets/tickers.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
+<style>
+.goal-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px; margin-bottom:16px;
+}
+.goal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.goal-name { font-size:18px; font-weight:700; }
+.goal-status {
+  padding:5px 12px; border-radius:12px; font-size:11px;
+  font-weight:600; text-transform:uppercase;
+}
+.goal-status.active { background:rgba(16,185,129,.15); color:#10b981; }
+.goal-status.completed { background:rgba(99,102,241,.15); color:#6366f1; }
+.goal-status.paused { background:rgba(245,158,11,.15); color:#f59e0b; }
+.goal-info { font-size:13px; color:var(--text3); margin-bottom:12px; }
+.goal-progress-bar {
+  width:100%; height:12px; background:var(--bg2);
+  border-radius:6px; overflow:hidden; margin-bottom:8px;
+}
+.goal-progress-fill {
+  height:100%; background:linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+  transition:width .3s;
+}
+.goal-footer { display:flex; justify-content:space-between; align-items:center; }
+.goal-amount { font-size:16px; font-weight:700; }
+.goal-actions { display:flex; gap:6px; }
+</style>
+</head>
+<body>
+<script>initPage('goals');</script>
+
+<div class="main">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>🎯 الأهداف المالية</h1>
+      <p>حدد أهدافك وتتبع تقدمك</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid cols-4" id="goalsKPIs"></div>
+
+  <div class="form-card">
+    <h3>➕ إضافة هدف جديد</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>اسم الهدف</label>
+        <input id="g-name" placeholder="شراء سيارة">
+      </div>
+      <div class="form-group">
+        <label>الفئة</label>
+        <select id="g-category">
+          <option value="شخصي">شخصي</option>
+          <option value="استثماري">استثماري</option>
+          <option value="عائلي">عائلي</option>
+          <option value="تعليمي">تعليمي</option>
+          <option value="صحي">صحي</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>المبلغ المطلوب (ر.س)</label>
+        <input id="g-target" type="number" step="1000" placeholder="150000">
+      </div>
+      <div class="form-group">
+        <label>المبلغ الحالي (ر.س)</label>
+        <input id="g-current" type="number" step="100" placeholder="50000">
+      </div>
+      <div class="form-group">
+        <label>التاريخ المستهدف</label>
+        <input id="g-deadline" type="date">
+      </div>
+      <div class="form-group">
+        <label>الحالة</label>
+        <select id="g-status">
+          <option value="active">نشط</option>
+          <option value="paused">متوقف</option>
+          <option value="completed">مكتمل</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ملاحظات</label>
+      <textarea id="g-notes" rows="2" placeholder="ملاحظات إضافية"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addGoal()">➕ إضافة</button>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">🎯 الأهداف</div>
+    <div id="goalsList"></div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════
+let goals = [];
+
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+function init() {
+  goals = APP.goals;
+  renderKPIs();
+  renderList();
+}
+
+// ══════════════════════════════════════════════
+//  KPIs
+// ══════════════════════════════════════════════
+function renderKPIs() {
+  const total = goals.length;
+  const active = goals.filter(g => g.status === 'active').length;
+  const completed = goals.filter(g => g.status === 'completed').length;
+  const totalTarget = goals.reduce((s, g) => s + (parseFloat(g.target) || 0), 0);
+
+  const kpis = [
+    { label:'إجمالي الأهداف',   value:total.toString(),              icon:'🎯' },
+    { label:'النشط',            value:active.toString(),             icon:'✅' },
+    { label:'المكتمل',          value:completed.toString(),          icon:'🏆' },
+    { label:'المبلغ المستهدف',  value:H.fmt(totalTarget, 0) + ' ر.س', icon:'💰' }
+  ];
+
+  document.getElementById('goalsKPIs').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+//  Add Goal
+// ══════════════════════════════════════════════
+function addGoal() {
+  const name = document.getElementById('g-name').value.trim();
+  const category = document.getElementById('g-category').value;
+  const target = parseFloat(document.getElementById('g-target').value) || 0;
+  const current = parseFloat(document.getElementById('g-current').value) || 0;
+  const deadline = document.getElementById('g-deadline').value;
+  const status = document.getElementById('g-status').value;
+  const notes = document.getElementById('g-notes').value.trim();
+
+  if (!name || !target) {
+    toast('⚠️ الاسم والمبلغ المطلوب مطلوبان', 'warn');
+    return;
+  }
+
+  const newGoal = {
+    id: Date.now(),
+    name,
+    category,
+    target,
+    current,
+    deadline,
+    status,
+    notes
+  };
+
+  goals.push(newGoal);
+
+  // Clear
+  document.getElementById('g-name').value = '';
+  document.getElementById('g-target').value = '';
+  document.getElementById('g-current').value = '';
+  document.getElementById('g-deadline').value = '';
+  document.getElementById('g-notes').value = '';
+
+  saveAll();
+  init();
+  toast('✅ تمت الإضافة بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  List
+// ══════════════════════════════════════════════
+function renderList() {
+  const list = document.getElementById('goalsList');
+
+  if (!goals.length) {
+    list.innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px">لا توجد أهداف</p>';
+    return;
+  }
+
+  list.innerHTML = goals.map(g => {
+    const progress = g.target > 0 ? (g.current / g.target * 100) : 0;
+    const progressClamped = Math.min(progress, 100);
+    
+    const statusLabels = {
+      active: 'نشط',
+      completed: 'مكتمل',
+      paused: 'متوقف'
+    };
+
+    return `
+      <div class="goal-card">
+        <div class="goal-header">
+          <div class="goal-name">${g.name}</div>
+          <div class="goal-status ${g.status}">${statusLabels[g.status]}</div>
+        </div>
+        <div class="goal-info">
+          ${g.category} • الموعد: ${g.deadline || 'غير محدد'}
+        </div>
+        <div class="goal-progress-bar">
+          <div class="goal-progress-fill" style="width:${progressClamped}%"></div>
+        </div>
+        <div class="goal-footer">
+          <div class="goal-amount">
+            ${H.fmt(g.current, 0)} / ${H.fmt(g.target, 0)} ر.س (${progress.toFixed(1)}%)
+          </div>
+          <div class="goal-actions">
+            <button class="btn btn-ghost btn-xs" onclick="updateGoal(${g.id})">💵</button>
+            <button class="btn btn-ghost btn-xs" onclick="editGoal(${g.id})">✏️</button>
+            <button class="btn btn-danger btn-xs" onclick="deleteGoal(${g.id})">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  Update Goal
+// ══════════════════════════════════════════════
+function updateGoal(id) {
+  const g = goals.find(gl => gl.id === id);
+  if (!g) return;
+
+  const newCurrent = prompt(`تحديث المبلغ الحالي لـ "${g.name}":`, g.current);
+  if (newCurrent === null || isNaN(newCurrent)) return;
+
+  g.current = parseFloat(newCurrent);
+
+  saveAll();
+  init();
+  toast('✅ تم التحديث بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Edit Goal
+// ══════════════════════════════════════════════
+function editGoal(id) {
+  const g = goals.find(gl => gl.id === id);
+  if (!g) return;
+
+  const newStatus = prompt(`تغيير حالة "${g.name}" (active/paused/completed):`, g.status);
+  if (!newStatus) return;
+
+  if (['active', 'paused', 'completed'].includes(newStatus)) {
+    g.status = newStatus;
+    saveAll();
+    init();
+    toast('✅ تم التعديل بنجاح', 'success');
+  } else {
+    toast('⚠️ حالة غير صحيحة', 'warn');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  Delete Goal
+// ══════════════════════════════════════════════
+function deleteGoal(id) {
+  if (!confirm('⚠️ هل أنت متأكد من حذف هذا الهدف؟')) return;
+
+  goals = goals.filter(g => g.id !== id);
+
+  saveAll();
+  init();
+  toast('✅ تم الحذف بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Save
+// ══════════════════════════════════════════════
+function saveAll() {
+  Store.save('goals_v1', goals);
+  toast('✅ تم الحفظ بنجاح', 'success');
+  dataSync.emit('goals');
+}
+
+// ══════════════════════════════════════════════
+//  Sync
+// ══════════════════════════════════════════════
+dataSync.onDataChanged('goals', init);
+
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
+</script>
+
+</body>
+</html>
