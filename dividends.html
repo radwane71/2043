@@ -14,43 +14,8 @@
 <script src="assets/auth.js"></script>
 <script src="assets/data-sync.js"></script>
 <style>
-.editable {
-  cursor:pointer; border-bottom:1px dashed var(--border2);
-  display:inline-block; min-width:30px; transition:border-color .2s;
-}
-.editable:hover { border-color:var(--accent); color:var(--accent); }
-.edit-input {
-  width:100px; padding:4px 6px; background:var(--bg2); 
-  border:1px solid var(--accent); border-radius:4px; 
-  color:var(--text); font-size:12px; text-align:center; 
-  outline:none; font-family:inherit;
-}
-.yield-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-.yield-tab {
-  padding:7px 18px; border-radius:20px; border:1px solid var(--border); 
-  background:transparent; color:var(--text3); font-size:12px; 
-  font-weight:600; cursor:pointer; transition:all .18s; font-family:inherit;
-}
-.yield-tab:hover { border-color:var(--accent); color:var(--accent); }
-.yield-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
-.yield-box { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:18px 0 4px; }
-.yield-item { text-align:center; }
-.yield-item .y-val { font-size:22px; font-weight:800; color:var(--accent); }
-.yield-item .y-label { font-size:12px; color:var(--text3); margin-top:4px; }
-.chart-wrap { position:relative; width:100%; height:260px; }
+.chart-wrap { position:relative; width:100%; height:300px; }
 .chart-wrap canvas { width:100% !important; height:100% !important; }
-.rank-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:4px; }
-.rank-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:var(--radius); padding:16px; text-align:center;
-}
-.rank-card .rank-no { font-size:22px; font-weight:800; color:var(--accent); }
-.rank-card .rank-name { font-size:12px; font-weight:700; margin:4px 0; }
-.rank-card .rank-val { font-size:12px; color:var(--text3); }
-@media(max-width:900px){ 
-  .rank-grid{ grid-template-columns:repeat(2,1fr); } 
-  .yield-box{ grid-template-columns:repeat(2,1fr); } 
-}
 </style>
 </head>
 <body>
@@ -60,49 +25,35 @@
 
   <div class="page-header">
     <div class="page-header-left">
-      <h1>💰 التوزيعات المستلمة</h1>
-      <p>سجل كامل — انقر على أي قيمة لتعديلها</p>
+      <h1>💰 التوزيعات النقدية</h1>
+      <p>سجل الأرباح الموزعة من الأسهم</p>
     </div>
     <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 CSV</button>
-      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">📦 JSON</button>
-      <button class="btn btn-warn btn-sm" onclick="showImport()">📤 استيراد</button>
       <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
     </div>
-  </div>
-
-  <div class="chart-card" style="margin-bottom:24px">
-    <div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:14px">📊 عائد المحفظة</div>
-    <div class="yield-tabs" id="yieldTabs">
-      <button class="yield-tab active" onclick="setYieldTab('12m',this)">آخر 12 شهر</button>
-      <button class="yield-tab" onclick="setYieldTab('yoc',this)">Yield on Cost</button>
-      <button class="yield-tab" onclick="setYieldTab('all',this)">إجمالي كل الوقت</button>
-    </div>
-    <div id="yieldContent"></div>
   </div>
 
   <div class="kpi-grid cols-4" id="divKPIs"></div>
 
   <div class="form-card">
-    <h3>➕ إضافة توزيع جديد</h3>
+    <h3>➕ إضافة توزيعات جديدة</h3>
     <div class="form-row">
       <div class="form-group">
         <label>التاريخ</label>
         <input id="d-date" type="date">
       </div>
       <div class="form-group">
-        <label>كود التيكر</label>
-        <input id="d-ticker" placeholder="4164" autocomplete="off" 
-          oninput="previewDivTicker()" style="text-transform:uppercase;letter-spacing:1px">
-        <div id="d-ticker-preview" style="font-size:11px;margin-top:4px;min-height:16px;font-weight:600"></div>
+        <label>رمز السهم</label>
+        <input id="d-ticker" placeholder="2222" list="tickerList">
+        <datalist id="tickerList"></datalist>
       </div>
       <div class="form-group">
-        <label>المبلغ (SAR)</label>
-        <input id="d-amount" type="number" step="0.01" placeholder="500">
+        <label>المبلغ (ر.س)</label>
+        <input id="d-amount" type="number" step="0.01" placeholder="1000">
       </div>
       <div class="form-group">
         <label>ملاحظة</label>
-        <input id="d-note" placeholder="اختياري">
+        <input id="d-note" placeholder="توزيع Q4 2024">
       </div>
     </div>
     <button class="btn btn-primary" onclick="addDividend()">➕ إضافة</button>
@@ -110,18 +61,13 @@
 
   <div class="chart-grid cols-2">
     <div class="chart-card">
-      <div class="chart-title">💰 التوزيعات حسب السهم</div>
-      <div class="chart-wrap"><canvas id="divByStock"></canvas></div>
+      <div class="chart-title">📊 التوزيعات الشهرية</div>
+      <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">📅 التوزيعات حسب الشهر</div>
-      <div class="chart-wrap"><canvas id="divByMonth"></canvas></div>
+      <div class="chart-title">🍰 التوزيع حسب السهم</div>
+      <div class="chart-wrap"><canvas id="byStockChart"></canvas></div>
     </div>
-  </div>
-
-  <div class="chart-card" style="margin-bottom:24px">
-    <div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:14px">🏆 أعلى 5 أسهم إجمالي توزيع</div>
-    <div class="rank-grid" id="top5total"></div>
   </div>
 
   <div class="toolbar">
@@ -133,166 +79,56 @@
     <table>
       <thead>
         <tr>
-          <th>#</th><th>التاريخ</th><th>التيكر</th><th>الاسم</th>
-          <th>المبلغ (SAR)</th><th>ملاحظة</th><th>حذف</th>
+          <th>#</th><th>التاريخ</th><th>السهم</th>
+          <th>المبلغ (ر.س)</th><th>ملاحظة</th><th>حذف</th>
         </tr>
       </thead>
       <tbody id="divBody"></tbody>
+      <tfoot id="divFoot"></tfoot>
     </table>
   </div>
-</div>
 
-<!-- Import Modal -->
-<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:500px">
-    <h3 style="margin-bottom:16px">📤 استيراد التوزيعات</h3>
-    <div class="info-box blue" style="margin-bottom:14px">يدعم <strong>JSON</strong> و <strong>CSV</strong>.</div>
-    <div style="border:2px dashed var(--border2);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text3);cursor:pointer"
-         onclick="document.getElementById('divFileInput').click()">📁 اضغط لاختيار ملف</div>
-    <input id="divFileInput" type="file" accept=".json,.csv" style="display:none" onchange="handleImportFile(this)">
-    <textarea id="divPaste" rows="5"
-      style="width:100%;margin-top:14px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;outline:none;resize:vertical"
-      placeholder='[{"no":1,"date":"2025-08-01","ticker":"4164","amount":500}]'></textarea>
-    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeImport()">إلغاء</button>
-      <button class="btn btn-primary" onclick="doImport(false)">دمج</button>
-      <button class="btn btn-danger" onclick="doImport(true)">استبدال</button>
-    </div>
-  </div>
 </div>
 
 <script>
 // ══════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
-let divData = [];
+let dividends = [];
 let filtered = [];
 let searchQ = '';
-let activeYieldTab = '12m';
-let chartStock = null, chartMonth = null;
+let chartMonthly = null, chartByStock = null;
 
 // ══════════════════════════════════════════════
 //  Init
 // ══════════════════════════════════════════════
 function init() {
-  divData = APP.dividends;
-  filtered = [...divData];
+  dividends = APP.dividends;
+  filtered = [...dividends];
+  populateTickerList();
   document.getElementById('d-date').value = H.today();
-  renderYield();
   renderKPIs();
   renderTable();
   renderCharts();
-  renderTop5();
-}
-
-// ══════════════════════════════════════════════
-//  Yield Calculation
-// ══════════════════════════════════════════════
-function setYieldTab(tab, btn) {
-  activeYieldTab = tab;
-  document.querySelectorAll('.yield-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderYield();
-}
-
-function renderYield() {
-  const portfolio = APP.portfolio;
-  const divs = divData;
-
-  const totalValue = portfolio.reduce((s,p) => s + p.qty * p.current_price, 0);
-  const totalCost  = portfolio.reduce((s,p) => s + p.qty * p.avg_cost, 0);
-
-  let html = '';
-
-  if (activeYieldTab === '12m') {
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(today.getFullYear() - 1);
-
-    const last12 = divs.filter(d => {
-      const dDate = new Date(d.date);
-      return dDate >= oneYearAgo && dDate <= today;
-    });
-
-    const total12 = last12.reduce((s,d) => s + d.amount, 0);
-    const yield12 = totalValue > 0 ? (total12 / totalValue * 100) : 0;
-
-    html = `
-      <div class="yield-box">
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(total12, 2)}</div>
-          <div class="y-label">إجمالي آخر 12 شهر (ر.س)</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(totalValue, 0)}</div>
-          <div class="y-label">قيمة المحفظة الحالية (ر.س)</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${yield12.toFixed(2)}%</div>
-          <div class="y-label">العائد السنوي (Dividend Yield)</div>
-        </div>
-      </div>
-    `;
-  } else if (activeYieldTab === 'yoc') {
-    const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
-    const yoc = totalCost > 0 ? (totalDiv / totalCost * 100) : 0;
-
-    html = `
-      <div class="yield-box">
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(totalDiv, 2)}</div>
-          <div class="y-label">إجمالي التوزيعات (ر.س)</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(totalCost, 0)}</div>
-          <div class="y-label">التكلفة الكلية (ر.س)</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${yoc.toFixed(2)}%</div>
-          <div class="y-label">Yield on Cost</div>
-        </div>
-      </div>
-    `;
-  } else {
-    // all
-    const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
-    const avgPerMonth = divs.length > 0 ? totalDiv / (divs.length / 4) : 0; // تقريبي
-
-    html = `
-      <div class="yield-box">
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(totalDiv, 0)}</div>
-          <div class="y-label">إجمالي التوزيعات (ر.س)</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${divs.length}</div>
-          <div class="y-label">عدد المرات</div>
-        </div>
-        <div class="yield-item">
-          <div class="y-val">${H.fmt(avgPerMonth, 0)}</div>
-          <div class="y-label">متوسط شهري تقريبي (ر.س)</div>
-        </div>
-      </div>
-    `;
-  }
-
-  document.getElementById('yieldContent').innerHTML = html;
 }
 
 // ══════════════════════════════════════════════
 //  KPIs
 // ══════════════════════════════════════════════
 function renderKPIs() {
-  const total = divData.reduce((s,d) => s + d.amount, 0);
-  const count = divData.length;
+  const total = dividends.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+  const count = dividends.length;
+  const thisYear = new Date().getFullYear();
+  const thisYearTotal = dividends
+    .filter(d => d.date.startsWith(thisYear.toString()))
+    .reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
   const avg = count > 0 ? total / count : 0;
-  const max = count > 0 ? Math.max(...divData.map(d => d.amount)) : 0;
 
   const kpis = [
-    { label:'الإجمالي',         value:H.fmt(total, 0) + ' ر.س', icon:'💰' },
-    { label:'عدد التوزيعات',     value:count.toString(),          icon:'🔢' },
-    { label:'المتوسط',          value:H.fmt(avg, 2) + ' ر.س',   icon:'📊' },
-    { label:'أعلى توزيع',       value:H.fmt(max, 2) + ' ر.س',   icon:'🏆' }
+    { label:'الإجمالي',          value:H.fmt(total, 0) + ' ر.س',         icon:'💰' },
+    { label:'هذا العام',         value:H.fmt(thisYearTotal, 0) + ' ر.س', icon:'📅' },
+    { label:'عدد التوزيعات',     value:count.toString(),                  icon:'🔢' },
+    { label:'متوسط التوزيع',     value:H.fmt(avg, 0) + ' ر.س',           icon:'📊' }
   ];
 
   document.getElementById('divKPIs').innerHTML = kpis.map(k => `
@@ -305,20 +141,13 @@ function renderKPIs() {
 }
 
 // ══════════════════════════════════════════════
-//  Preview Ticker
+//  Ticker Datalist
 // ══════════════════════════════════════════════
-function previewDivTicker() {
-  const code = document.getElementById('d-ticker').value.trim().toUpperCase();
-  const prev = document.getElementById('d-ticker-preview');
-  const name = H.tickerName(code);
-  if (!code) { prev.textContent = ''; return; }
-  if (name !== code) {
-    prev.textContent = `✅ ${name}`;
-    prev.style.color = 'var(--green)';
-  } else {
-    prev.textContent = '⚠️ سهم غير معروف';
-    prev.style.color = 'var(--yellow)';
-  }
+function populateTickerList() {
+  const tickers = TickerDB.all();
+  document.getElementById('tickerList').innerHTML = tickers.map(t => 
+    `<option value="${t.code}">${t.name}</option>`
+  ).join('');
 }
 
 // ══════════════════════════════════════════════
@@ -327,16 +156,16 @@ function previewDivTicker() {
 function addDividend() {
   const date = document.getElementById('d-date').value;
   const ticker = document.getElementById('d-ticker').value.trim().toUpperCase();
-  const amount = parseFloat(document.getElementById('d-amount').value);
+  const amount = parseFloat(document.getElementById('d-amount').value) || 0;
   const note = document.getElementById('d-note').value.trim();
 
   if (!date || !ticker || !amount) {
-    toast('⚠️ جميع الحقول مطلوبة', 'warn');
+    toast('⚠️ التاريخ والسهم والمبلغ مطلوبة', 'warn');
     return;
   }
 
   const newDiv = {
-    no: divData.length + 1,
+    no: dividends.length + 1,
     date,
     ticker,
     stock: H.tickerName(ticker),
@@ -344,13 +173,12 @@ function addDividend() {
     note
   };
 
-  divData.push(newDiv);
+  dividends.push(newDiv);
 
   // Clear
   document.getElementById('d-ticker').value = '';
   document.getElementById('d-amount').value = '';
   document.getElementById('d-note').value = '';
-  document.getElementById('d-ticker-preview').textContent = '';
 
   saveAll();
   init();
@@ -362,71 +190,49 @@ function addDividend() {
 // ══════════════════════════════════════════════
 function renderTable() {
   const tbody = document.getElementById('divBody');
+  const tfoot = document.getElementById('divFoot');
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text3)">لا توجد توزيعات</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">لا توجد توزيعات</td></tr>';
+    tfoot.innerHTML = '';
     updateCount();
     return;
   }
 
-  tbody.innerHTML = filtered.map(d => `
+  const sortedFiltered = [...filtered].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  tbody.innerHTML = sortedFiltered.map(d => `
     <tr>
       <td>${d.no}</td>
       <td>${d.date}</td>
-      <td><strong>${d.ticker}</strong></td>
-      <td>${d.stock || H.tickerName(d.ticker)}</td>
-      <td>
-        <span class="editable" onclick="editAmount(${d.no}, ${d.amount})">${H.fmt(d.amount, 2)}</span>
-      </td>
+      <td><strong>${d.stock}</strong></td>
+      <td><strong>${H.fmt(d.amount, 2)}</strong></td>
       <td>${d.note || '-'}</td>
       <td><button class="btn btn-danger btn-xs" onclick="deleteDividend(${d.no})">🗑️</button></td>
     </tr>
   `).join('');
 
+  const totalFiltered = filtered.reduce((s, d) => s + d.amount, 0);
+
+  tfoot.innerHTML = `
+    <tr style="font-weight:700;background:var(--bg2)">
+      <td colspan="3">الإجمالي</td>
+      <td>${H.fmt(totalFiltered, 2)}</td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+
   updateCount();
-}
-
-// ══════════════════════════════════════════════
-//  Edit Amount
-// ══════════════════════════════════════════════
-function editAmount(no, currentAmount) {
-  const span = event.target;
-  const input = document.createElement('input');
-  input.className = 'edit-input';
-  input.type = 'number';
-  input.step = '0.01';
-  input.value = currentAmount;
-
-  span.replaceWith(input);
-  input.focus();
-  input.select();
-
-  const save = () => {
-    const newAmount = parseFloat(input.value) || currentAmount;
-    const idx = divData.findIndex(d => d.no === no);
-    if (idx !== -1) {
-      divData[idx].amount = newAmount;
-    }
-    renderTable();
-    renderKPIs();
-    renderYield();
-  };
-
-  input.onblur = save;
-  input.onkeydown = (e) => {
-    if (e.key === 'Enter') save();
-    if (e.key === 'Escape') renderTable();
-  };
 }
 
 // ══════════════════════════════════════════════
 //  Delete Dividend
 // ══════════════════════════════════════════════
 function deleteDividend(no) {
-  if (!confirm('⚠️ هل أنت متأكد من حذف هذا التوزيع؟')) return;
+  if (!confirm('⚠️ هل أنت متأكد من حذف هذه التوزيعات؟')) return;
 
-  divData = divData.filter(d => d.no !== no);
-  divData.forEach((d, i) => d.no = i + 1);
+  dividends = dividends.filter(d => d.no !== no);
+  dividends.forEach((d, i) => d.no = i + 1);
 
   saveAll();
   init();
@@ -439,73 +245,46 @@ function deleteDividend(no) {
 function applySearch(q) {
   searchQ = q.trim().toLowerCase();
   filtered = searchQ
-    ? divData.filter(d =>
-        d.ticker.toLowerCase().includes(searchQ) ||
+    ? dividends.filter(d =>
         (d.stock || '').toLowerCase().includes(searchQ) ||
-        d.date.includes(searchQ)
+        (d.ticker || '').toLowerCase().includes(searchQ) ||
+        d.date.includes(searchQ) ||
+        (d.note || '').toLowerCase().includes(searchQ)
       )
-    : [...divData];
+    : [...dividends];
   renderTable();
 }
 
 function updateCount() {
   document.getElementById('trCount').textContent =
-    `${filtered.length} من ${divData.length} توزيع`;
+    `${filtered.length} من ${dividends.length} توزيع`;
 }
 
 // ══════════════════════════════════════════════
 //  Charts
 // ══════════════════════════════════════════════
 function renderCharts() {
-  if (!divData.length) {
-    document.querySelector('#divByStock').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
-    document.querySelector('#divByMonth').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+  if (!dividends.length) {
+    ['#monthlyChart', '#byStockChart'].forEach(id => {
+      document.querySelector(id).parentElement.innerHTML =
+        '<p style="text-align:center;color:var(--text3);padding:60px 20px">لا توجد توزيعات</p>';
+    });
     return;
   }
 
-  // By Stock
-  const byStock = {};
-  divData.forEach(d => {
-    byStock[d.ticker] = (byStock[d.ticker] || 0) + d.amount;
-  });
-  const stockData = Object.entries(byStock).sort((a,b) => b[1] - a[1]).slice(0, 10);
-
-  const ctx1 = document.getElementById('divByStock').getContext('2d');
-  if (chartStock) chartStock.destroy();
-  chartStock = new Chart(ctx1, {
-    type: 'bar',
-    data: {
-      labels: stockData.map(s => H.tickerName(s[0])),
-      datasets: [{
-        label: 'التوزيعات (ر.س)',
-        data: stockData.map(s => s[1]),
-        backgroundColor: '#6366f1',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { color: 'var(--text3)' }, grid: { color: 'var(--border)' } },
-        x: { ticks: { color: 'var(--text3)' }, grid: { display: false } }
-      }
-    }
-  });
-
-  // By Month
+  // Monthly Chart
   const byMonth = {};
-  divData.forEach(d => {
+  dividends.forEach(d => {
     const month = d.date.substring(0, 7);
     byMonth[month] = (byMonth[month] || 0) + d.amount;
   });
+
   const sorted = Object.keys(byMonth).sort();
   const last12 = sorted.slice(-12);
 
-  const ctx2 = document.getElementById('divByMonth').getContext('2d');
-  if (chartMonth) chartMonth.destroy();
-  chartMonth = new Chart(ctx2, {
+  const ctx1 = document.getElementById('monthlyChart').getContext('2d');
+  if (chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(ctx1, {
     type: 'bar',
     data: {
       labels: last12.map(m => {
@@ -515,164 +294,73 @@ function renderCharts() {
       datasets: [{
         label: 'التوزيعات (ر.س)',
         data: last12.map(m => byMonth[m]),
-        backgroundColor: '#6366f1',
-        borderRadius: 6
+        backgroundColor: CHART_COLORS[0],
+        borderRadius: 8
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { color: 'var(--text3)' }, grid: { color: 'var(--border)' } },
-        x: { ticks: { color: 'var(--text3)' }, grid: { display: false } }
+      ...getChartOptions('bar'),
+      plugins: {
+        ...getChartOptions('bar').plugins,
+        legend: { display: false },
+        tooltip: {
+          ...getChartOptions('bar').plugins.tooltip,
+          callbacks: { label: (ctx) => `${H.fmt(ctx.parsed.y, 0)} ر.س` }
+        }
+      }
+    }
+  });
+
+  // By Stock Chart
+  const byStock = {};
+  dividends.forEach(d => {
+    const stock = d.stock || H.tickerName(d.ticker);
+    byStock[stock] = (byStock[stock] || 0) + d.amount;
+  });
+
+  const stockData = Object.entries(byStock)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const ctx2 = document.getElementById('byStockChart').getContext('2d');
+  if (chartByStock) chartByStock.destroy();
+  chartByStock = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: stockData.map(s => s[0]),
+      datasets: [{
+        data: stockData.map(s => s[1]),
+        backgroundColor: CHART_COLORS,
+        borderWidth: 3,
+        borderColor: CHART_BORDER_COLOR
+      }]
+    },
+    options: {
+      ...getChartOptions(),
+      plugins: {
+        ...getChartOptions().plugins,
+        tooltip: {
+          ...getChartOptions().plugins.tooltip,
+          callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` }
+        }
       }
     }
   });
 }
 
 // ══════════════════════════════════════════════
-//  Top 5
-// ══════════════════════════════════════════════
-function renderTop5() {
-  if (!divData.length) {
-    document.getElementById('top5total').innerHTML = '<p style="text-align:center;color:var(--text3);padding:40px">لا توجد بيانات</p>';
-    return;
-  }
-
-  const byStock = {};
-  divData.forEach(d => {
-    byStock[d.ticker] = (byStock[d.ticker] || 0) + d.amount;
-  });
-
-  const top5 = Object.entries(byStock).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
-  document.getElementById('top5total').innerHTML = top5.map((s, i) => `
-    <div class="rank-card">
-      <div class="rank-no">#${i + 1}</div>
-      <div class="rank-name">${H.tickerName(s[0])}</div>
-      <div class="rank-val">${H.fmt(s[1], 0)} ر.س</div>
-    </div>
-  `).join('');
-}
-
-// ══════════════════════════════════════════════
 //  Save
 // ══════════════════════════════════════════════
 function saveAll() {
-  Store.save('dividends_v1', divData);
+  Store.save('dividends_v1', dividends);
   toast('✅ تم الحفظ بنجاح', 'success');
   dataSync.emit('dividends');
-}
-
-// ══════════════════════════════════════════════
-//  Export CSV
-// ══════════════════════════════════════════════
-function exportCSV() {
-  const headers = ['#','التاريخ','التيكر','الاسم','المبلغ','ملاحظة'];
-  const rows = divData.map(d => [d.no, d.date, d.ticker, d.stock, d.amount, d.note]);
-
-  let csv = headers.join(',') + '\n';
-  rows.forEach(r => { csv += r.join(',') + '\n'; });
-
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `dividends_${H.today()}.csv`;
-  link.click();
-
-  toast('✅ تم تصدير CSV', 'success');
-}
-
-// ══════════════════════════════════════════════
-//  Export JSON
-// ══════════════════════════════════════════════
-function exportJSON() {
-  const json = JSON.stringify(divData, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `dividends_${H.today()}.json`;
-  link.click();
-
-  toast('✅ تم تصدير JSON', 'success');
-}
-
-// ══════════════════════════════════════════════
-//  Import
-// ══════════════════════════════════════════════
-function showImport() {
-  document.getElementById('importModal').style.display = 'flex';
-}
-
-function closeImport() {
-  document.getElementById('importModal').style.display = 'none';
-  document.getElementById('divPaste').value = '';
-}
-
-function handleImportFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    document.getElementById('divPaste').value = e.target.result;
-  };
-  reader.readAsText(file);
-}
-
-function doImport(replace) {
-  const raw = document.getElementById('divPaste').value.trim();
-  if (!raw) { toast('⚠️ لا توجد بيانات للاستيراد', 'warn'); return; }
-
-  try {
-    let imported = [];
-
-    if (raw.startsWith('[') || raw.startsWith('{')) {
-      imported = JSON.parse(raw);
-      if (!Array.isArray(imported)) imported = [imported];
-    } else {
-      // CSV
-      const lines = raw.split('\n').filter(l => l.trim());
-      lines.shift();
-      imported = lines.map(line => {
-        const parts = line.split(',');
-        return {
-          no: parseInt(parts[0]) || 0,
-          date: parts[1] || H.today(),
-          ticker: (parts[2] || '').trim().toUpperCase(),
-          stock: parts[3] || '',
-          amount: parseFloat(parts[4]) || 0,
-          note: parts[5] || ''
-        };
-      });
-    }
-
-    imported = H.normalizeDividends(imported);
-
-    if (replace) {
-      divData = imported;
-    } else {
-      divData.push(...imported);
-    }
-
-    divData.forEach((d, i) => d.no = i + 1);
-
-    saveAll();
-    closeImport();
-    init();
-
-    toast(`✅ تم استيراد ${imported.length} توزيع`, 'success');
-  } catch(e) {
-    toast('❌ خطأ في تنسيق البيانات', 'error');
-  }
 }
 
 // ══════════════════════════════════════════════
 //  Sync
 // ══════════════════════════════════════════════
 dataSync.onDataChanged('dividends', init);
-dataSync.onDataChanged('portfolio', renderYield);
 
 // ══════════════════════════════════════════════
 //  Run
