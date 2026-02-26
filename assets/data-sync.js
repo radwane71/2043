@@ -1,254 +1,104 @@
-// ═══════════════════════════════════════════════════════════
-//  data-sync.js — نظام المزامنة المركزي للبيانات
-//  يضمن تحديث جميع الصفحات فوراً عند أي تغيير
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+//  data-sync.js — نظام المزامنة بين الصفحات
+//  يعتمد على storage events + CustomEvents
+// ═══════════════════════════════════════════════════════════════════
 
-class DataSync {
-  constructor() {
-    this.listeners = {};
-    this.lastUpdate = {};
-    this.init();
+const dataSync = (() => {
+  const _listeners = {};  // { dataKey: [callback, ...] }
+
+  // ── الاستماع لتغييرات localStorage من نافذة أخرى ──
+  window.addEventListener('storage', (e) => {
+    if (!e.key) return;
+    const key = _storageKeyToDataKey(e.key);
+    if (!key) return;
+    _notify(key, e.newValue);
+  });
+
+  // ── الاستماع للأحداث المخصصة (نفس النافذة) ──
+  window.addEventListener('2043:dataChanged', (e) => {
+    const source = e.detail?.source;
+    if (!source) return;
+    _notifyFromStore(source);
+  });
+
+  function _storageKeyToDataKey(storageKey) {
+    const map = {
+      'portfolio_v1':        'portfolio',
+      'transactions_v1':     'transactions',
+      'dividends_v1':        'dividends',
+      'properties_v1':       'properties',
+      'gold_v1':             'gold',
+      'cash_v1':             'cash',
+      'savings_v1':          'savings',
+      'networth_snapshots':  'networth',
+      'settings_v1':         'settings',
+      'custom_tickers':      'tickers'
+    };
+    return map[storageKey] || null;
   }
 
-  init() {
-    // الاستماع للتغييرات في localStorage
-    window.addEventListener('storage', (e) => {
-      if (e.key && e.key.startsWith('sync_')) {
-        this.handleStorageChange(e.key, e.newValue);
-      }
-    });
+  function _notify(dataKey, rawValue) {
+    const callbacks = _listeners[dataKey] || [];
+    if (!callbacks.length) return;
 
-    // تحديث كل 30 ثانية للتأكد من المزامنة
-    setInterval(() => this.checkForUpdates(), 30000);
-  }
-
-  // إضافة مستمع لتغييرات البيانات
-  onDataChanged(dataType, callback) {
-    if (!this.listeners[dataType]) {
-      this.listeners[dataType] = [];
-    }
-    this.listeners[dataType].push(callback);
-  }
-
-  // إزالة مستمع
-  removeDataListener(dataType, callback) {
-    if (this.listeners[dataType]) {
-      this.listeners[dataType] = this.listeners[dataType].filter(cb => cb !== callback);
-    }
-  }
-
-  // إعلام جميع المستمعين بالتغيير
-  notifyDataChanged(dataType, data) {
-    const timestamp = Date.now();
-    this.lastUpdate[dataType] = timestamp;
-
-    // حفظ في localStorage للمزامنة بين الصفحات
-    localStorage.setItem(`sync_${dataType}`, JSON.stringify({
-      data,
-      timestamp,
-      source: window.location.pathname
-    }));
-
-    // إعلام المستمعين في نفس الصفحة
-    if (this.listeners[dataType]) {
-      this.listeners[dataType].forEach(callback => {
-        try {
-          callback(data, timestamp);
-        } catch (error) {
-          console.error('Error in data listener:', error);
-        }
-      });
-    }
-
-    // إرسال إشارة للمزامنة الفورية
-    this.broadcastUpdate(dataType, timestamp);
-  }
-
-  // معالجة التغييرات من localStorage
-  handleStorageChange(key, newValue) {
-    if (!newValue) return;
-
+    let data = null;
     try {
-      const parsed = JSON.parse(newValue);
-      const dataType = key.replace('sync_', '');
-      
-      // تجاهل التحديثات من نفس الصفحة
-      if (parsed.source === window.location.pathname) return;
-
-      // التحقق من أن التحديث جديد
-      if (this.lastUpdate[dataType] && this.lastUpdate[dataType] >= parsed.timestamp) {
-        return;
-      }
-
-      this.lastUpdate[dataType] = parsed.timestamp;
-
-      // إعلام المستمعين
-      if (this.listeners[dataType]) {
-        this.listeners[dataType].forEach(callback => {
-          try {
-            callback(parsed.data, parsed.timestamp);
-          } catch (error) {
-            console.error('Error in cross-page listener:', error);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error parsing sync data:', error);
-    }
-  }
-
-  // بث التحديث لجميع الصفحات
-  broadcastUpdate(dataType, timestamp) {
-    // استخدام postMessage للمزامنة الفورية في نفس النافذة
-    if (window.opener) {
-      window.opener.postMessage({
-        type: 'dataSync',
-        dataType,
-        timestamp
-      }, '*');
+      const decoded = _tryDecode(rawValue);
+      data = decoded;
+    } catch(e) {
+      data = null;
     }
 
-    // إعلام جميع النوافذ المفتوحة
-    window.postMessage({
-      type: 'dataSync',
-      dataType,
-      timestamp
-    }, '*');
-  }
-
-  // التحقق من التحديثات الدورية
-  checkForUpdates() {
-    const dataTypes = ['portfolio', 'transactions', 'dividends', 'networth'];
-    
-    dataTypes.forEach(dataType => {
-      const syncKey = `sync_${dataType}`;
-      const syncData = localStorage.getItem(syncKey);
-      
-      if (syncData) {
-        try {
-          const parsed = JSON.parse(syncData);
-          if (!this.lastUpdate[dataType] || parsed.timestamp > this.lastUpdate[dataType]) {
-            this.handleStorageChange(syncKey, syncData);
-          }
-        } catch (error) {
-          console.error('Error checking updates:', error);
-        }
-      }
+    callbacks.forEach(cb => {
+      try { cb(data, Date.now()); } catch(e) {}
     });
   }
 
-  // حفظ البيانات مع المزامنة
-  saveAndSync(dataType, data) {
-    // حفظ البيانات الأصلية
-    Store.save(`${dataType}_v1`, data);
-    
-    // إعلام بالتغيير
-    this.notifyDataChanged(dataType, data);
+  function _notifyFromStore(dataKey) {
+    const storeKeyMap = {
+      'portfolio':    'portfolio_v1',
+      'transactions': 'transactions_v1',
+      'dividends':    'dividends_v1',
+      'properties':   'properties_v1',
+      'gold':         'gold_v1',
+      'cash':         'cash_v1',
+      'savings':      'savings_v1',
+      'settings':     'settings_v1',
+      'tickers':      'custom_tickers'
+    };
+    const storeKey = storeKeyMap[dataKey];
+    if (!storeKey) return;
+
+    const raw = localStorage.getItem(storeKey);
+    _notify(dataKey, raw);
   }
 
-  // تحديث البيانات مع المزامنة
-  updateAndSync(dataType, updater) {
-    const currentData = Store.load(`${dataType}_v1`, APP[dataType] || []);
-    const updatedData = updater(currentData);
-    
-    this.saveAndSync(dataType, updatedData);
-    return updatedData;
+  function _tryDecode(raw) {
+    if (!raw) return null;
+    try {
+      const bytes = CryptoJS.AES.decrypt(raw, '2043_secure_key_v2');
+      return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+    } catch(e) {
+      try { return JSON.parse(raw); } catch(e2) { return null; }
+    }
   }
-}
 
-// إنشاء نسخة واحدة من نظام المزامنة
-const dataSync = new DataSync();
+  return {
+    // تسجيل مستمع لمفتاح بيانات معين
+    onDataChanged(dataKey, callback) {
+      if (!_listeners[dataKey]) _listeners[dataKey] = [];
+      _listeners[dataKey].push(callback);
+    },
 
-// دوال مساعدة للتحديثات الفورية
-function updatePortfolio(updater) {
-  return dataSync.updateAndSync('portfolio', updater);
-}
+    // إزالة مستمع
+    offDataChanged(dataKey, callback) {
+      if (!_listeners[dataKey]) return;
+      _listeners[dataKey] = _listeners[dataKey].filter(cb => cb !== callback);
+    },
 
-function updateTransactions(updater) {
-  return dataSync.updateAndSync('transactions', updater);
-}
-
-function updateDividends(updater) {
-  return dataSync.updateAndSync('dividends', updater);
-}
-
-function updateNetWorth(updater) {
-  return dataSync.updateAndSync('networth', updater);
-}
-
-// دالة لإعادة حساب المحفظة بناءً على العمليات
-function recalculatePortfolioFromTransactions() {
-  const transactions = Store.load('transactions_v1', APP.transactions);
-  const portfolio = Store.load('portfolio_v1', APP.portfolio);
-  
-  // إنشاء خريطة للتيكرات
-  const tickerMap = {};
-  portfolio.forEach(stock => {
-    tickerMap[stock.ticker] = {...stock};
-  });
-
-  // تطبيق العمليات على المحفظة
-  transactions.forEach(tx => {
-    if (!tickerMap[tx.ticker]) {
-      // البحث عن التيكر في قائمة التيكرات
-      const tickerInfo = TICKERS.find(t => t.code === tx.ticker);
-      if (tickerInfo) {
-        tickerMap[tx.ticker] = {
-          stock: tickerInfo.name,
-          ticker: tx.ticker,
-          sector: tickerInfo.sector || 'غير محدد',
-          qty: 0,
-          avg_cost: 0,
-          current_price: tickerMap[tx.ticker]?.current_price || 0,
-          goal_alloc: 0.05,
-          buy_zone_max: tickerMap[tx.ticker]?.buy_zone_max || 0,
-          sell_zone_low: tickerMap[tx.ticker]?.sell_zone_low || 0,
-          sell_zone_high: tickerMap[tx.ticker]?.sell_zone_high || 0,
-          decision: 'مراقبة',
-          eval: 'تمت إضافته من العمليات',
-          is_bluechip: tickerInfo.is_bluechip || false
-        };
-      }
+    // إشعار يدوي
+    emit(dataKey) {
+      _notifyFromStore(dataKey);
     }
-
-    if (tickerMap[tx.ticker]) {
-      const stock = tickerMap[tx.ticker];
-      if (tx.status === 'Buy') {
-        const newTotal = (stock.qty * stock.avg_cost) + tx.total_cost;
-        const newQty = stock.qty + tx.qty;
-        stock.avg_cost = newQty > 0 ? newTotal / newQty : 0;
-        stock.qty = newQty;
-      } else if (tx.status === 'Sell' && stock.qty > 0) {
-        stock.qty = Math.max(0, stock.qty - tx.qty);
-      }
-    }
-  });
-
-  const updatedPortfolio = Object.values(tickerMap).filter(stock => stock.qty > 0);
-  updatePortfolio(() => updatedPortfolio);
-  
-  return updatedPortfolio;
-}
-
-// دالة لتحديث جميع الصفحات عند إضافة عملية
-function syncAfterTransactionChange() {
-  // إعادة حساب المحفظة
-  recalculatePortfolioFromTransactions();
-  
-  // إجبار تحديث الصفحات الأخرى
-  setTimeout(() => {
-    dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
-    dataSync.notifyDataChanged('portfolio', { action: 'refresh' });
-    dataSync.notifyDataChanged('networth', { action: 'refresh' });
-  }, 100);
-}
-
-// التصدير للاستخدام العام
-window.DataSync = DataSync;
-window.dataSync = dataSync;
-window.updatePortfolio = updatePortfolio;
-window.updateTransactions = updateTransactions;
-window.updateDividends = updateDividends;
-window.updateNetWorth = updateNetWorth;
-window.recalculatePortfolioFromTransactions = recalculatePortfolioFromTransactions;
-window.syncAfterTransactionChange = syncAfterTransactionChange;
+  };
+})();
