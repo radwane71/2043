@@ -26,7 +26,7 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>🥇 الذهب</h1>
-      <p>إدارة الاستثمار في الذهب</p>
+      <p>إدارة استثماراتك في الذهب</p>
     </div>
     <div class="page-header-right">
       <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
@@ -36,7 +36,7 @@
   <div class="kpi-grid cols-4" id="goldKPIs"></div>
 
   <div class="form-card">
-    <h3>➕ إضافة استثمار ذهب جديد</h3>
+    <h3>➕ إضافة ذهب جديد</h3>
     <div class="form-row">
       <div class="form-group">
         <label>النوع</label>
@@ -44,7 +44,6 @@
           <option value="سبيكة">سبيكة</option>
           <option value="عملة">عملة</option>
           <option value="مجوهرات">مجوهرات</option>
-          <option value="أونصات">أونصات</option>
           <option value="أخرى">أخرى</option>
         </select>
       </div>
@@ -61,16 +60,16 @@
         </select>
       </div>
       <div class="form-group">
-        <label>سعر الشراء (للجرام/ر.س)</label>
+        <label>سعر الشراء (للجرام)</label>
         <input id="g-purchase-price" type="number" step="0.01" placeholder="280">
+      </div>
+      <div class="form-group">
+        <label>السعر الحالي (للجرام)</label>
+        <input id="g-current-price" type="number" step="0.01" placeholder="310">
       </div>
       <div class="form-group">
         <label>تاريخ الشراء</label>
         <input id="g-purchase-date" type="date">
-      </div>
-      <div class="form-group">
-        <label>السعر الحالي (للجرام/ر.س)</label>
-        <input id="g-current-price" type="number" step="0.01" placeholder="310">
       </div>
     </div>
     <div class="form-group">
@@ -102,12 +101,12 @@
         <tr>
           <th>النوع</th><th>الوزن</th><th>الوحدة</th>
           <th>سعر الشراء</th><th>السعر الحالي</th>
-          <th>القيمة الحالية</th><th>التكلفة</th>
-          <th>الربح/الخسارة</th><th>%</th>
-          <th>تعديل</th><th>حذف</th>
+          <th>القيمة الحالية</th><th>الربح/الخسارة</th><th>%</th>
+          <th>حذف</th>
         </tr>
       </thead>
       <tbody id="goldBody"></tbody>
+      <tfoot id="goldFoot"></tfoot>
     </table>
   </div>
 
@@ -128,6 +127,7 @@ let chartType = null, chartPnL = null;
 function init() {
   gold = APP.gold;
   filtered = [...gold];
+  document.getElementById('g-purchase-date').value = H.today();
   renderKPIs();
   renderTable();
   renderCharts();
@@ -137,28 +137,32 @@ function init() {
 //  KPIs
 // ══════════════════════════════════════════════
 function renderKPIs() {
+  const totalWeight = gold.reduce((s, g) => {
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
+    return s + weightInGrams;
+  }, 0);
+
   const totalValue = gold.reduce((s, g) => {
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
     return s + weightInGrams * (parseFloat(g.current_price) || 0);
   }, 0);
 
   const totalCost = gold.reduce((s, g) => {
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
     return s + weightInGrams * (parseFloat(g.purchase_price) || 0);
   }, 0);
 
   const totalPnL = totalValue - totalCost;
-
-  const totalWeight = gold.reduce((s, g) => {
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
-    return s + weightInGrams;
-  }, 0);
+  const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost * 100) : 0;
 
   const kpis = [
-    { label:'القيمة الإجمالية',  value:H.fmt(totalValue, 0) + ' ر.س',     icon:'💰' },
-    { label:'التكلفة الإجمالية', value:H.fmt(totalCost, 0) + ' ر.س',      icon:'📥' },
-    { label:'الربح/الخسارة',     value:H.fmt(totalPnL, 0) + ' ر.س',       icon:'📊', color:H.colorClass(totalPnL) },
-    { label:'الوزن الإجمالي',    value:H.fmt(totalWeight, 2) + ' جرام',   icon:'⚖️' }
+    { label:'الوزن الإجمالي',    value:H.fmt(totalWeight, 2) + ' جرام', icon:'⚖️' },
+    { label:'القيمة الحالية',    value:H.fmt(totalValue, 0) + ' ر.س',  icon:'💰' },
+    { label:'الربح/الخسارة',     value:H.fmt(totalPnL, 0) + ' ر.س',    icon:'📈', color:H.colorClass(totalPnL) },
+    { label:'النسبة %',          value:H.pct(totalPnLPct),              icon:'📊', color:H.colorClass(totalPnLPct) }
   ];
 
   document.getElementById('goldKPIs').innerHTML = kpis.map(k => `
@@ -178,12 +182,12 @@ function addGold() {
   const weight = parseFloat(document.getElementById('g-weight').value) || 0;
   const unit = document.getElementById('g-unit').value;
   const purchase_price = parseFloat(document.getElementById('g-purchase-price').value) || 0;
-  const purchase_date = document.getElementById('g-purchase-date').value;
   const current_price = parseFloat(document.getElementById('g-current-price').value) || 0;
+  const purchase_date = document.getElementById('g-purchase-date').value;
   const notes = document.getElementById('g-notes').value.trim();
 
-  if (!weight || !purchase_price) {
-    toast('⚠️ الوزن وسعر الشراء مطلوبان', 'warn');
+  if (!weight || !purchase_price || !current_price) {
+    toast('⚠️ الوزن وسعر الشراء والسعر الحالي مطلوبة', 'warn');
     return;
   }
 
@@ -193,8 +197,8 @@ function addGold() {
     weight,
     unit,
     purchase_price,
-    purchase_date: purchase_date || H.today(),
     current_price,
+    purchase_date: purchase_date || H.today(),
     notes
   };
 
@@ -203,7 +207,6 @@ function addGold() {
   // Clear
   document.getElementById('g-weight').value = '';
   document.getElementById('g-purchase-price').value = '';
-  document.getElementById('g-purchase-date').value = '';
   document.getElementById('g-current-price').value = '';
   document.getElementById('g-notes').value = '';
 
@@ -217,19 +220,28 @@ function addGold() {
 // ══════════════════════════════════════════════
 function renderTable() {
   const tbody = document.getElementById('goldBody');
+  const tfoot = document.getElementById('goldFoot');
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3)">لا توجد استثمارات ذهب</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">لا توجد استثمارات في الذهب</td></tr>';
+    tfoot.innerHTML = '';
     updateCount();
     return;
   }
 
+  let totalValue = 0, totalCost = 0;
+
   tbody.innerHTML = filtered.map(g => {
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
-    const value = weightInGrams * (parseFloat(g.current_price) || 0);
-    const cost = weightInGrams * (parseFloat(g.purchase_price) || 0);
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
+    
+    const value = weightInGrams * g.current_price;
+    const cost = weightInGrams * g.purchase_price;
     const pnl = value - cost;
-    const pct = cost > 0 ? (pnl / cost * 100) : 0;
+    const pnlPct = cost > 0 ? (pnl / cost * 100) : 0;
+
+    totalValue += value;
+    totalCost += cost;
 
     return `
       <tr>
@@ -238,36 +250,33 @@ function renderTable() {
         <td>${g.unit}</td>
         <td>${H.fmt(g.purchase_price, 2)}</td>
         <td>${H.fmt(g.current_price, 2)}</td>
-        <td>${H.fmt(value, 2)}</td>
-        <td>${H.fmt(cost, 2)}</td>
-        <td style="${H.colorStyle(pnl)}">${H.fmt(pnl, 2)}</td>
-        <td style="${H.colorStyle(pct)}">${H.pct(pct)}</td>
-        <td><button class="btn btn-ghost btn-xs" onclick="editGold(${g.id})">✏️</button></td>
+        <td><strong>${H.fmt(value, 0)}</strong></td>
+        <td style="${H.colorStyle(pnl)}">${H.fmt(pnl, 0)}</td>
+        <td style="${H.colorStyle(pnlPct)}">${H.pct(pnlPct)}</td>
         <td><button class="btn btn-danger btn-xs" onclick="deleteGold(${g.id})">🗑️</button></td>
       </tr>
     `;
   }).join('');
 
+  const totalPnL = totalValue - totalCost;
+  const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost * 100) : 0;
+
+  tfoot.innerHTML = `
+    <tr style="font-weight:700;background:var(--bg2)">
+      <td colspan="5">الإجمالي</td>
+      <td>${H.fmt(totalValue, 0)}</td>
+      <td style="${H.colorStyle(totalPnL)}">${H.fmt(totalPnL, 0)}</td>
+      <td style="${H.colorStyle(totalPnLPct)}">${H.pct(totalPnLPct)}</td>
+      <td></td>
+    </tr>
+  `;
+
   updateCount();
 }
 
 // ══════════════════════════════════════════════
-//  Edit/Delete
+//  Delete Gold
 // ══════════════════════════════════════════════
-function editGold(id) {
-  const g = gold.find(gd => gd.id === id);
-  if (!g) return;
-
-  const newPrice = prompt('السعر الحالي الجديد (للجرام):', g.current_price);
-  if (newPrice === null || isNaN(newPrice)) return;
-
-  g.current_price = parseFloat(newPrice);
-
-  saveAll();
-  init();
-  toast('✅ تم التعديل بنجاح', 'success');
-}
-
 function deleteGold(id) {
   if (!confirm('⚠️ هل أنت متأكد من حذف هذا الاستثمار؟')) return;
 
@@ -286,7 +295,7 @@ function applySearch(q) {
   filtered = searchQ
     ? gold.filter(g =>
         (g.type || '').toLowerCase().includes(searchQ) ||
-        (g.unit || '').toLowerCase().includes(searchQ)
+        (g.notes || '').toLowerCase().includes(searchQ)
       )
     : [...gold];
   renderTable();
@@ -302,8 +311,10 @@ function updateCount() {
 // ══════════════════════════════════════════════
 function renderCharts() {
   if (!gold.length) {
-    document.querySelector('#byTypeChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
-    document.querySelector('#pnlChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    ['#byTypeChart', '#pnlChart'].forEach(id => {
+      document.querySelector(id).parentElement.innerHTML =
+        '<p style="text-align:center;color:var(--text3);padding:60px 20px">لا توجد بيانات</p>';
+    });
     return;
   }
 
@@ -311,8 +322,10 @@ function renderCharts() {
   const byType = {};
   gold.forEach(g => {
     const type = g.type || 'غير محدد';
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
-    byType[type] = (byType[type] || 0) + weightInGrams;
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
+    const value = weightInGrams * g.current_price;
+    byType[type] = (byType[type] || 0) + value;
   });
 
   const typeData = Object.entries(byType).sort((a,b) => b[1] - a[1]);
@@ -325,28 +338,33 @@ function renderCharts() {
       labels: typeData.map(t => t[0]),
       datasets: [{
         data: typeData.map(t => t[1]),
-        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'],
-        borderWidth: 2,
-        borderColor: 'var(--card)'
+        backgroundColor: CHART_COLORS,
+        borderWidth: 3,
+        borderColor: CHART_BORDER_COLOR
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...getChartOptions(),
       plugins: {
-        legend: { position: 'right', labels: { color: 'var(--text)', font: { size: 11 } } },
-        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 2)} جرام` } }
+        ...getChartOptions().plugins,
+        tooltip: {
+          ...getChartOptions().plugins.tooltip,
+          callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` }
+        }
       }
     }
   });
 
-  // PnL
+  // PnL Chart
   const pnlData = gold.map(g => {
-    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 : g.weight;
-    const value = weightInGrams * (parseFloat(g.current_price) || 0);
-    const cost = weightInGrams * (parseFloat(g.purchase_price) || 0);
-    const pnl = value - cost;
-    return { type: g.type, pnl };
+    const weightInGrams = g.unit === 'كيلو' ? g.weight * 1000 :
+                          g.unit === 'أونصة' ? g.weight * 31.1035 : g.weight;
+    const value = weightInGrams * g.current_price;
+    const cost = weightInGrams * g.purchase_price;
+    return {
+      label: g.type,
+      pnl: value - cost
+    };
   }).sort((a,b) => b.pnl - a.pnl);
 
   const ctx2 = document.getElementById('pnlChart').getContext('2d');
@@ -354,21 +372,23 @@ function renderCharts() {
   chartPnL = new Chart(ctx2, {
     type: 'bar',
     data: {
-      labels: pnlData.map(d => d.type),
+      labels: pnlData.map(p => p.label),
       datasets: [{
         label: 'الربح/الخسارة (ر.س)',
-        data: pnlData.map(d => d.pnl),
-        backgroundColor: pnlData.map(d => d.pnl >= 0 ? '#10b981' : '#ef4444'),
-        borderRadius: 6
+        data: pnlData.map(p => p.pnl),
+        backgroundColor: pnlData.map(p => p.pnl >= 0 ? CHART_COLORS[3] : CHART_COLORS[2]),
+        borderRadius: 8
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { ticks: { color: 'var(--text3)' }, grid: { color: 'var(--border)' } },
-        x: { ticks: { color: 'var(--text3)' }, grid: { display: false } }
+      ...getChartOptions('bar'),
+      plugins: {
+        ...getChartOptions('bar').plugins,
+        legend: { display: false },
+        tooltip: {
+          ...getChartOptions('bar').plugins.tooltip,
+          callbacks: { label: (ctx) => `${H.fmt(ctx.parsed.y, 0)} ر.س` }
+        }
       }
     }
   });
