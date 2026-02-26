@@ -8,79 +8,25 @@
 <title>المحفظة — 2043</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
 <script src="assets/data-sync.js"></script>
 <style>
-.price-up   { color: var(--green); }
-.price-down { color: var(--red);   }
 .editable {
-  cursor: pointer;
-  border-bottom: 1px dashed var(--border2);
-  transition: border-color 0.2s;
+  cursor:pointer; border-bottom:1px dashed var(--border2);
+  display:inline-block; min-width:40px; transition:border-color .2s;
 }
-.editable:hover { border-color: var(--accent); }
+.editable:hover { border-color:var(--accent); color:var(--accent); }
 .edit-input {
-  width: 90px; padding: 4px 6px;
-  background: var(--bg2); border: 1px solid var(--accent);
-  border-radius: 4px; color: var(--text);
-  font-size: 12px; text-align: center;
-  outline: none; font-family: inherit;
+  width:90px; padding:4px 6px; background:var(--bg2);
+  border:1px solid var(--accent); border-radius:4px;
+  color:var(--text); font-size:12px; text-align:center;
+  outline:none; font-family:inherit;
 }
-.filter-tabs { display:flex; gap:6px; flex-wrap:wrap; }
-.filter-tab {
-  padding: 6px 14px; border-radius: 20px;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--text3); font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all 0.18s; font-family: inherit;
-}
-.filter-tab:hover  { border-color: var(--accent); color: var(--accent); }
-.filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.zone-buy  { color: var(--green);  font-weight: 600; }
-.zone-sell { color: var(--yellow); font-weight: 600; }
-.pct-bar-wrap { display:flex; align-items:center; gap:6px; min-width:100px; }
-.pct-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
-.pct-bar-fill { height:100%; border-radius:2px; background:var(--accent); }
-
-/* ── Quick Price Modal ── */
-.qp-modal {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.75);
-  z-index: 999;
-  display: flex; align-items: center; justify-content: center;
-}
-.qp-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  width: 90%; max-width: 480px;
-  max-height: 82vh;
-  overflow-y: auto;
-}
-.qp-row {
-  display: grid;
-  grid-template-columns: 1fr 60px 110px;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-}
-.qp-row:last-of-type { border-bottom: none; }
-.qp-name   { font-size: 13px; font-weight: 600; }
-.qp-ticker { font-size: 11px; color: var(--text3); }
-.qp-old    { font-size: 12px; color: var(--text3); text-align: center; }
-.qp-input  {
-  padding: 5px 8px;
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: 6px; color: var(--text);
-  font-size: 13px; text-align: center;
-  outline: none; font-family: inherit; width: 100%;
-  transition: border-color .15s;
-}
-.qp-input:focus { border-color: var(--accent); }
-.qp-input.changed { border-color: var(--green); color: var(--green); font-weight: 700; }
+.chart-wrap { position:relative; width:100%; height:300px; }
+.chart-wrap canvas { width:100% !important; height:100% !important; }
 </style>
 </head>
 <body>
@@ -90,446 +36,304 @@
 
   <div class="page-header">
     <div class="page-header-left">
-      <h1>💹 نظرة المحفظة</h1>
-      <p>21 سهم — انقر على أي قيمة لتعديلها مباشرة</p>
+      <h1>💹 المحفظة</h1>
+      <p>نظرة شاملة على جميع استثماراتك</p>
     </div>
     <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm"    onclick="quickPriceUpdate()">⚡ تحديث الأسعار</button>
-      <button class="btn btn-ghost btn-sm"    onclick="exportCSV()">📥 CSV</button>
-      <button class="btn btn-primary btn-sm"  onclick="saveAll()">💾 حفظ</button>
+      <button class="btn btn-ghost btn-sm" onclick="refreshPrices()">🔄 تحديث الأسعار</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
     </div>
   </div>
 
-  <div class="kpi-grid cols-4" id="portKPIs"></div>
-  <div class="kpi-grid cols-4" id="portKPIs2"></div>
+  <div class="kpi-grid cols-4" id="portfolioKPIs"></div>
+
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">📊 التوزيع حسب السهم</div>
+      <div class="chart-wrap"><canvas id="byStockChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🏢 التوزيع حسب القطاع</div>
+      <div class="chart-wrap"><canvas id="bySectorChart"></canvas></div>
+    </div>
+  </div>
 
   <div class="toolbar">
-    <div class="filter-tabs" id="filterTabs">
-      <button class="filter-tab active" onclick="applyFilter('all',this)">الكل</button>
-      <button class="filter-tab" onclick="applyFilter('تجميع',this)">تجميع</button>
-      <button class="filter-tab" onclick="applyFilter('احتفاظ',this)">احتفاظ</button>
-      <button class="filter-tab" onclick="applyFilter('مراقبة',this)">مراقبة</button>
-      <button class="filter-tab" onclick="applyFilter('تخفيف',this)">تخفيف</button>
-    </div>
-    <input class="search-input" placeholder="🔍 بحث بالاسم أو التيكر أو القطاع..." oninput="applySearch(this.value)">
+    <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
+    <span id="trCount" style="color:var(--text3);font-size:13px"></span>
   </div>
 
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>السهم</th>
-          <th>التيكر</th>
-          <th>القطاع</th>
-          <th>الكمية</th>
-          <th>متوسط التكلفة</th>
-          <th>السعر الحالي</th>
-          <th>القيمة السوقية</th>
-          <th>ر/خ SAR</th>
-          <th>ر/خ %</th>
-          <th>التخصيص %</th>
-          <th>الهدف %</th>
-          <th>منطقة الشراء</th>
-          <th>منطقة البيع</th>
-          <th>القرار</th>
-          <th>التقييم</th>
+          <th>التيكر</th><th>الاسم</th><th>الكمية</th>
+          <th>متوسط التكلفة</th><th>السعر الحالي</th>
+          <th>القيمة</th><th>التكلفة</th><th>الربح/الخسارة</th><th>%</th>
         </tr>
       </thead>
-      <tbody id="portBody"></tbody>
+      <tbody id="portfolioBody"></tbody>
+      <tfoot id="portfolioFoot"></tfoot>
     </table>
   </div>
 
-  <div class="info-box blue">
-    💡 انقر على <strong>السعر الحالي، الكمية، متوسط التكلفة، منطقة الشراء، منطقة البيع</strong> لتعديلها مباشرة،
-    أو استخدم <strong>⚡ تحديث الأسعار</strong> لتحديث الكل دفعة واحدة.
-  </div>
-
-</div>
-
-<!-- ══ Quick Price Modal ══ -->
-<div id="qpModal" class="qp-modal" style="display:none">
-  <div class="qp-box">
-    <h3 style="margin-bottom:4px">⚡ تحديث الأسعار</h3>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">
-      أدخل الأسعار الجديدة — الحقول الخضراء تعني تغيير مكتشف
-    </p>
-
-    <!-- header row -->
-    <div class="qp-row" style="border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px">
-      <span style="font-size:11px;color:var(--text3);font-weight:700">السهم</span>
-      <span style="font-size:11px;color:var(--text3);font-weight:700;text-align:center">القديم</span>
-      <span style="font-size:11px;color:var(--text3);font-weight:700;text-align:center">الجديد</span>
-    </div>
-
-    <div id="qpRows"></div>
-
-    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-      <button class="btn btn-ghost"   onclick="closeQP()">إلغاء</button>
-      <button class="btn btn-primary" onclick="applyQuickPrices()">✅ تطبيق وحفظ</button>
-    </div>
-  </div>
 </div>
 
 <script>
 // ══════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
-let portData     = Store.load('portfolio_v1', APP.portfolio).map(p=>({...p}));
-let filtered     = [...portData];
-let activeFilter = 'all';
-let searchQ      = '';
+let portfolio = [];
+let filtered  = [];
+let searchQ   = '';
+let chartStock = null, chartSector = null;
 
 // ══════════════════════════════════════════════
-//  calcTrueCost
+//  Init
 // ══════════════════════════════════════════════
-function calcTrueCost() {
-  const transactions = Store.load('transactions_v1', APP.transactions);
-  const totalBought  = transactions
-    .filter(t => t.status === 'Buy')
-    .reduce((s,t) => s + (t.total_cost || 0), 0);
-  const totalSold    = transactions
-    .filter(t => t.status === 'Sell')
-    .reduce((s,t) => s + (t.total_cost || 0), 0);
-  return { totalBought, totalSold, netCost: totalBought - totalSold };
+function init() {
+  portfolio = APP.portfolio;
+  filtered  = [...portfolio];
+  renderKPIs();
+  renderTable();
+  renderCharts();
 }
 
 // ══════════════════════════════════════════════
 //  KPIs
 // ══════════════════════════════════════════════
 function renderKPIs() {
-  const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
-  const divs     = Store.load('dividends_v1', APP.dividends);
-  const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
-  const { netCost } = calcTrueCost();
+  const totalValue = portfolio.reduce((s, p) => s + p.qty * p.current_price, 0);
+  const totalCost  = portfolio.reduce((s, p) => s + p.qty * p.avg_cost, 0);
+  const totalPnL   = totalValue - totalCost;
+  const totalPct   = totalCost > 0 ? (totalPnL / totalCost * 100) : 0;
 
-  const truePL         = totalMkt - netCost;
-  const truePLPct      = netCost > 0 ? truePL / netCost : 0;
-  const totalReturn    = truePL + totalDiv;
-  const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
+  const kpis = [
+    { label:'القيمة الإجمالية', value:H.fmt(totalValue, 0) + ' ر.س', icon:'💰', color:'' },
+    { label:'التكلفة الإجمالية', value:H.fmt(totalCost, 0) + ' ر.س',  icon:'📥', color:'' },
+    { label:'الربح/الخسارة',     value:H.fmt(totalPnL, 0) + ' ر.س',   icon:'📊', color:H.colorClass(totalPnL) },
+    { label:'النسبة %',          value:H.pct(totalPct),                icon:'📈', color:H.colorClass(totalPct) }
+  ];
 
-  // YOC المرجّح — بناءً على التيكر لا اسم الشركة
-  const divByTicker = {};
-  divs.forEach(d => {
-    // دعم القديم (اسم) والجديد (تيكر)
-    const key = d.ticker || d.stock;
-    if (key) divByTicker[key] = (divByTicker[key] || 0) + d.amount;
-  });
-  let weightedYOC = 0, totalWeight = 0;
-  portData.forEach(p => {
-    const cost = p.qty * p.avg_cost;
-    // حاول التيكر أولاً ثم الاسم كـ fallback
-    const sd = (divByTicker[p.ticker] || divByTicker[H.tickerName(p.ticker)] || 0);
-    if (cost > 0 && sd > 0) { weightedYOC += (sd / cost) * cost; totalWeight += cost; }
-  });
-  const portfolioYOC = totalWeight > 0 ? (weightedYOC / totalWeight) * 100 : 0;
-
-  // Annualized
-  const divDates  = divs.map(d=>new Date(d.date)).filter(d=>!isNaN(d));
-  const firstDiv  = divDates.length ? new Date(Math.min(...divDates)) : new Date();
-  const lastDiv   = divDates.length ? new Date(Math.max(...divDates)) : new Date();
-  const monthSpan = Math.max(
-    (lastDiv.getFullYear()-firstDiv.getFullYear())*12
-    +(lastDiv.getMonth()-firstDiv.getMonth()), 1
-  );
-  const annualizedYOC = portfolioYOC / monthSpan * 12;
-
-  // آخر 12 و 6 أشهر
-  const now   = new Date();
-  const ago12 = new Date(now); ago12.setMonth(ago12.getMonth()-12);
-  const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()-6);
-  const div12m = divs.filter(d=>d.date&&new Date(d.date)>=ago12).reduce((s,d)=>s+d.amount,0);
-  const div6m  = divs.filter(d=>d.date&&new Date(d.date)>=ago6 ).reduce((s,d)=>s+d.amount,0);
-
-  document.getElementById('portKPIs').innerHTML = `
+  document.getElementById('portfolioKPIs').innerHTML = kpis.map(k => `
     <div class="kpi-card">
-      <div class="kpi-icon">💼</div>
-      <div class="kpi-label">القيمة السوقية</div>
-      <div class="kpi-value accent">${H.fmt(totalMkt)}</div>
-      <div class="kpi-sub">صافي التكلفة: ${H.fmt(netCost)}</div>
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value ${k.color}">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🏆</div>
-      <div class="kpi-label">العائد الشامل</div>
-      <div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''}${H.fmt(totalReturn)}</div>
-      <div class="kpi-sub">ر/خ + توزيعات • ${H.pct(totalReturnPct)}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📊</div>
-      <div class="kpi-label">YOC المرجّح</div>
-      <div class="kpi-value pos">${H.fmt(portfolioYOC,2)}%</div>
-      <div class="kpi-sub">سنوي مُعدَّل: ${H.fmt(annualizedYOC,2)}%</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📈</div>
-      <div class="kpi-label">ر/خ ورقية</div>
-      <div class="kpi-value ${truePL>=0?'pos':'neg'}">${truePL>=0?'+':''}${H.fmt(truePL)}</div>
-      <div class="kpi-sub">${H.pct(truePLPct)} على التكلفة</div>
-    </div>`;
-
-  document.getElementById('portKPIs2').innerHTML = `
-    <div class="kpi-card">
-      <div class="kpi-icon">💰</div>
-      <div class="kpi-label">التوزيعات المستلمة</div>
-      <div class="kpi-value pos">${H.fmt(totalDiv)}</div>
-      <div class="kpi-sub">خلال ${monthSpan} شهر</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🗓️</div>
-      <div class="kpi-label">توزيعات آخر 12 شهر</div>
-      <div class="kpi-value warn">${H.fmt(div12m)}</div>
-      <div class="kpi-sub">${H.fmt(div12m/netCost*100,2)}% على التكلفة</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📅</div>
-      <div class="kpi-label">توزيعات آخر 6 أشهر</div>
-      <div class="kpi-value">${H.fmt(div6m)}</div>
-      <div class="kpi-sub">${H.fmt(div6m/netCost*100,2)}% على التكلفة</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🎯</div>
-      <div class="kpi-label">الهدف السنوي</div>
-      <div class="kpi-value">${H.fmt(APP.settings.targetYield*100,1)}%</div>
-      <div class="kpi-sub">فجوة ${H.fmt(APP.settings.targetYield*100-annualizedYOC,2)}%</div>
-    </div>`;
+  `).join('');
 }
 
 // ══════════════════════════════════════════════
 //  Table
 // ══════════════════════════════════════════════
 function renderTable() {
-  const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
-  document.getElementById('portBody').innerHTML = filtered.map((p,i) => {
-    const name       = H.tickerName(p.ticker);
-    const sector     = H.tickerSector(p.ticker);
-    const cost       = p.qty * p.avg_cost;
-    const mkt        = p.qty * p.current_price;
-    const pl         = mkt - cost;
-    const plPct      = cost > 0 ? pl / cost : 0;
-    const allocPct   = totalMkt > 0 ? (mkt/totalMkt)*100 : 0;
-    const plClass    = pl >= 0 ? 'pos' : 'neg';
-    const priceClass = p.current_price >= p.avg_cost ? 'price-up' : 'price-down';
-    const inBuyZone  = p.current_price <= p.buy_zone_max;
-    const inSellZone = p.current_price >= p.sell_zone_low;
-    const idx        = portData.indexOf(p);
-    return `<tr>
-      <td style="color:var(--text3)">${i+1}</td>
-      <td><strong>${name}</strong>${p.is_bluechip?'<span style="font-size:10px;color:var(--yellow)"> ⭐</span>':''}</td>
-      <td class="accent" style="font-weight:700">${p.ticker}</td>
-      <td><small style="color:var(--text3)">${sector}</small></td>
-      <td><span class="editable" onclick="editCell(this,${idx},'qty')">${H.fmt(p.qty,0)}</span></td>
-      <td><span class="editable" onclick="editCell(this,${idx},'avg_cost')">${H.fmt(p.avg_cost)}</span></td>
-      <td><span class="editable ${priceClass}" onclick="editCell(this,${idx},'current_price')">${H.fmt(p.current_price)}</span></td>
-      <td style="font-weight:600">${H.fmt(mkt)}</td>
-      <td class="${plClass}" style="font-weight:700">${pl>=0?'+':''}${H.fmt(pl)}</td>
-      <td class="${plClass}">${H.pct(plPct)}</td>
-      <td>
-        <div class="pct-bar-wrap">
-          <span>${allocPct.toFixed(1)}%</span>
-          <div class="pct-bar-bg">
-            <div class="pct-bar-fill" style="width:${Math.min(allocPct/0.15,100)}%"></div>
-          </div>
-        </div>
-      </td>
-      <td style="color:var(--text3)">${(p.goal_alloc*100).toFixed(1)}%</td>
-      <td><span class="editable ${inBuyZone?'zone-buy':''}" onclick="editCell(this,${idx},'buy_zone_max')">&lt;${H.fmt(p.buy_zone_max)}</span></td>
-      <td><span class="editable ${inSellZone?'zone-sell':''}" onclick="editCell(this,${idx},'sell_zone_low')">${H.fmt(p.sell_zone_low)}–${H.fmt(p.sell_zone_high)}</span></td>
-      <td>${H.badge(p.decision)}</td>
-      <td><small style="color:var(--text3)">${p.eval}</small></td>
-    </tr>`;
+  const tbody = document.getElementById('portfolioBody');
+  const tfoot = document.getElementById('portfolioFoot');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">لا توجد أسهم</td></tr>';
+    tfoot.innerHTML = '';
+    updateCount();
+    return;
+  }
+
+  let totalValue = 0, totalCost = 0;
+
+  tbody.innerHTML = filtered.map(p => {
+    const value = p.qty * p.current_price;
+    const cost  = p.qty * p.avg_cost;
+    const pnl   = value - cost;
+    const pct   = p.avg_cost > 0 ? (p.current_price - p.avg_cost) / p.avg_cost * 100 : 0;
+
+    totalValue += value;
+    totalCost  += cost;
+
+    return `
+      <tr>
+        <td><strong>${p.ticker}</strong></td>
+        <td>${H.tickerName(p.ticker)}</td>
+        <td>${H.fmt(p.qty, 2)}</td>
+        <td>${H.fmt(p.avg_cost, 2)}</td>
+        <td>
+          <span class="editable" onclick="editPrice('${p.ticker}', ${p.current_price})">${H.fmt(p.current_price, 2)}</span>
+        </td>
+        <td>${H.fmt(value, 2)}</td>
+        <td>${H.fmt(cost, 2)}</td>
+        <td style="${H.colorStyle(pnl)}">${H.fmt(pnl, 2)}</td>
+        <td style="${H.colorStyle(pct)}">${H.pct(pct)}</td>
+      </tr>
+    `;
   }).join('');
+
+  const totalPnL = totalValue - totalCost;
+  const totalPct = totalCost > 0 ? (totalPnL / totalCost * 100) : 0;
+
+  tfoot.innerHTML = `
+    <tr style="font-weight:700;background:var(--bg2)">
+      <td colspan="5">الإجمالي</td>
+      <td>${H.fmt(totalValue, 2)}</td>
+      <td>${H.fmt(totalCost, 2)}</td>
+      <td style="${H.colorStyle(totalPnL)}">${H.fmt(totalPnL, 2)}</td>
+      <td style="${H.colorStyle(totalPct)}">${H.pct(totalPct)}</td>
+    </tr>
+  `;
+
+  updateCount();
 }
 
 // ══════════════════════════════════════════════
-//  Inline Edit
+//  Edit Price
 // ══════════════════════════════════════════════
-function editCell(span, idx, field) {
-  if (span.querySelector('input')) return;
+function editPrice(ticker, currentPrice) {
+  const span = event.target;
   const input = document.createElement('input');
   input.className = 'edit-input';
-  input.type = 'number'; input.value = portData[idx][field]; input.step = '0.01';
-  span.textContent = ''; span.appendChild(input);
-  input.focus(); input.select();
-  function commit() {
-    const val = parseFloat(input.value);
-    if (!isNaN(val) && val > 0) {
-      portData[idx][field] = val;
-      if (field === 'sell_zone_low')
-        portData[idx].sell_zone_high = parseFloat((val*1.05).toFixed(2));
+  input.type = 'number';
+  input.step = '0.01';
+  input.value = currentPrice;
+  
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const newPrice = parseFloat(input.value) || currentPrice;
+    const idx = portfolio.findIndex(p => p.ticker === ticker);
+    if (idx !== -1) {
+      portfolio[idx].current_price = newPrice;
     }
-    applyFilters(); renderKPIs();
+    renderTable();
+    renderKPIs();
+  };
+
+  input.onblur = save;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') renderTable();
+  };
+}
+
+// ══════════════════════════════════════════════
+//  Search
+// ══════════════════════════════════════════════
+function applySearch(q) {
+  searchQ = q.trim().toLowerCase();
+  filtered = searchQ
+    ? portfolio.filter(p =>
+        p.ticker.toLowerCase().includes(searchQ) ||
+        H.tickerName(p.ticker).toLowerCase().includes(searchQ) ||
+        (p.sector || '').toLowerCase().includes(searchQ)
+      )
+    : [...portfolio];
+  renderTable();
+}
+
+function updateCount() {
+  document.getElementById('trCount').textContent = 
+    `${filtered.length} من ${portfolio.length} سهم`;
+}
+
+// ══════════════════════════════════════════════
+//  Charts
+// ══════════════════════════════════════════════
+function renderCharts() {
+  if (!portfolio.length) {
+    document.querySelector('#byStockChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    document.querySelector('#bySectorChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    return;
   }
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  input.blur();
-    if (e.key === 'Escape') applyFilters();
-  });
-}
 
-// ══════════════════════════════════════════════
-//  Quick Price Update
-// ══════════════════════════════════════════════
-function quickPriceUpdate() {
-  document.getElementById('qpRows').innerHTML = portData.map((p,i) => `
-    <div class="qp-row">
-      <div>
-        <div class="qp-name">${H.tickerName(p.ticker)}</div>
-        <div class="qp-ticker">${p.ticker}</div>
-      </div>
-      <div class="qp-old">${H.fmt(p.current_price)}</div>
-      <input
-        class="qp-input"
-        type="number"
-        step="0.01"
-        value="${p.current_price}"
-        data-idx="${i}"
-        data-old="${p.current_price}"
-        oninput="markChanged(this)"
-      >
-    </div>`).join('');
-  document.getElementById('qpModal').style.display = 'flex';
-}
+  // By Stock
+  const byStock = portfolio.map(p => ({
+    ticker: p.ticker,
+    value: p.qty * p.current_price
+  })).sort((a,b) => b.value - a.value).slice(0, 10);
 
-function markChanged(inp) {
-  const oldVal = parseFloat(inp.dataset.old);
-  const newVal = parseFloat(inp.value);
-  inp.classList.toggle('changed', !isNaN(newVal) && newVal !== oldVal);
-}
-
-function closeQP() {
-  document.getElementById('qpModal').style.display = 'none';
-}
-
-function applyQuickPrices() {
-  let changed = 0;
-  const updatedData = portData.map((p, i) => {
-    const inp = document.querySelectorAll('#qpRows .qp-input')[i];
-    if (inp) {
-      const val = parseFloat(inp.value);
-      const old = parseFloat(inp.dataset.old);
-      if (!isNaN(val) && val > 0 && val !== old) {
-        changed++;
-        return { ...p, current_price: val };
+  const ctx1 = document.getElementById('byStockChart').getContext('2d');
+  if (chartStock) chartStock.destroy();
+  chartStock = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: byStock.map(s => H.tickerName(s.ticker)),
+      datasets: [{
+        data: byStock.map(s => s.value),
+        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#84cc16','#a855f7','#14b8a6'],
+        borderWidth: 2,
+        borderColor: 'var(--card)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: 'var(--text)', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` } }
       }
     }
-    return p;
   });
 
-  if (changed > 0) {
-    portData = updatedData;
-    updatePortfolio(() => portData);
-    closeQP();
-    renderKPIs();
-    applyFilters();
-    toast(`✅ تم تحديث ${changed} سعر وحفظ التغييرات مع المزامنة`, 'success');
-    
-    // مزامنة فورية مع جميع الصفحات
-    dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
-    dataSync.notifyDataChanged('networth', { action: 'refresh' });
-  } else {
-    closeQP();
-    toast('لم يتم تغيير أي أسعار', 'info');
-  }
-}
-
-// ══════════════════════════════════════════════
-//  Filters
-// ══════════════════════════════════════════════
-function applyFilter(decision, btn) {
-  activeFilter = decision;
-  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-function applySearch(q) { searchQ = q; applyFilters(); }
-function applyFilters() {
-  filtered = portData.filter(p => {
-    const mF = activeFilter === 'all' || p.decision.includes(activeFilter);
-    const name   = H.tickerName(p.ticker);
-    const sector = H.tickerSector(p.ticker);
-    const mS = !searchQ ||
-      name.includes(searchQ) ||
-      p.ticker.includes(searchQ) ||
-      sector.includes(searchQ);
-    return mF && mS;
+  // By Sector
+  const bySector = {};
+  portfolio.forEach(p => {
+    const sector = p.sector || 'غير محدد';
+    const value = p.qty * p.current_price;
+    bySector[sector] = (bySector[sector] || 0) + value;
   });
-  renderTable();
+
+  const sectorData = Object.entries(bySector).sort((a,b) => b[1] - a[1]);
+
+  const ctx2 = document.getElementById('bySectorChart').getContext('2d');
+  if (chartSector) chartSector.destroy();
+  chartSector = new Chart(ctx2, {
+    type: 'pie',
+    data: {
+      labels: sectorData.map(s => s[0]),
+      datasets: [{
+        data: sectorData.map(s => s[1]),
+        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#84cc16'],
+        borderWidth: 2,
+        borderColor: 'var(--card)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: 'var(--text)', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` } }
+      }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════
 //  Save
 // ══════════════════════════════════════════════
 function saveAll() {
-  updatePortfolio(() => portData);
-  toast('✅ تم حفظ التغييرات مع المزامنة', 'success');
-  
-  // مزامنة فورية مع جميع الصفحات
-  dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
-  dataSync.notifyDataChanged('networth', { action: 'refresh' });
+  Store.save('portfolio_v1', portfolio);
+  toast('✅ تم الحفظ بنجاح', 'success');
+  dataSync.emit('portfolio');
 }
 
 // ══════════════════════════════════════════════
-//  Export CSV
+//  Refresh Prices (placeholder)
 // ══════════════════════════════════════════════
-function exportCSV() {
-  const headers = ['السهم','التيكر','القطاع','الكمية','متوسط التكلفة','السعر الحالي','القيمة السوقية','ر/خ','ر/خ%','القرار'];
-  const rows = portData.map(p => {
-    const mkt    = p.qty * p.current_price;
-    const pl     = mkt - p.qty * p.avg_cost;
-    const name   = H.tickerName(p.ticker);
-    const sector = H.tickerSector(p.ticker);
-    return [name, p.ticker, sector, p.qty, p.avg_cost, p.current_price,
-      mkt.toFixed(2), pl.toFixed(2),
-      ((pl/(p.qty*p.avg_cost))*100).toFixed(2)+'%', p.decision].join(',');
-  });
-  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-  const a   = document.createElement('a');
-  a.href    = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download = `portfolio_${H.today()}.csv`;
-  a.click();
-  toast('📥 تم تصدير CSV', 'success');
+function refreshPrices() {
+  toast('🔄 جاري التحديث... (الميزة قيد التطوير)', 'info');
 }
 
 // ══════════════════════════════════════════════
-//  Init
+//  Sync
 // ══════════════════════════════════════════════
-renderKPIs();
-applyFilters();
+dataSync.onDataChanged('portfolio', init);
+dataSync.onDataChanged('transactions', init);
 
-// الاستماع للتغييرات من صفحات أخرى
-dataSync.onDataChanged('transactions', (data, timestamp) => {
-  console.log('Portfolio: Transactions updated, recalculating...');
-  // إعادة حساب المحفظة بناءً على العمليات الجديدة
-  const updatedPortfolio = recalculatePortfolioFromTransactions();
-  portData = updatedPortfolio;
-  renderKPIs();
-  applyFilters();
-  toast('🔄 تم تحديث المحفظة تلقائياً من العمليات', 'info');
-});
-
-dataSync.onDataChanged('portfolio', (data, timestamp) => {
-  if (JSON.stringify(data) !== JSON.stringify(portData)) {
-    portData = [...data];
-    renderKPIs();
-    applyFilters();
-    toast('🔄 تم تحديث المحفظة تلقائياً', 'info');
-  }
-});
-
-dataSync.onDataChanged('dividends', (data, timestamp) => {
-  // تحديث مؤشرات YOC عند تغيير التوزيعات
-  renderKPIs();
-});
-
-// تحديث عند التركيز على الصفحة
-window.addEventListener('focus', () => {
-  const latestPortfolio = Store.load('portfolio_v1', APP.portfolio);
-  if (JSON.stringify(latestPortfolio) !== JSON.stringify(portData)) {
-    portData = [...latestPortfolio];
-    renderKPIs();
-    applyFilters();
-  }
-});
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
 </script>
+
 </body>
 </html>
