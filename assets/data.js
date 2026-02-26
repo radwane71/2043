@@ -63,22 +63,23 @@ const APP = {
 
   // ──────────────────────────────────────────────
   //  4. التوزيعات المستلمة
+  //  ticker: الكود الرقمي — الاسم يُجلب عبر H.tickerName(ticker)
   // ──────────────────────────────────────────────
   dividends: [
-    { no:1,  date:"2025-08-01", stock:"جرير",           amount:25.6   },
-    { no:2,  date:"2025-08-01", stock:"أرامكو",          amount:496.47 },
-    { no:3,  date:"2025-09-01", stock:"دراية ريت",       amount:320.75 },
-    { no:4,  date:"2025-09-01", stock:"جدوى ريت",        amount:60.83  },
-    { no:5,  date:"2025-09-01", stock:"أسمنت القصيم",    amount:746.7  },
-    { no:6,  date:"2025-10-01", stock:"الخبير ريت",      amount:65.1   },
-    { no:7,  date:"2025-11-01", stock:"الإنماء",         amount:75     },
-    { no:8,  date:"2025-11-01", stock:"جرير",            amount:155.4  },
-    { no:9,  date:"2025-11-01", stock:"STC",             amount:675.13 },
-    { no:10, date:"2025-11-01", stock:"أرامكو",          amount:34.82  },
-    { no:11, date:"2025-12-01", stock:"جدوى ريت",        amount:232    },
-    { no:12, date:"2025-12-01", stock:"سبكيم",           amount:130    },
-    { no:13, date:"2025-12-01", stock:"المواساة",        amount:470    },
-    { no:14, date:"2025-12-01", stock:"أسمنت القصيم",    amount:294.24 },
+    { no:1,  date:"2025-08-01", ticker:"4190", amount:25.6   },
+    { no:2,  date:"2025-08-01", ticker:"2222", amount:496.47 },
+    { no:3,  date:"2025-09-01", ticker:"4344", amount:320.75 },
+    { no:4,  date:"2025-09-01", ticker:"4342", amount:60.83  },
+    { no:5,  date:"2025-09-01", ticker:"3040", amount:746.7  },
+    { no:6,  date:"2025-10-01", ticker:"4348", amount:65.1   },
+    { no:7,  date:"2025-11-01", ticker:"1150", amount:75     },
+    { no:8,  date:"2025-11-01", ticker:"4190", amount:155.4  },
+    { no:9,  date:"2025-11-01", ticker:"7010", amount:675.13 },
+    { no:10, date:"2025-11-01", ticker:"2222", amount:34.82  },
+    { no:11, date:"2025-12-01", ticker:"4342", amount:232    },
+    { no:12, date:"2025-12-01", ticker:"2310", amount:130    },
+    { no:13, date:"2025-12-01", ticker:"4002", amount:470    },
+    { no:14, date:"2025-12-01", ticker:"3040", amount:294.24 },
   ],
 
  // ──────────────────────────────────────────────
