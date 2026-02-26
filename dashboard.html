@@ -100,11 +100,49 @@
 .tx-row:last-child { border-bottom: none; }
 
 /* ── 40/60 grid ── */
-.chart-grid.col-4060 {
-  grid-template-columns: 4fr 6fr;
+.chart-grid.col-4060 { grid-template-columns: 4fr 6fr; }
+.chart-grid.col-6040 { grid-template-columns: 6fr 4fr; }
+
+/* ── Quick Access ── */
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
 }
-.chart-grid.col-6040 {
-  grid-template-columns: 6fr 4fr;
+.quick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.18s;
+  cursor: pointer;
+  text-align: center;
+}
+.quick-card:hover {
+  border-color: var(--accent);
+  background: rgba(79,142,247,0.06);
+  transform: translateY(-2px);
+  color: var(--accent);
+}
+.quick-card .qc-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.quick-card .qc-label {
+  font-size: 12px;
+  color: var(--text2);
+  font-weight: 500;
+  margin-top: 2px;
 }
 </style>
 </head>
@@ -124,16 +162,31 @@
     </div>
   </div>
 
-  <!-- ── KPI Row 1 — القيم المالية ── -->
+  <!-- ── Quick Access ── -->
+  <div style="margin-bottom:8px">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🔗 وصول سريع</div>
+    <div class="quick-grid">
+      <a href="portfolio.html"     class="quick-card"><div class="qc-icon">💹</div><div>المحفظة</div><div class="qc-label">Portfolio</div></a>
+      <a href="transactions.html" class="quick-card"><div class="qc-icon">🔄</div><div>العمليات</div><div class="qc-label">Transactions</div></a>
+      <a href="dividends.html"    class="quick-card"><div class="qc-icon">💰</div><div>التوزيعات</div><div class="qc-label">Dividends</div></a>
+      <a href="networth.html"     class="quick-card"><div class="qc-icon">📊</div><div>صافي الثروة</div><div class="qc-label">Net Worth</div></a>
+      <a href="properties.html"   class="quick-card"><div class="qc-icon">🏢</div><div>العقارات</div><div class="qc-label">Properties</div></a>
+      <a href="cashinvest.html"   class="quick-card"><div class="qc-icon">💵</div><div>السيولة للضخ</div><div class="qc-label">Cash to Invest</div></a>
+      <a href="forecast.html"     class="quick-card"><div class="qc-icon">🔭</div><div>مستقبل المحفظة</div><div class="qc-label">Forecast</div></a>
+      <a href="salary.html"       class="quick-card"><div class="qc-icon">💳</div><div>سجلات الراتب</div><div class="qc-label">Salary Records</div></a>
+      <a href="salary-scale.html" class="quick-card"><div class="qc-icon">📈</div><div>سلم الراتب</div><div class="qc-label">Salary Scale</div></a>
+      <a href="settings.html"     class="quick-card"><div class="qc-icon">⚙️</div><div>الإعدادات</div><div class="qc-label">Settings</div></a>
+    </div>
+  </div>
+
+  <!-- ── KPI Row 1 ── -->
   <div class="kpi-grid cols-4" id="kpiRow1"></div>
-
-  <!-- ── KPI Row 2 — الربح والعائد ── -->
+  <!-- ── KPI Row 2 ── -->
   <div class="kpi-grid cols-4" id="kpiRow2"></div>
-
-  <!-- ── KPI Row 3 — إحصاءات المحفظة ── -->
+  <!-- ── KPI Row 3 ── -->
   <div class="kpi-grid cols-4" id="kpiRow3"></div>
 
-  <!-- ── الإشارات: تجميع / تخفيف ── -->
+  <!-- ── الإشارات ── -->
   <div class="chart-grid cols-2" style="margin-bottom:24px">
     <div class="chart-card">
       <div class="chart-title">🟢 أسهم في منطقة تجميع</div>
@@ -177,326 +230,169 @@
       <div id="lastTx"></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">💰 التوزيعات المستلمة حسب السهم</div>
+      <div class="chart-title">💰 التوزيعات حسب السهم</div>
       <div class="chart-wrap md"><canvas id="divChart"></canvas></div>
     </div>
   </div>
 
-  <!-- ── التركيز الجغرافي — صف كامل ── -->
+  <!-- ── التركيز الجغرافي ── -->
   <div class="chart-card" style="margin-bottom:24px">
     <div class="chart-title">🌍 التركيز الجغرافي للمحفظة</div>
     <div id="geoBox" style="padding:8px 0;max-width:600px"></div>
   </div>
 
-  <!-- ── قواعد الاستثمار — صف كامل ── -->
+  <!-- ── قواعد الاستثمار ── -->
   <div class="chart-card">
     <div class="chart-title">📖 قواعد الاستثمار</div>
-    <div id="rulesBox"
-      style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 24px">
-    </div>
+    <div id="rulesBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 24px"></div>
   </div>
 
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-//  Data
-// ══════════════════════════════════════════════
 const portfolio    = Store.load('portfolio_v1',    APP.portfolio);
 const settings     = APP.settings;
 const divs         = Store.load('dividends_v1',    APP.dividends);
 const transactions = Store.load('transactions_v1', APP.transactions);
 
-// دمج التيكرات المخصصة
 const ALL_TICKERS = [...TICKERS, ...Store.load('custom_tickers', [])];
 const TICKER_MAP  = {};
 ALL_TICKERS.forEach(t => { TICKER_MAP[t.code] = t; });
 
-// ── القيمة السوقية
 const totalMkt = portfolio.reduce((s,p) => s + p.qty * p.current_price, 0);
-
-// ── التكلفة من العمليات
-const totalBought = transactions
-  .filter(t => t.status === 'Buy')
-  .reduce((s,t) => s + (t.total_cost || 0), 0);
-const totalSold = transactions
-  .filter(t => t.status === 'Sell')
-  .reduce((s,t) => s + (t.total_cost || 0), 0);
-const netCost = totalBought - totalSold;
-
-// ── التوزيعات
-const totalDiv = divs.reduce((s,d) => s + d.amount, 0);
-
-// ── الربح الورقي
-const paperPL    = totalMkt - netCost;
-const paperPLPct = netCost > 0 ? paperPL / netCost : 0;
-
-// ── العائد الشامل
+const totalBought = transactions.filter(t=>t.status==='Buy').reduce((s,t)=>s+(t.total_cost||0),0);
+const totalSold   = transactions.filter(t=>t.status==='Sell').reduce((s,t)=>s+(t.total_cost||0),0);
+const netCost     = totalBought - totalSold;
+const totalDiv    = divs.reduce((s,d)=>s+d.amount,0);
+const paperPL     = totalMkt - netCost;
+const paperPLPct  = netCost > 0 ? paperPL / netCost : 0;
 const totalReturn    = paperPL + totalDiv;
 const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
+const avgCostPct     = netCost > 0 ? (totalMkt - netCost) / netCost * 100 : 0;
 
-// ── عائد آخر 12 شهر
 const now   = new Date();
-const ago12 = new Date(now); ago12.setMonth(ago12.getMonth() - 12);
-const ago6  = new Date(now); ago6.setMonth(ago6.getMonth() - 6);
+const ago12 = new Date(now); ago12.setMonth(ago12.getMonth()-12);
+const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()-6);
+const div12m   = divs.filter(d=>d.date&&new Date(d.date)>=ago12).reduce((s,d)=>s+d.amount,0);
+const div6m    = divs.filter(d=>d.date&&new Date(d.date)>=ago6 ).reduce((s,d)=>s+d.amount,0);
+const yield12m = netCost>0 ? div12m/netCost*100 : 0;
+const yield6m  = netCost>0 ? div6m /netCost*100 : 0;
+const sortedDivs = [...divs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+const lastDiv    = sortedDivs[0];
 
-const div12m   = divs.filter(d => d.date && new Date(d.date) >= ago12).reduce((s,d)=>s+d.amount,0);
-const div6m    = divs.filter(d => d.date && new Date(d.date) >= ago6 ).reduce((s,d)=>s+d.amount,0);
-const yield12m = netCost > 0 ? div12m / netCost * 100 : 0;
-const yield6m  = netCost > 0 ? div6m  / netCost * 100 : 0;
-
-// ── آخر توزيع
-const sortedDivs  = [...divs].sort((a,b)=> new Date(b.date)-new Date(a.date));
-const lastDiv     = sortedDivs[0];
-
-// ── إحصاءات
-const sectors     = [...new Set(portfolio.map(p => TICKER_MAP[p.ticker]?.sector || p.sector || 'غير محدد'))].length;
-const toAccum     = portfolio.filter(p => p.decision?.includes('تجميع')).length;
-const toReduce    = portfolio.filter(p => p.decision?.includes('تخفيف')).length;
+const sectors     = [...new Set(portfolio.map(p=>TICKER_MAP[p.ticker]?.sector||p.sector||'غير محدد'))].length;
+const toAccum     = portfolio.filter(p=>p.decision?.includes('تجميع')).length;
+const toReduce    = portfolio.filter(p=>p.decision?.includes('تخفيف')).length;
 const yearsLeft   = settings.retirementYear - new Date().getFullYear();
-const progressPct = Math.min(totalMkt / settings.targetCapital * 100, 100);
+const progressPct = Math.min(totalMkt/settings.targetCapital*100, 100);
 
-// ── متوسط تكلفة vs سعر حالي (نسبة عائد المحفظة الإجمالي)
-const avgCostPct  = netCost > 0 ? (totalMkt - netCost) / netCost * 100 : 0;
-
-// ══════════════════════════════════════════════
-//  Header
-// ══════════════════════════════════════════════
+// Header
 document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-SA',{
-  weekday:'long', year:'numeric', month:'long', day:'numeric'
+  weekday:'long',year:'numeric',month:'long',day:'numeric'
 });
-document.getElementById('lastUpdate').textContent =
-  `آخر تحديث: ${APP.netWorth?.lastUpdated || '—'}`;
+document.getElementById('lastUpdate').textContent = `آخر تحديث: ${APP.netWorth?.lastUpdated||'—'}`;
 
-// ══════════════════════════════════════════════
-//  KPI Row 1 — القيم الأساسية
-// ══════════════════════════════════════════════
+// KPI Row 1
 document.getElementById('kpiRow1').innerHTML = `
-  <div class="kpi-card">
-    <div class="kpi-icon">💹</div>
-    <div class="kpi-label">القيمة السوقية</div>
-    <div class="kpi-value accent">${H.fmt(totalMkt)}</div>
-    <div class="kpi-sub">SAR</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">🧾</div>
-    <div class="kpi-label">صافي التكلفة</div>
-    <div class="kpi-value">${H.fmt(netCost)}</div>
-    <div class="kpi-sub">شراء − بيع + عمولات</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">📈</div>
-    <div class="kpi-label">الربح / الخسارة الورقية</div>
-    <div class="kpi-value ${paperPL>=0?'pos':'neg'}">${paperPL>=0?'+':''}${H.fmt(paperPL)}</div>
-    <div class="kpi-sub">${H.fmt(avgCostPct,2)}% من التكلفة</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">🏆</div>
-    <div class="kpi-label">العائد الشامل</div>
-    <div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''}${H.fmt(totalReturn)}</div>
-    <div class="kpi-sub">ر/خ + توزيعات • ${H.pct(totalReturnPct)}</div>
-  </div>`;
+  <div class="kpi-card"><div class="kpi-icon">💹</div><div class="kpi-label">القيمة السوقية</div><div class="kpi-value accent">${H.fmt(totalMkt)}</div><div class="kpi-sub">SAR</div></div>
+  <div class="kpi-card"><div class="kpi-icon">🧾</div><div class="kpi-label">صافي التكلفة</div><div class="kpi-value">${H.fmt(netCost)}</div><div class="kpi-sub">شراء − بيع</div></div>
+  <div class="kpi-card"><div class="kpi-icon">📈</div><div class="kpi-label">الربح / الخسارة الورقية</div><div class="kpi-value ${paperPL>=0?'pos':'neg'}">${paperPL>=0?'+':''}${H.fmt(paperPL)}</div><div class="kpi-sub">${H.fmt(avgCostPct,2)}% من التكلفة</div></div>
+  <div class="kpi-card"><div class="kpi-icon">🏆</div><div class="kpi-label">العائد الشامل</div><div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''}${H.fmt(totalReturn)}</div><div class="kpi-sub">ر/خ + توزيعات • ${H.pct(totalReturnPct)}</div></div>`;
 
-// ══════════════════════════════════════════════
-//  KPI Row 2 — عائد التوزيعات
-// ══════════════════════════════════════════════
+// KPI Row 2
 document.getElementById('kpiRow2').innerHTML = `
-  <div class="kpi-card">
-    <div class="kpi-icon">💰</div>
-    <div class="kpi-label">إجمالي التوزيعات</div>
-    <div class="kpi-value pos">${H.fmt(totalDiv)}</div>
-    <div class="kpi-sub">SAR مُستلمة</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">🗓️</div>
-    <div class="kpi-label">عائد آخر 12 شهر</div>
-    <div class="kpi-value ${yield12m >= settings.targetYield*100 ? 'pos':'warn'}">${H.fmt(yield12m,2)}%</div>
-    <div class="kpi-sub">${H.fmt(div12m)} SAR توزيعات</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">📅</div>
-    <div class="kpi-label">عائد آخر 6 أشهر</div>
-    <div class="kpi-value">${H.fmt(yield6m,2)}%</div>
-    <div class="kpi-sub">${H.fmt(div6m)} SAR توزيعات</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">🎯</div>
-    <div class="kpi-label">العائد المستهدف السنوي</div>
-    <div class="kpi-value warn">${H.fmt(settings.targetYield*100,1)}%</div>
-    <div class="kpi-sub">فجوة ${H.fmt(Math.max(0, settings.targetYield*100 - yield12m),2)}%</div>
-  </div>`;
+  <div class="kpi-card"><div class="kpi-icon">💰</div><div class="kpi-label">إجمالي التوزيعات</div><div class="kpi-value pos">${H.fmt(totalDiv)}</div><div class="kpi-sub">SAR مُستلمة</div></div>
+  <div class="kpi-card"><div class="kpi-icon">🗓️</div><div class="kpi-label">عائد آخر 12 شهر</div><div class="kpi-value ${yield12m>=settings.targetYield*100?'pos':'warn'}">${H.fmt(yield12m,2)}%</div><div class="kpi-sub">${H.fmt(div12m)} SAR</div></div>
+  <div class="kpi-card"><div class="kpi-icon">📅</div><div class="kpi-label">عائد آخر 6 أشهر</div><div class="kpi-value">${H.fmt(yield6m,2)}%</div><div class="kpi-sub">${H.fmt(div6m)} SAR</div></div>
+  <div class="kpi-card"><div class="kpi-icon">🎯</div><div class="kpi-label">العائد المستهدف</div><div class="kpi-value warn">${H.fmt(settings.targetYield*100,1)}%</div><div class="kpi-sub">فجوة ${H.fmt(Math.max(0,settings.targetYield*100-yield12m),2)}%</div></div>`;
 
-// ══════════════════════════════════════════════
-//  KPI Row 3 — إحصاءات
-// ══════════════════════════════════════════════
+// KPI Row 3
 document.getElementById('kpiRow3').innerHTML = `
-  <div class="kpi-card">
-    <div class="kpi-icon">🏦</div>
-    <div class="kpi-label">عدد المراكز</div>
-    <div class="kpi-value">${portfolio.length}</div>
-    <div class="kpi-sub">من ${settings.minPositions}–${settings.maxPositions} مستهدف</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">🗂️</div>
-    <div class="kpi-label">القطاعات الممثّلة</div>
-    <div class="kpi-value">${sectors}</div>
-    <div class="kpi-sub">تنويع قطاعي</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">⚡</div>
-    <div class="kpi-label">إشارات فعّالة</div>
-    <div class="kpi-value accent">${toAccum + toReduce}</div>
-    <div class="kpi-sub">${toAccum} تجميع • ${toReduce} تخفيف</div>
-  </div>
-  <div class="kpi-card">
-    <div class="kpi-icon">📬</div>
-    <div class="kpi-label">آخر توزيع</div>
-    <div class="kpi-value pos" style="font-size:18px">${lastDiv ? H.fmt(lastDiv.amount) : '—'}</div>
-    <div class="kpi-sub">${lastDiv ? (lastDiv.stock + ' • ' + lastDiv.date) : 'لا يوجد'}</div>
-  </div>`;
+  <div class="kpi-card"><div class="kpi-icon">🏦</div><div class="kpi-label">عدد المراكز</div><div class="kpi-value">${portfolio.length}</div><div class="kpi-sub">من ${settings.minPositions}–${settings.maxPositions} مستهدف</div></div>
+  <div class="kpi-card"><div class="kpi-icon">🗂️</div><div class="kpi-label">القطاعات الممثّلة</div><div class="kpi-value">${sectors}</div><div class="kpi-sub">تنويع قطاعي</div></div>
+  <div class="kpi-card"><div class="kpi-icon">⚡</div><div class="kpi-label">إشارات فعّالة</div><div class="kpi-value accent">${toAccum+toReduce}</div><div class="kpi-sub">${toAccum} تجميع • ${toReduce} تخفيف</div></div>
+  <div class="kpi-card"><div class="kpi-icon">📬</div><div class="kpi-label">آخر توزيع</div><div class="kpi-value pos" style="font-size:18px">${lastDiv?H.fmt(lastDiv.amount):'—'}</div><div class="kpi-sub">${lastDiv?(lastDiv.stock+' • '+lastDiv.date):'لا يوجد'}</div></div>`;
 
-// ══════════════════════════════════════════════
-//  Signals
-// ══════════════════════════════════════════════
-const buyList  = portfolio.filter(p => p.decision?.includes('تجميع') && p.current_price <= p.buy_zone_max);
-const sellList = portfolio.filter(p => p.decision?.includes('تخفيف') && p.current_price >= p.sell_zone_low);
+// Signals
+const buyList  = portfolio.filter(p=>p.decision?.includes('تجميع')&&p.current_price<=p.buy_zone_max);
+const sellList = portfolio.filter(p=>p.decision?.includes('تخفيف')&&p.current_price>=p.sell_zone_low);
 
 document.getElementById('buySignals').innerHTML = buyList.length
-  ? buyList.map(p => `
+  ? buyList.map(p=>`
     <div class="signal-item buy">
       <span>🟢</span>
-      <div>
-        <strong>${p.stock}</strong>
-        <span style="color:var(--text3);font-size:12px"> • ${p.ticker}</span><br>
-        <span style="font-size:12px;color:var(--text2)">
-          السعر <strong>${H.fmt(p.current_price)}</strong>
-          ← منطقة شراء أقل من ${H.fmt(p.buy_zone_max)}
-        </span>
-      </div>
+      <div><strong>${p.stock}</strong><span style="color:var(--text3);font-size:12px"> • ${p.ticker}</span><br>
+      <span style="font-size:12px;color:var(--text2)">السعر <strong>${H.fmt(p.current_price)}</strong> ← منطقة شراء أقل من ${H.fmt(p.buy_zone_max)}</span></div>
     </div>`).join('')
-  : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد أسهم في منطقة تجميع حالياً</p>';
+  : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد أسهم في منطقة تجميع</p>';
 
 document.getElementById('sellSignals').innerHTML = sellList.length
-  ? sellList.map(p => `
+  ? sellList.map(p=>`
     <div class="signal-item sell">
       <span>🟡</span>
-      <div>
-        <strong>${p.stock}</strong>
-        <span style="color:var(--text3);font-size:12px"> • ${p.ticker}</span><br>
-        <span style="font-size:12px;color:var(--text2)">
-          السعر <strong>${H.fmt(p.current_price)}</strong>
-          ← منطقة تخفيف من ${H.fmt(p.sell_zone_low)}
-        </span>
-      </div>
+      <div><strong>${p.stock}</strong><span style="color:var(--text3);font-size:12px"> • ${p.ticker}</span><br>
+      <span style="font-size:12px;color:var(--text2)">السعر <strong>${H.fmt(p.current_price)}</strong> ← منطقة تخفيف من ${H.fmt(p.sell_zone_low)}</span></div>
     </div>`).join('')
-  : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد أسهم في منطقة تخفيف حالياً</p>';
+  : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد أسهم في منطقة تخفيف</p>';
 
-// ══════════════════════════════════════════════
-//  Sector Doughnut
-// ══════════════════════════════════════════════
+// Sector Doughnut
 const sectorMap = {};
-portfolio.forEach(p => {
-  const sector = TICKER_MAP[p.ticker]?.sector || p.sector || 'غير محدد';
-  sectorMap[sector] = (sectorMap[sector]||0) + p.qty * p.current_price;
+portfolio.forEach(p=>{
+  const s = TICKER_MAP[p.ticker]?.sector||p.sector||'غير محدد';
+  sectorMap[s]=(sectorMap[s]||0)+p.qty*p.current_price;
 });
-
-const COLORS = [
-  '#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa',
-  '#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6','#8b5cf6','#fb923c'
-];
-
+const COLORS=['#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6','#8b5cf6','#fb923c'];
 new Chart(document.getElementById('sectorChart'),{
-  type: 'doughnut',
-  data: {
-    labels: Object.keys(sectorMap),
-    datasets:[{ data:Object.values(sectorMap), backgroundColor:COLORS,
-      borderColor:'#131722', borderWidth:2 }]
-  },
-  options:{
-    responsive:true, maintainAspectRatio:false,
-    plugins:{
-      legend:{ position:'bottom', labels:{color:'#94a3b8',font:{size:10},padding:8,boxWidth:10} },
-      tooltip:{ callbacks:{ label:ctx=>`${H.fmt(ctx.raw)} SAR (${(ctx.raw/totalMkt*100).toFixed(1)}%)` }}
+  type:'doughnut',
+  data:{ labels:Object.keys(sectorMap), datasets:[{data:Object.values(sectorMap),backgroundColor:COLORS,borderColor:'#131722',borderWidth:2}] },
+  options:{ responsive:true,maintainAspectRatio:false,
+    plugins:{ legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:10},padding:8,boxWidth:10}},
+      tooltip:{callbacks:{label:ctx=>`${H.fmt(ctx.raw)} SAR (${(ctx.raw/totalMkt*100).toFixed(1)}%)`}}
     }
   }
 });
 
-// ══════════════════════════════════════════════
-//  Allocation Bar
-// ══════════════════════════════════════════════
+// Allocation Bar
 const allocData = portfolio
-  .map(p => ({
-    name:   p.ticker,
-    stock:  p.stock,
-    goal:   (p.goal_alloc||0) * 100,
-    actual: totalMkt > 0 ? p.qty * p.current_price / totalMkt * 100 : 0,
-  }))
-  .sort((a,b) => b.goal - a.goal)
-  .slice(0, 12);
-
-const overAlloc = allocData.filter(d => d.goal > 0 && (d.actual - d.goal) > 5);
-
+  .map(p=>({name:p.ticker,stock:p.stock,goal:(p.goal_alloc||0)*100,actual:totalMkt>0?p.qty*p.current_price/totalMkt*100:0}))
+  .sort((a,b)=>b.goal-a.goal).slice(0,12);
+const overAlloc = allocData.filter(d=>d.goal>0&&(d.actual-d.goal)>5);
 new Chart(document.getElementById('allocChart'),{
-  type: 'bar',
-  data: {
-    labels: allocData.map(d => (overAlloc.find(x=>x.name===d.name) ? '⚠ ' : '') + d.name),
+  type:'bar',
+  data:{
+    labels:allocData.map(d=>(overAlloc.find(x=>x.name===d.name)?'⚠ ':'')+d.name),
     datasets:[
-      { label:'الهدف %',  data:allocData.map(d=>d.goal),
-        backgroundColor:'rgba(79,142,247,0.55)', borderRadius:3, maxBarThickness:20 },
-      { label:'الفعلي %', data:allocData.map(d=>d.actual),
-        backgroundColor:allocData.map(d =>
-          d.goal > 0 && (d.actual - d.goal) > 5
-            ? 'rgba(239,68,68,0.7)'
-            : 'rgba(34,197,94,0.6)'
-        ),
-        borderRadius:3, maxBarThickness:20 }
+      {label:'الهدف %', data:allocData.map(d=>d.goal),backgroundColor:'rgba(79,142,247,0.55)',borderRadius:3,maxBarThickness:20},
+      {label:'الفعلي %',data:allocData.map(d=>d.actual),backgroundColor:allocData.map(d=>d.goal>0&&(d.actual-d.goal)>5?'rgba(239,68,68,0.7)':'rgba(34,197,94,0.6)'),borderRadius:3,maxBarThickness:20}
     ]
   },
   options:{
-    responsive:true, maintainAspectRatio:false,
-    barPercentage:0.65, categoryPercentage:0.75,
-    plugins:{
-      legend:{ labels:{color:'#94a3b8',font:{size:11}} },
-      tooltip:{ callbacks:{
-        afterBody: items => {
-          const d = allocData[items[0].dataIndex];
-          if (d.goal > 0 && (d.actual - d.goal) > 5)
-            return `⚠ تجاوز الهدف بـ ${(d.actual-d.goal).toFixed(1)}%`;
-          return '';
-        }
-      }}
-    },
-    scales:{
-      x:{ ticks:{color:'#64748b',font:{size:9},maxRotation:45}, grid:{color:'#1e2340'} },
-      y:{ ticks:{color:'#64748b',callback:v=>v+'%'},             grid:{color:'#1e2340'} }
-    }
+    responsive:true,maintainAspectRatio:false,barPercentage:0.65,categoryPercentage:0.75,
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{callbacks:{afterBody:items=>{
+      const d=allocData[items[0].dataIndex];
+      return d.goal>0&&(d.actual-d.goal)>5?`⚠ تجاوز الهدف بـ ${(d.actual-d.goal).toFixed(1)}%`:'';
+    }}}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:9},maxRotation:45},grid:{color:'#1e2340'}},y:{ticks:{color:'#64748b',callback:v=>v+'%'},grid:{color:'#1e2340'}}}
   }
 });
-
-if (overAlloc.length) {
-  const warn = document.createElement('div');
-  warn.style.cssText = 'margin-top:10px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;color:var(--red);line-height:1.8';
-  warn.innerHTML = overAlloc.map(d =>
-    `⚠️ <strong>${d.stock}</strong>: فعلي ${d.actual.toFixed(1)}% مقابل هدف ${d.goal.toFixed(1)}% (+${(d.actual-d.goal).toFixed(1)}%)`
-  ).join('<br>');
-  document.getElementById('allocWarn').appendChild(warn);
+if(overAlloc.length){
+  const w=document.createElement('div');
+  w.style.cssText='margin-top:10px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;font-size:12px;color:var(--red);line-height:1.8';
+  w.innerHTML=overAlloc.map(d=>`⚠️ <strong>${d.stock}</strong>: فعلي ${d.actual.toFixed(1)}% مقابل هدف ${d.goal.toFixed(1)}% (+${(d.actual-d.goal).toFixed(1)}%)`).join('<br>');
+  document.getElementById('allocWarn').appendChild(w);
 }
 
-// ══════════════════════════════════════════════
-//  Goal Progress
-// ══════════════════════════════════════════════
+// Goal Progress
 document.getElementById('goalProgress').innerHTML = `
   <div style="margin-bottom:20px">
     <div style="display:flex;justify-content:space-between;margin-bottom:6px">
       <span style="font-size:13px;color:var(--text2)">التقدم نحو ${H.fmt(settings.targetCapital)} SAR</span>
       <span style="font-size:14px;font-weight:800;color:var(--accent)">${progressPct.toFixed(1)}%</span>
     </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar" style="width:${progressPct}%"></div>
-    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:${progressPct}%"></div></div>
     <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text3)">
       <span>${H.fmt(totalMkt)} SAR حالياً</span>
-      <span>${H.fmt(settings.targetCapital - totalMkt)} SAR متبقي</span>
+      <span>${H.fmt(settings.targetCapital-totalMkt)} SAR متبقي</span>
     </div>
   </div>
   <div class="kpi-grid cols-2" style="margin:0">
@@ -507,141 +403,85 @@ document.getElementById('goalProgress').innerHTML = `
     </div>
     <div class="kpi-card" style="padding:14px">
       <div class="kpi-label">هدف التوزيعات السنوي</div>
-      <div class="kpi-value pos">${H.fmt(settings.targetCapital * settings.targetYield)}</div>
+      <div class="kpi-value pos">${H.fmt(settings.targetCapital*settings.targetYield)}</div>
       <div class="kpi-sub">SAR</div>
     </div>
   </div>`;
 
-// ══════════════════════════════════════════════
-//  Top / Worst Stocks
-// ══════════════════════════════════════════════
-const sortedPL = [...portfolio]
-  .map(p => ({ ...p, pl: p.avg_cost > 0 ? (p.current_price - p.avg_cost) / p.avg_cost : 0 }))
-  .sort((a,b) => b.pl - a.pl);
-
-const topN   = sortedPL.slice(0, 4);
-const worstN = sortedPL.slice(-3);
-
-document.getElementById('topStocks').innerHTML = `
+// Top Stocks
+const sortedPL=[...portfolio].map(p=>({...p,pl:p.avg_cost>0?(p.current_price-p.avg_cost)/p.avg_cost:0})).sort((a,b)=>b.pl-a.pl);
+const topN=sortedPL.slice(0,4); const worstN=sortedPL.slice(-3);
+function stockRow(p){
+  return `<div class="stock-row-mini">
+    <div><div class="sname">${p.stock}</div><div class="sticker">${p.ticker} • ${TICKER_MAP[p.ticker]?.sector||p.sector||''}</div></div>
+    <div style="text-align:left"><div class="${p.pl>=0?'pos':'neg'}" style="font-weight:700">${p.pl>=0?'+':''}${(p.pl*100).toFixed(2)}%</div>
+    <div style="font-size:11px;color:var(--text3)">${H.fmt(p.current_price)} SAR</div></div>
+  </div>`;}
+document.getElementById('topStocks').innerHTML=`
   <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">أفضل 4</div>
-  ${topN.map(p => stockRow(p)).join('')}
+  ${topN.map(p=>stockRow(p)).join('')}
   <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">أسوأ 3</div>
-  ${worstN.map(p => stockRow(p)).join('')}`;
+  ${worstN.map(p=>stockRow(p)).join('')}`;
 
-function stockRow(p) {
-  return `
-    <div class="stock-row-mini">
-      <div>
-        <div class="sname">${p.stock}</div>
-        <div class="sticker">${p.ticker} • ${TICKER_MAP[p.ticker]?.sector || p.sector || ''}</div>
-      </div>
-      <div style="text-align:left">
-        <div class="${p.pl>=0?'pos':'neg'}" style="font-weight:700">
-          ${p.pl>=0?'+':''}${(p.pl*100).toFixed(2)}%
-        </div>
-        <div style="font-size:11px;color:var(--text3)">${H.fmt(p.current_price)} SAR</div>
-      </div>
-    </div>`;
-}
-
-// ══════════════════════════════════════════════
-//  آخر 7 عمليات
-// ══════════════════════════════════════════════
-const lastTxList = [...transactions]
-  .sort((a,b) => new Date(b.date||0) - new Date(a.date||0))
-  .slice(0, 7);
-
-document.getElementById('lastTx').innerHTML = lastTxList.length
-  ? lastTxList.map(t => `
+// Last Tx
+const lastTxList=[...transactions].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,7);
+document.getElementById('lastTx').innerHTML=lastTxList.length
+  ?lastTxList.map(t=>`
     <div class="tx-row">
       <div style="display:flex;align-items:center;gap:10px">
-        <span class="badge ${t.status==='Buy'?'badge-buy':'badge-sell'}" style="font-size:10px">
-          ${t.status==='Buy'?'⬆ شراء':'⬇ بيع'}
-        </span>
-        <div>
-          <div style="font-weight:600;font-size:13px">${t.ticker}</div>
-          <div style="font-size:11px;color:var(--text3)">${t.name || (TICKER_MAP[t.ticker]?.name) || ''}</div>
-        </div>
+        <span class="badge ${t.status==='Buy'?'badge-buy':'badge-sell'}" style="font-size:10px">${t.status==='Buy'?'⬆ شراء':'⬇ بيع'}</span>
+        <div><div style="font-weight:600;font-size:13px">${t.ticker}</div>
+        <div style="font-size:11px;color:var(--text3)">${t.name||(TICKER_MAP[t.ticker]?.name)||''}</div></div>
       </div>
       <div style="text-align:left">
         <div style="font-weight:700;font-size:13px">${H.fmt(t.total_cost||0)} SAR</div>
         <div style="font-size:11px;color:var(--text3)">${t.date||'—'} • ${H.fmt(t.qty,0)} سهم</div>
       </div>
     </div>`).join('')
-  : '<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد عمليات مسجّلة</p>';
+  :'<p style="color:var(--text3);font-size:13px;padding:8px 0">لا توجد عمليات</p>';
 
-// ══════════════════════════════════════════════
-//  Dividends Bar
-// ══════════════════════════════════════════════
-const divMap = {};
-divs.forEach(d => { divMap[d.stock] = (divMap[d.stock]||0) + d.amount; });
-const divSorted = Object.entries(divMap).sort((a,b)=>b[1]-a[1]);
-
+// Dividends Bar
+const divMap={};
+divs.forEach(d=>{divMap[d.stock]=(divMap[d.stock]||0)+d.amount;});
+const divSorted=Object.entries(divMap).sort((a,b)=>b[1]-a[1]);
 new Chart(document.getElementById('divChart'),{
-  type: 'bar',
-  data: {
-    labels: divSorted.map(d=>d[0]),
-    datasets:[{ label:'SAR', data:divSorted.map(d=>d[1]),
-      backgroundColor:'rgba(34,197,94,0.6)', borderRadius:4, maxBarThickness:32 }]
-  },
-  options:{
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{display:false} },
-    scales:{
-      x:{ ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1e2340'} },
-      y:{ ticks:{color:'#64748b'},                grid:{color:'#1e2340'} }
-    }
-  }
+  type:'bar',
+  data:{labels:divSorted.map(d=>d[0]),datasets:[{label:'SAR',data:divSorted.map(d=>d[1]),backgroundColor:'rgba(34,197,94,0.6)',borderRadius:4,maxBarThickness:32}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2340'}},y:{ticks:{color:'#64748b'},grid:{color:'#1e2340'}}}}
 });
 
-// ══════════════════════════════════════════════
-//  Geographic Focus — ديناميكي من coverage
-// ══════════════════════════════════════════════
-const geoMap = {};
-portfolio.forEach(p => {
-  const info  = TICKER_MAP[p.ticker];
-  const label = info?.coverage || 'محلي';
-  geoMap[label] = (geoMap[label]||0) + p.qty * p.current_price;
+// Geo
+const geoMap={};
+portfolio.forEach(p=>{
+  const label=TICKER_MAP[p.ticker]?.coverage||'محلي';
+  geoMap[label]=(geoMap[label]||0)+p.qty*p.current_price;
 });
+const geoColors={'محلي':'#4f8ef7','إقليمي':'#22c55e','عالمي':'#f59e0b'};
+const geoTotal=Object.values(geoMap).reduce((s,v)=>s+v,0);
+document.getElementById('geoBox').innerHTML=
+  Object.entries(geoMap).map(([label,val])=>{
+    const pct=geoTotal>0?(val/geoTotal*100):0;
+    const color=geoColors[label]||'#a78bfa';
+    return `<div class="geo-bar-row">
+      <span style="min-width:180px">${label==='محلي'?'🇸🇦':label==='إقليمي'?'🌐':'🌍'} ${label}</span>
+      <div class="geo-bar-bg"><div class="geo-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span style="min-width:50px;text-align:left;font-weight:700;color:${color}">${pct.toFixed(1)}%</span>
+      <span style="min-width:80px;text-align:left;font-size:11px;color:var(--text3)">${H.fmt(val)} SAR</span>
+    </div>`;}).join('')+
+  `<p style="font-size:11px;color:var(--text3);margin-top:10px">القيمة الكلية: <strong>${H.fmt(geoTotal)} SAR</strong></p>`;
 
-const geoColors = { 'محلي':'#4f8ef7', 'إقليمي':'#22c55e', 'عالمي':'#f59e0b' };
-const geoTotal  = Object.values(geoMap).reduce((s,v)=>s+v,0);
-
-document.getElementById('geoBox').innerHTML =
-  Object.entries(geoMap).map(([label, val]) => {
-    const pct   = geoTotal > 0 ? (val / geoTotal * 100) : 0;
-    const color = geoColors[label] || '#a78bfa';
-    return `
-      <div class="geo-bar-row">
-        <span style="min-width:180px">${label === 'محلي' ? '🇸🇦' : label === 'إقليمي' ? '🌐' : '🌍'} ${label}</span>
-        <div class="geo-bar-bg">
-          <div class="geo-bar-fill" style="width:${pct}%;background:${color}"></div>
-        </div>
-        <span style="min-width:50px;text-align:left;font-weight:700;color:${color}">${pct.toFixed(1)}%</span>
-        <span style="min-width:80px;text-align:left;font-size:11px;color:var(--text3)">${H.fmt(val)} SAR</span>
-      </div>`;
-  }).join('') +
-  `<p style="font-size:11px;color:var(--text3);margin-top:10px">
-    القيمة الكلية: <strong>${H.fmt(geoTotal)} SAR</strong>
-  </p>`;
-
-// ══════════════════════════════════════════════
-//  Investment Rules
-// ══════════════════════════════════════════════
-const rules = [
-  { icon:'🛡️', text:'الحماية أهم من الربح. نم قرير العين.' },
-  { icon:'⏳', text:'الوقت في السوق أهم من توقيت السوق.' },
-  { icon:'🧊', text:'سوق الأسهم يكافئ الصبور جداً.' },
-  { icon:'💎', text:'لا تبيع الجودة أبداً.' },
-  { icon:'🔴', text:'ريال واحد من التوزيعات ممنوع يخرج.' },
-  { icon:'📐', text:'أنت Defensive Investor — لا تتصرف كالمضارب.' },
+// Rules
+const rules=[
+  {icon:'🛡️',text:'الحماية أهم من الربح. نم قرير العين.'},
+  {icon:'⏳',text:'الوقت في السوق أهم من توقيت السوق.'},
+  {icon:'🧊',text:'سوق الأسهم يكافئ الصبور جداً.'},
+  {icon:'💎',text:'لا تبيع الجودة أبداً.'},
+  {icon:'🔴',text:'ريال واحد من التوزيعات ممنوع يخرج.'},
+  {icon:'📐',text:'أنت Defensive Investor — لا تتصرف كالمضارب.'},
 ];
-
-document.getElementById('rulesBox').innerHTML = rules.map(r=>`
-  <div class="rule-item">
-    <span class="rule-icon">${r.icon}</span>
-    <span>${r.text}</span>
-  </div>`).join('');
+document.getElementById('rulesBox').innerHTML=rules.map(r=>`
+  <div class="rule-item"><span class="rule-icon">${r.icon}</span><span>${r.text}</span></div>`).join('');
 </script>
 </body>
 </html>
