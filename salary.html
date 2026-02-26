@@ -106,11 +106,6 @@
 }
 .filter-tab:hover  { border-color: var(--accent); color: var(--accent); }
 .filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-.month-names {
-  'يناير','فبراير','مارس','أبريل','مايو','يونيو',
-  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
-}
 </style>
 </head>
 <body>
@@ -118,7 +113,6 @@
 
 <div class="main">
 
-  <!-- Header -->
   <div class="page-header">
     <div class="page-header-left">
       <h1>💳 سجلات الراتب</h1>
@@ -130,90 +124,51 @@
     </div>
   </div>
 
-  <!-- KPIs -->
   <div class="kpi-grid cols-4" id="salaryKPIs"></div>
 
-  <!-- Add Record Form -->
   <div class="form-card">
     <h3>➕ إضافة سجل شهري</h3>
     <div class="form-row">
-      <div class="form-group">
-        <label>السنة</label>
-        <input id="s-year" type="number" placeholder="2026" min="2015" max="2060">
-      </div>
+      <div class="form-group"><label>السنة</label><input id="s-year" type="number" placeholder="2026" min="2015" max="2060"></div>
       <div class="form-group">
         <label>الشهر</label>
         <select id="s-month">
-          <option value="1">يناير</option>
-          <option value="2">فبراير</option>
-          <option value="3">مارس</option>
-          <option value="4">أبريل</option>
-          <option value="5">مايو</option>
-          <option value="6">يونيو</option>
-          <option value="7">يوليو</option>
-          <option value="8">أغسطس</option>
-          <option value="9">سبتمبر</option>
-          <option value="10">أكتوبر</option>
-          <option value="11">نوفمبر</option>
-          <option value="12">ديسمبر</option>
+          <option value="1">يناير</option><option value="2">فبراير</option>
+          <option value="3">مارس</option><option value="4">أبريل</option>
+          <option value="5">مايو</option><option value="6">يونيو</option>
+          <option value="7">يوليو</option><option value="8">أغسطس</option>
+          <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+          <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>الأساسي</label>
-        <input id="s-basic" type="number" step="0.01" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>بدل السكن</label>
-        <input id="s-housing" type="number" step="0.01" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>بدل النقل</label>
-        <input id="s-transport" type="number" step="0.01" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>أوفر تايم</label>
-        <input id="s-overtime" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
-      </div>
-      <div class="form-group">
-        <label>بدلات أخرى</label>
-        <input id="s-other" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
-      </div>
-      <div class="form-group">
-        <label>GOSI</label>
-        <input id="s-gosi" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
-      </div>
-      <div class="form-group">
-        <label>خصم ساند</label>
-        <input id="s-saned" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()">
-      </div>
+      <div class="form-group"><label>الأساسي</label><input id="s-basic" type="number" step="0.01" placeholder="0"></div>
+      <div class="form-group"><label>بدل السكن</label><input id="s-housing" type="number" step="0.01" placeholder="0"></div>
+      <div class="form-group"><label>بدل النقل</label><input id="s-transport" type="number" step="0.01" placeholder="0"></div>
+      <div class="form-group"><label>أوفر تايم</label><input id="s-overtime" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()"></div>
+      <div class="form-group"><label>بدلات أخرى</label><input id="s-other" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()"></div>
+      <div class="form-group"><label>GOSI</label><input id="s-gosi" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()"></div>
+      <div class="form-group"><label>خصم ساند</label><input id="s-saned" type="number" step="0.01" placeholder="0" oninput="calcSalaryPreview()"></div>
     </div>
-
-    <!-- Preview -->
     <div id="salaryPreview" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap">
       <span>الإجمالي: <strong id="prev-gross" class="accent">—</strong></span>
       <span>الخصومات: <strong id="prev-deduct" style="color:var(--red)">—</strong></span>
       <span>الصافي: <strong id="prev-net" class="pos">—</strong></span>
     </div>
-
-    <!-- توزيع الراتب -->
     <div style="margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">توزيع الراتب</div>
       <div class="form-row" id="splitFieldsRow"></div>
     </div>
-
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="addRecord()">➕ إضافة</button>
       <span id="remainingPreview" style="font-size:13px;color:var(--text3)"></span>
     </div>
   </div>
 
-  <!-- Filters -->
   <div class="toolbar">
     <div class="filter-tabs" id="yearTabs"></div>
     <button class="btn btn-ghost btn-sm" onclick="showManageColumns()">⚙️ إدارة الأعمدة</button>
   </div>
 
-  <!-- Table -->
   <div class="salary-table-wrap">
     <table id="salaryTable">
       <thead id="salaryHead"></thead>
@@ -227,9 +182,7 @@
 <div id="colModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:560px;max-height:80vh;overflow-y:auto">
     <h3 style="margin-bottom:16px;font-size:15px">⚙️ إدارة أعمدة التوزيع</h3>
-    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">
-      أضف أو عدّل أو احذف أعمدة التوزيع. الترتيب يعكس ترتيب الجدول.
-    </div>
+    <div class="info-box blue" style="margin-bottom:16px;font-size:12px">أضف أو عدّل أو احذف أعمدة التوزيع. الترتيب يعكس ترتيب الجدول.</div>
     <div id="colList" style="margin-bottom:16px"></div>
     <div style="display:flex;gap:10px;margin-bottom:16px">
       <input id="newColName" class="field-inline" placeholder="اسم العمود الجديد" style="flex:1">
@@ -243,49 +196,142 @@
 </div>
 
 <script>
-// ════════════════════════════════════════════
-//  Default split columns
-// ════════════════════════════════════════════
 const DEFAULT_COLS = [
-  { id:'col_house_exp',  label:'مصاريف البيت' },
-  { id:'col_wife',       label:'معونة الزوجة' },
-  { id:'col_fun',        label:'حساب الترفيه' },
-  { id:'col_emergency',  label:'الكاش الطارئ' },
-  { id:'col_loan',       label:'تمويل' },
-  { id:'col_rc_house',   label:'بيت الهيئة' },
+  { id:'col_house_exp', label:'مصاريف البيت' },
+  { id:'col_wife',      label:'معونة الزوجة' },
+  { id:'col_fun',       label:'حساب الترفيه' },
+  { id:'col_emergency', label:'الكاش الطارئ' },
+  { id:'col_loan',      label:'تمويل' },
+  { id:'col_rc_house',  label:'بيت الهيئة' },
 ];
 
-const MONTHS = [
-  '','يناير','فبراير','مارس','أبريل','مايو','يونيو',
-  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
+const MONTHS = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو',
+  'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+// ═══════════════════════════════════════════
+//  بيانات محملة مسبقاً 2019–2025
+//  عمود sal_net: الصافي المدخل مباشرة للسنوات من 2025 وأخيراً
+//  (أبتعته مختلف عن باقي السنوات)
+// ═══════════════════════════════════════════
+const SEED_RECORDS = [
+  // 2019
+  {year:2019,month:1, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:1289.76, after_split:11812.61},
+  {year:2019,month:2, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:9083.69, after_split:4018.68},
+  {year:2019,month:3, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:5002.56, after_split:8099.81},
+  {year:2019,month:4, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:5589.9,  after_split:7512.47},
+  {year:2019,month:5, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:4362.43, after_split:8739.94},
+  {year:2019,month:6, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:5729.64, after_split:7372.73},
+  {year:2019,month:7, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:6307.04, after_split:6795.33},
+  {year:2019,month:8, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:9029.97, after_split:4072.4},
+  {year:2019,month:9, basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:4546.45, after_split:8555.92},
+  {year:2019,month:10,basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:25164.32,after_split:-12061.95},
+  {year:2019,month:11,basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:5741.56, after_split:7360.81},
+  {year:2019,month:12,basic:10364.08,housing:2083,transport:900,overtime:0,other:0,gosi:1244.708,saned:0,gross:14347.08,net:13102.37,col_house_exp:8075.21, after_split:5027.16},
+  // 2020
+  {year:2020,month:1, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:3946.3,  after_split:8622.83},
+  {year:2020,month:2, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:5619.65, after_split:6949.48},
+  {year:2020,month:3, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:14030.82,after_split:-1461.69},
+  {year:2020,month:4, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:16792.87,after_split:-4223.74},
+  {year:2020,month:5, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:8915.28, after_split:3653.85},
+  {year:2020,month:6, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:9888.63, after_split:2680.5},
+  {year:2020,month:7, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:11490.59,after_split:1078.54},
+  {year:2020,month:8, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:10368.75,after_split:2200.38},
+  {year:2020,month:9, basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:18910.59,after_split:-6341.46},
+  {year:2020,month:10,basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:15100.84,after_split:-2531.71},
+  {year:2020,month:11,basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:11827.4, after_split:741.73},
+  {year:2020,month:12,basic:10882.7,housing:2083,transport:900,overtime:0,other:0,gosi:1296.57,saned:0,gross:13865.7,net:12569.13,col_house_exp:10004.15,after_split:2564.98},
+  // 2021
+  {year:2021,month:1, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:10879.83,after_split:2179.41},
+  {year:2021,month:2, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:14367.5, after_split:-1308.26},
+  {year:2021,month:3, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:14499.51,after_split:-1440.27},
+  {year:2021,month:4, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:9731.79, after_split:3327.45},
+  {year:2021,month:5, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:10903.41,after_split:2155.83},
+  {year:2021,month:6, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:21142.5, after_split:-8083.26},
+  {year:2021,month:7, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:14386.79,after_split:-1327.55},
+  {year:2021,month:8, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:8145.6,  after_split:4913.64},
+  {year:2021,month:9, basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:27160.26,after_split:-14101.02},
+  {year:2021,month:10,basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:20982.99,after_split:-7923.75},
+  {year:2021,month:11,basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:11411.74,after_split:1647.5},
+  {year:2021,month:12,basic:11427.27,housing:2083,transport:900,overtime:0,other:0,gosi:1351.027,saned:0,gross:14410.27,net:13059.24,col_house_exp:10803.22,after_split:2256.02},
+  // 2022
+  {year:2022,month:1, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:9638.59, after_split:5563.84},
+  {year:2022,month:2, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:14461.85,after_split:740.58},
+  {year:2022,month:3, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:10737,   after_split:4465.43},
+  {year:2022,month:4, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:10336,   after_split:4866.43},
+  {year:2022,month:5, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:7549,    after_split:7653.43},
+  {year:2022,month:6, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:7365,    after_split:7837.43},
+  {year:2022,month:7, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:20928,   after_split:-5725.57},
+  {year:2022,month:8, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:325945,  after_split:-310742.57},
+  {year:2022,month:9, basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:34526,   after_split:-19323.57},
+  {year:2022,month:10,basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:16929,   after_split:-1726.57},
+  {year:2022,month:11,basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:15583,   after_split:-380.57},
+  {year:2022,month:12,basic:13160,housing:2193.333,transport:1200,overtime:0,other:0,gosi:1350.901,saned:0,gross:16553.33,net:15202.43,col_house_exp:34125.71,after_split:-18923.28},
+  // 2023
+  {year:2023,month:1, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:16499.11,after_split:-312.05},
+  {year:2023,month:2, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:17132.48,after_split:-945.42},
+  {year:2023,month:3, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:13692.79,after_split:2494.27},
+  {year:2023,month:4, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:13276.44,after_split:2910.62},
+  {year:2023,month:5, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:12607.43,after_split:3579.63},
+  {year:2023,month:6, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:21019.16,after_split:-4832.1},
+  {year:2023,month:7, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:11659.71,after_split:4527.35},
+  {year:2023,month:8, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:9552,    after_split:6635.06},
+  {year:2023,month:9, basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:78575.99,after_split:-62388.93},
+  {year:2023,month:10,basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:21019,   after_split:-4831.94},
+  {year:2023,month:11,basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:11660,   after_split:4527.06},
+  {year:2023,month:12,basic:14233.86,housing:2372.309,transport:1200,overtime:0,other:0,gosi:1619.101,saned:0,gross:17806.17,net:16187.06,col_house_exp:9552,    after_split:6635.06},
+  // 2024
+  {year:2024,month:1, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:78576,  after_split:-61789.45},
+  {year:2024,month:2, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:5012,   after_split:11774.55},
+  {year:2024,month:3, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:13883,  after_split:2903.55},
+  {year:2024,month:4, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:23840,  after_split:-7053.45},
+  {year:2024,month:5, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:17233,  after_split:-446.45},
+  {year:2024,month:6, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:12453,  after_split:4333.55},
+  {year:2024,month:7, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:19236,  after_split:-2449.45},
+  {year:2024,month:8, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:15819,  after_split:967.55},
+  {year:2024,month:9, basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:13499,  after_split:3287.55},
+  {year:2024,month:10,basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:9061,   after_split:7725.55},
+  {year:2024,month:11,basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:13424,  after_split:3362.55},
+  {year:2024,month:12,basic:14803.21,housing:2467.202,transport:1200,overtime:0,other:0,gosi:1683.865,saned:0,gross:18470.41,net:16786.55,col_house_exp:12222,  after_split:4564.55},
+  // 2025 — صافي الراتب مختلف (salary مكافأة ملحقية)
+  {year:2025,month:1, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:5080,  col_house_exp:11844,after_split:-6764},
+  {year:2025,month:2, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:29839,col_house_exp:13693,after_split:16146},
+  {year:2025,month:3, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:20363,col_house_exp:12291,after_split:8072},
+  {year:2025,month:4, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:20024,col_house_exp:35138,after_split:-15114},
+  {year:2025,month:5, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:21139,col_house_exp:29785,after_split:-8646},
+  {year:2025,month:6, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:19392,col_house_exp:28778,after_split:-9386},
+  {year:2025,month:7, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:19263,col_house_exp:17520,after_split:1743},
+  {year:2025,month:8, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:19346,col_house_exp:16670,after_split:2676},
+  {year:2025,month:9, basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:19361,col_house_exp:10418,after_split:8943},
+  {year:2025,month:10,basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:49121,col_house_exp:17687,after_split:31434},
+  {year:2025,month:11,basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:23414,col_house_exp:89443,after_split:-66029},
+  {year:2025,month:12,basic:15394,housing:2565.667,transport:1200,overtime:0,other:0,gosi:1751.068,saned:0,gross:19159.67,net:19818,col_house_exp:22280,after_split:-2462},
 ];
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  State
-// ════════════════════════════════════════════
-let records  = Store.load('salary_v1', []);
-let splitCols = Store.load('salary_cols_v1', DEFAULT_COLS);
+// ═══════════════════════════════════════════
+// لو كان localStorage فارغ نحمّل البيانات المحملة
+const _saved = Store.load('salary_v1', null);
+let records   = (_saved && _saved.length > 0) ? _saved : [...SEED_RECORDS];
+let splitCols  = Store.load('salary_cols_v1', DEFAULT_COLS);
 let activeYear = 'all';
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  KPIs
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 function renderKPIs() {
-  const allRec = records;
-  const totalNet    = allRec.reduce((s,r) => s + (r.net||0), 0);
-  const totalGross  = allRec.reduce((s,r) => s + (r.gross||0), 0);
-  const totalInvest = allRec.reduce((s,r) => s + (r.col_invest||0), 0);
-  const totalDeduct = allRec.reduce((s,r) => s + (r.gosi||0) + (r.saned||0), 0);
-
-  // آخر راتب
-  const lastRec = [...allRec].sort((a,b)=> b.year*12+b.month - (a.year*12+a.month))[0];
+  const totalGross  = records.reduce((s,r) => s + (r.gross||0), 0);
+  const totalNet    = records.reduce((s,r) => s + (r.net||0),   0);
+  const totalDeduct = records.reduce((s,r) => s + (r.gosi||0) + (r.saned||0), 0);
+  const totalInvest = records.reduce((s,r) => s + (r.col_invest||0), 0);
+  const totalHouseExp = records.reduce((s,r) => s + (r.col_house_exp||0), 0);
 
   document.getElementById('salaryKPIs').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💵</div>
       <div class="kpi-label">إجمالي الدخل</div>
       <div class="kpi-value accent">${H.fmt(totalGross)}</div>
-      <div class="kpi-sub">SAR • ${allRec.length} شهر</div>
+      <div class="kpi-sub">SAR • ${records.length} شهر</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">✅</div>
@@ -294,10 +340,10 @@ function renderKPIs() {
       <div class="kpi-sub">بعد GOSI وساند</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-icon">📤</div>
-      <div class="kpi-label">إجمالي الخصومات</div>
-      <div class="kpi-value neg">${H.fmt(totalDeduct)}</div>
-      <div class="kpi-sub">GOSI + ساند</div>
+      <div class="kpi-icon">🏠</div>
+      <div class="kpi-label">مصاريف البيت</div>
+      <div class="kpi-value neg">${H.fmt(totalHouseExp)}</div>
+      <div class="kpi-sub">إجمالي مصروف</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">📈</div>
@@ -307,9 +353,9 @@ function renderKPIs() {
     </div>`;
 }
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  Calc Preview
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 function calcSalaryPreview() {
   const basic     = parseFloat(document.getElementById('s-basic').value)     || 0;
   const housing   = parseFloat(document.getElementById('s-housing').value)   || 0;
@@ -318,54 +364,43 @@ function calcSalaryPreview() {
   const other     = parseFloat(document.getElementById('s-other').value)     || 0;
   const gosi      = parseFloat(document.getElementById('s-gosi').value)      || 0;
   const saned     = parseFloat(document.getElementById('s-saned').value)     || 0;
-
   const gross = basic + housing + transport + overtime + other;
   const net   = gross - gosi - saned;
-
-  const prev = document.getElementById('salaryPreview');
+  const prev  = document.getElementById('salaryPreview');
   prev.style.display = 'flex';
-  document.getElementById('prev-gross').textContent  = H.fmt(gross)  + ' SAR';
+  document.getElementById('prev-gross').textContent  = H.fmt(gross) + ' SAR';
   document.getElementById('prev-deduct').textContent = H.fmt(gosi + saned) + ' SAR';
-  document.getElementById('prev-net').textContent    = H.fmt(net)    + ' SAR';
-
+  document.getElementById('prev-net').textContent    = H.fmt(net)   + ' SAR';
   calcRemaining();
 }
 
 function calcRemaining() {
-  const net = parseFloat(document.getElementById('prev-net')?.textContent) || 0;
+  const netTxt = document.getElementById('prev-net')?.textContent || '0';
+  const net    = parseFloat(netTxt.replace(/[^\d.-]/g,'')) || 0;
   let spent = 0;
-  splitCols.forEach(c => {
-    const el = document.getElementById('sf-' + c.id);
-    if (el) spent += parseFloat(el.value) || 0;
-  });
-  const invest = parseFloat(document.getElementById('sf-col_invest')?.value) || 0;
-  spent += invest;
+  splitCols.forEach(c => { const el = document.getElementById('sf-'+c.id); if(el) spent += parseFloat(el.value)||0; });
+  const inv = document.getElementById('sf-col_invest');
+  if (inv) spent += parseFloat(inv.value) || 0;
   const rem = net - spent;
   const el  = document.getElementById('remainingPreview');
-  if (el) {
-    el.textContent = `الصافي بعد التوزيع: ${H.fmt(rem)} SAR`;
-    el.style.color = rem >= 0 ? 'var(--green)' : 'var(--red)';
-  }
+  if (el) { el.textContent = `الصافي بعد التوزيع: ${H.fmt(rem)} SAR`; el.style.color = rem>=0?'var(--green)':'var(--red)'; }
 }
 
-// ════════════════════════════════════════════
-//  Render Split Fields in Form
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  Render Split Fields
+// ═══════════════════════════════════════════
 function renderSplitFields() {
-  const allCols = [
-    ...splitCols,
-    { id:'col_invest', label:'محفظة التقاعد 📈' }
-  ];
-  document.getElementById('splitFieldsRow').innerHTML = allCols.map(c => `
+  const all = [...splitCols, { id:'col_invest', label:'محفظة التقاعد 📈' }];
+  document.getElementById('splitFieldsRow').innerHTML = all.map(c => `
     <div class="form-group">
       <label>${c.label}</label>
       <input id="sf-${c.id}" type="number" step="0.01" placeholder="0" oninput="calcRemaining()">
     </div>`).join('');
 }
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  Add Record
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 function addRecord() {
   const year      = parseInt(document.getElementById('s-year').value)      || 0;
   const month     = parseInt(document.getElementById('s-month').value)     || 0;
@@ -376,80 +411,53 @@ function addRecord() {
   const other     = parseFloat(document.getElementById('s-other').value)     || 0;
   const gosi      = parseFloat(document.getElementById('s-gosi').value)      || 0;
   const saned     = parseFloat(document.getElementById('s-saned').value)     || 0;
-
-  if (!year || !month) return toast('أدخل السنة والشهر', 'error');
-
-  // التحقق من عدم التكرار
-  if (records.find(r => r.year === year && r.month === month)) {
-    return toast(`${MONTHS[month]} ${year} موجود بالفعل`, 'error');
-  }
-
-  const gross = basic + housing + transport + overtime + other;
-  const net   = gross - gosi - saned;
-
-  const rec = { year, month, basic, housing, transport, overtime, other, gosi, saned, gross, net };
-
-  // توزيع الراتب
-  splitCols.forEach(c => {
-    rec[c.id] = parseFloat(document.getElementById('sf-' + c.id)?.value) || 0;
-  });
-  rec['col_invest'] = parseFloat(document.getElementById('sf-col_invest')?.value) || 0;
-
-  // الصافي بعد الالتزامات
-  let spent = splitCols.reduce((s,c) => s + (rec[c.id]||0), 0) + (rec['col_invest']||0);
-  rec.after_split = parseFloat((net - spent).toFixed(2));
-
+  if (!year || !month) return toast('أدخل السنة والشهر','error');
+  if (records.find(r => r.year===year && r.month===month))
+    return toast(`${MONTHS[month]} ${year} موجود بالفعل`,'error');
+  const gross = basic+housing+transport+overtime+other;
+  const net   = gross-gosi-saned;
+  const rec   = {year,month,basic,housing,transport,overtime,other,gosi,saned,gross,net};
+  splitCols.forEach(c => { rec[c.id] = parseFloat(document.getElementById('sf-'+c.id)?.value)||0; });
+  rec.col_invest = parseFloat(document.getElementById('sf-col_invest')?.value)||0;
+  let spent = splitCols.reduce((s,c)=>s+(rec[c.id]||0),0) + (rec.col_invest||0);
+  rec.after_split = parseFloat((net-spent).toFixed(2));
   records.push(rec);
-  records.sort((a,b) => a.year*12+a.month - (b.year*12+b.month));
-
-  // Reset form
-  ['s-basic','s-housing','s-transport','s-overtime','s-other','s-gosi','s-saned'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  splitCols.forEach(c => {
-    const el = document.getElementById('sf-' + c.id);
-    if (el) el.value = '';
-  });
-  const inv = document.getElementById('sf-col_invest');
-  if (inv) inv.value = '';
-
-  document.getElementById('salaryPreview').style.display = 'none';
-  document.getElementById('remainingPreview').textContent = '';
-
+  records.sort((a,b)=>a.year*12+a.month-(b.year*12+b.month));
+  ['s-basic','s-housing','s-transport','s-overtime','s-other','s-gosi','s-saned'].forEach(id=>document.getElementById(id).value='');
+  splitCols.forEach(c=>{const el=document.getElementById('sf-'+c.id);if(el)el.value='';});
+  const inv=document.getElementById('sf-col_invest');if(inv)inv.value='';
+  document.getElementById('salaryPreview').style.display='none';
+  document.getElementById('remainingPreview').textContent='';
   renderAll();
-  toast(`✅ تمت إضافة ${MONTHS[month]} ${year}`, 'success');
+  toast(`✅ تمت إضافة ${MONTHS[month]} ${year}`);
 }
 
-// ════════════════════════════════════════════
-//  Render Year Tabs
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  Year Tabs
+// ═══════════════════════════════════════════
 function renderYearTabs() {
-  const years = [...new Set(records.map(r => r.year))].sort();
-  const tabs  = [{ v:'all', l:'الكل' }, ...years.map(y => ({ v:y, l:y })), { v:'add', l:'+ سجل' }];
-
-  document.getElementById('yearTabs').innerHTML = tabs.map(t => {
-    if (t.v === 'add') return '';
-    return `<button class="filter-tab ${activeYear == t.v ? 'active':''}" onclick="setYear(${t.v === 'all' ? "'all'" : t.v}, this)">${t.l}</button>`;
-  }).join('');
+  const years = [...new Set(records.map(r=>r.year))].sort();
+  document.getElementById('yearTabs').innerHTML =
+    [{v:'all',l:'الكل'},...years.map(y=>({v:y,l:y}))]
+    .map(t=>`<button class="filter-tab ${activeYear==t.v?'active':''}" onclick="setYear(${t.v==='all'?"'all'":t.v},this)">${t.l}</button>`)
+    .join('');
 }
 
-function setYear(y, btn) {
-  activeYear = y;
-  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+function setYear(y,btn) {
+  activeYear=y;
+  document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderTable();
 }
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  Render Table
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 function renderTable() {
-  const filtered = activeYear === 'all'
-    ? records
-    : records.filter(r => r.year == activeYear);
+  const filtered = activeYear==='all' ? records : records.filter(r=>r.year==activeYear);
+  const allCols  = [...splitCols, {id:'col_invest',label:'محفظة التقاعد'}];
+  const colSpan  = 14 + allCols.length;
 
-  // Head
-  const allCols = [...splitCols, { id:'col_invest', label:'محفظة التقاعد' }];
   document.getElementById('salaryHead').innerHTML = `
     <tr>
       <th class="th-group" colspan="2">📅 التاريخ</th>
@@ -460,63 +468,44 @@ function renderTable() {
       <th class="th-group" colspan="2">📊 المتبقي</th>
     </tr>
     <tr>
-      <th>السنة</th>
-      <th>الشهر</th>
-      <th>الأساسي</th>
-      <th>السكن</th>
-      <th>النقل</th>
-      <th>أوفر تايم</th>
-      <th>بدلات أخرى</th>
-      <th>GOSI</th>
-      <th>ساند</th>
-      <th>الإجمالي</th>
-      <th>الصافي</th>
-      ${allCols.map(c => `<th>${c.label}</th>`).join('')}
-      <th>الصافي بعد التوزيع</th>
-      <th>إجراء</th>
+      <th>السنة</th><th>الشهر</th>
+      <th>الأساسي</th><th>السكن</th><th>النقل</th><th>أوفر تايم</th><th>بدلات أخرى</th>
+      <th>GOSI</th><th>ساند</th>
+      <th>الإجمالي</th><th>الصافي</th>
+      ${allCols.map(c=>`<th>${c.label}</th>`).join('')}
+      <th>الصافي بعد التوزيع</th><th>إجراء</th>
     </tr>`;
 
-  // Body
   if (!filtered.length) {
-    document.getElementById('salaryBody').innerHTML = `
-      <tr><td colspan="${14 + allCols.length}">
-        <div class="empty-state">
-          <div class="empty-icon">📋</div>
-          <p>لا توجد سجلات بعد</p>
-        </div>
-      </td></tr>`;
+    document.getElementById('salaryBody').innerHTML =
+      `<tr><td colspan="${colSpan}"><div class="empty-state"><div class="empty-icon">📋</div><p>لا توجد سجلات</p></div></td></tr>`;
     return;
   }
 
-  // Totals row helper
   const totals = {};
-  const numFields = ['basic','housing','transport','overtime','other','gosi','saned','gross','net','after_split',...allCols.map(c=>c.id)];
-  numFields.forEach(f => { totals[f] = filtered.reduce((s,r)=>s+(r[f]||0),0); });
+  ['basic','housing','transport','overtime','other','gosi','saned','gross','net','after_split',...allCols.map(c=>c.id)]
+    .forEach(f => { totals[f] = filtered.reduce((s,r)=>s+(r[f]||0),0); });
 
   document.getElementById('salaryBody').innerHTML =
-    filtered.map((r, idx) => {
-      const realIdx = records.indexOf(r);
+    filtered.map(r => {
+      const ri = records.indexOf(r);
       return `<tr>
         <td class="col-year">${r.year}</td>
         <td class="col-month">${MONTHS[r.month]}</td>
-        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'basic')">${H.fmt(r.basic||0,0)}</span></td>
-        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'housing')">${H.fmt(r.housing||0,0)}</span></td>
-        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'transport')">${H.fmt(r.transport||0,0)}</span></td>
-        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'overtime')">${H.fmt(r.overtime||0,0)}</span></td>
-        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${realIdx},'other')">${H.fmt(r.other||0,0)}</span></td>
-        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${realIdx},'gosi')">${H.fmt(r.gosi||0,0)}</span></td>
-        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${realIdx},'saned')">${H.fmt(r.saned||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${ri},'basic')">${H.fmt(r.basic||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${ri},'housing')">${H.fmt(r.housing||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${ri},'transport')">${H.fmt(r.transport||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${ri},'overtime')">${H.fmt(r.overtime||0,0)}</span></td>
+        <td class="col-income"><span class="editable-cell" onclick="editCell(this,${ri},'other')">${H.fmt(r.other||0,0)}</span></td>
+        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${ri},'gosi')">${H.fmt(r.gosi||0,0)}</span></td>
+        <td class="col-deduct" style="color:var(--red)"><span class="editable-cell" onclick="editCell(this,${ri},'saned')">${H.fmt(r.saned||0,0)}</span></td>
         <td class="col-net" style="color:var(--accent)">${H.fmt(r.gross||0,0)}</td>
         <td class="col-net" style="color:var(--green)">${H.fmt(r.net||0,0)}</td>
-        ${allCols.map(c => `
-          <td class="col-split">
-            <span class="editable-cell" onclick="editCell(this,${realIdx},'${c.id}')">${H.fmt(r[c.id]||0,0)}</span>
-          </td>`).join('')}
+        ${allCols.map(c=>`<td class="col-split"><span class="editable-cell" onclick="editCell(this,${ri},'${c.id}')">${H.fmt(r[c.id]||0,0)}</span></td>`).join('')}
         <td class="col-net" style="color:${(r.after_split||0)>=0?'var(--green)':'var(--red)'}">${H.fmt(r.after_split||0,0)}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteRecord(${realIdx})">🗑</button></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRecord(${ri})">🗑</button></td>
       </tr>`;
     }).join('') +
-    // Totals
     `<tr style="background:var(--bg2);font-weight:700;border-top:2px solid var(--border2)">
       <td colspan="2" style="color:var(--text3);font-size:11px;text-align:center">الإجمالي</td>
       <td class="col-income">${H.fmt(totals.basic,0)}</td>
@@ -528,136 +517,96 @@ function renderTable() {
       <td class="col-deduct" style="color:var(--red)">${H.fmt(totals.saned,0)}</td>
       <td class="col-net" style="color:var(--accent)">${H.fmt(totals.gross,0)}</td>
       <td class="col-net" style="color:var(--green)">${H.fmt(totals.net,0)}</td>
-      ${allCols.map(c => `<td class="col-split">${H.fmt(totals[c.id]||0,0)}</td>`).join('')}
+      ${allCols.map(c=>`<td class="col-split">${H.fmt(totals[c.id]||0,0)}</td>`).join('')}
       <td class="col-net">${H.fmt(totals.after_split,0)}</td>
       <td></td>
     </tr>`;
 }
 
-// ════════════════════════════════════════════
-//  Inline Edit Cell
-// ════════════════════════════════════════════
-function editCell(span, idx, field) {
+// ═══════════════════════════════════════════
+//  Edit Cell
+// ═══════════════════════════════════════════
+function editCell(span,idx,field) {
   if (span.querySelector('input')) return;
   const input = document.createElement('input');
-  input.className = 'cell-input';
-  input.type  = 'number';
-  input.value = records[idx][field] || 0;
-  input.step  = '0.01';
-  span.textContent = '';
-  span.appendChild(input);
-  input.focus(); input.select();
-
+  input.className='cell-input'; input.type='number'; input.value=records[idx][field]||0; input.step='0.01';
+  span.textContent=''; span.appendChild(input); input.focus(); input.select();
   function commit() {
-    const val = parseFloat(input.value);
-    if (!isNaN(val)) {
-      records[idx][field] = parseFloat(val.toFixed(2));
-      // إعادة حساب الإجماليات
-      const r = records[idx];
-      r.gross       = (r.basic||0)+(r.housing||0)+(r.transport||0)+(r.overtime||0)+(r.other||0);
-      r.net         = r.gross - (r.gosi||0) - (r.saned||0);
-      const allCols = [...splitCols, { id:'col_invest' }];
-      let spent     = allCols.reduce((s,c)=>s+(r[c.id]||0),0);
-      r.after_split = parseFloat((r.net - spent).toFixed(2));
+    const val=parseFloat(input.value);
+    if(!isNaN(val)) {
+      records[idx][field]=parseFloat(val.toFixed(2));
+      const r=records[idx];
+      r.gross=(r.basic||0)+(r.housing||0)+(r.transport||0)+(r.overtime||0)+(r.other||0);
+      r.net=r.gross-(r.gosi||0)-(r.saned||0);
+      let spent=[...splitCols,{id:'col_invest'}].reduce((s,c)=>s+(r[c.id]||0),0);
+      r.after_split=parseFloat((r.net-spent).toFixed(2));
     }
-    renderTable();
-    renderKPIs();
+    renderTable(); renderKPIs();
   }
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  input.blur();
-    if (e.key === 'Escape') renderTable();
-  });
+  input.addEventListener('blur',commit);
+  input.addEventListener('keydown',e=>{ if(e.key==='Enter')input.blur(); if(e.key==='Escape')renderTable(); });
 }
 
-// ════════════════════════════════════════════
-//  Delete Record
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  Delete
+// ═══════════════════════════════════════════
 function deleteRecord(idx) {
-  const r = records[idx];
-  if (!confirm(`حذف سجل ${MONTHS[r.month]} ${r.year}؟`)) return;
-  records.splice(idx, 1);
-  renderAll();
-  toast('🗑 تم الحذف', 'warn');
+  const r=records[idx];
+  if(!confirm(`حذف ${MONTHS[r.month]} ${r.year}؟`)) return;
+  records.splice(idx,1); renderAll(); toast('🗑 تم الحذف','warn');
 }
 
-// ════════════════════════════════════════════
-//  Manage Columns Modal
-// ════════════════════════════════════════════
-function showManageColumns() {
-  renderColList();
-  document.getElementById('colModal').style.display = 'flex';
-}
-
+// ═══════════════════════════════════════════
+//  Columns Modal
+// ═══════════════════════════════════════════
+function showManageColumns() { renderColList(); document.getElementById('colModal').style.display='flex'; }
 function renderColList() {
-  document.getElementById('colList').innerHTML = splitCols.map((c, i) => `
+  document.getElementById('colList').innerHTML = splitCols.map((c,i)=>`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <input class="field-inline" style="flex:1" value="${c.label}"
-        onchange="splitCols[${i}].label=this.value">
+      <input class="field-inline" style="flex:1" value="${c.label}" onchange="splitCols[${i}].label=this.value">
       <button class="btn btn-danger btn-sm" onclick="removeColumn(${i})">🗑</button>
     </div>`).join('');
 }
-
 function addColumn() {
-  const name = document.getElementById('newColName').value.trim();
-  if (!name) return toast('أدخل اسم العمود', 'error');
-  const id = 'col_' + Date.now();
-  splitCols.push({ id, label: name });
-  document.getElementById('newColName').value = '';
-  renderColList();
-  toast('✅ تمت الإضافة', 'success');
+  const name=document.getElementById('newColName').value.trim();
+  if(!name) return toast('أدخل اسم العمود','error');
+  splitCols.push({id:'col_'+Date.now(),label:name});
+  document.getElementById('newColName').value='';
+  renderColList(); toast('✅ تمت الإضافة');
 }
-
 function removeColumn(i) {
-  if (!confirm(`حذف عمود "${splitCols[i].label}"؟`)) return;
-  splitCols.splice(i, 1);
-  renderColList();
+  if(!confirm(`حذف "‎${splitCols[i].label}"؟`)) return;
+  splitCols.splice(i,1); renderColList();
 }
-
 function saveColumns() {
-  Store.save('salary_cols_v1', splitCols);
-  document.getElementById('colModal').style.display = 'none';
-  renderSplitFields();
-  renderTable();
-  toast('✅ تم حفظ الأعمدة', 'success');
+  Store.save('salary_cols_v1',splitCols);
+  document.getElementById('colModal').style.display='none';
+  renderSplitFields(); renderTable();
+  toast('✅ تم حفظ الأعمدة');
 }
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  Export CSV
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 function exportCSV() {
-  const allCols  = [...splitCols, { id:'col_invest', label:'محفظة التقاعد' }];
-  const baseH    = ['year','month','basic','housing','transport','overtime','other','gosi','saned','gross','net'];
-  const splitH   = allCols.map(c => c.id);
-  const headers  = [...baseH, ...splitH, 'after_split'];
-  const labelRow = ['السنة','الشهر','الأساسي','السكن','النقل','أوفر تايم','بدلات أخرى','GOSI','ساند','الإجمالي','الصافي',...allCols.map(c=>c.label),'الصافي بعد التوزيع'];
-  const rows = records.map(r => headers.map(h => r[h]??'').join(','));
-  const csv  = '\uFEFF' + [labelRow.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `salary_records_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-  URL.revokeObjectURL(url);
-  toast('📥 تم التصدير', 'success');
+  const all   = [...splitCols,{id:'col_invest',label:'محفظة التقاعد'}];
+  const heads = ['year','month','basic','housing','transport','overtime','other','gosi','saned','gross','net',...all.map(c=>c.id),'after_split'];
+  const labels= ['السنة','الشهر','الأساسي','السكن','النقل','أوفر تايم','بدلات أخرى','GOSI','ساند','الإجمالي','الصافي',...all.map(c=>c.label),'الصافي بعد التوزيع'];
+  const csv   = '\uFEFF' + [labels.join(','),...records.map(r=>heads.map(h=>r[h]??'').join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`salary_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  toast('📥 تم التصدير');
 }
 
-// ════════════════════════════════════════════
-//  Save
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  Save + Render
+// ═══════════════════════════════════════════
 function saveAll() {
-  Store.save('salary_v1', records);
-  Store.save('salary_cols_v1', splitCols);
-  toast('✅ تم الحفظ', 'success');
+  Store.save('salary_v1',records); Store.save('salary_cols_v1',splitCols);
+  toast('✅ تم الحفظ');
 }
-
-// ════════════════════════════════════════════
-//  Render All
-// ════════════════════════════════════════════
-function renderAll() {
-  renderKPIs();
-  renderYearTabs();
-  renderTable();
-}
+function renderAll() { renderKPIs(); renderYearTabs(); renderTable(); }
 
 // Init
 renderSplitFields();
