@@ -5,283 +5,196 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
-<title>محفظة 2043 — دخول</title>
+<title>2043 — دخول</title>
+<link rel="stylesheet" href="assets/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="assets/tickers.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/auth.js"></script>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-
-body {
-  background: #0a0c14;
-  color: #e2e8f0;
-  font-family: 'Segoe UI', Tahoma, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.login-container {
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; padding:20px; background:var(--bg);
 }
-
-/* background dots */
-body::before {
-  content:'';
-  position:fixed; inset:0;
-  background-image: radial-gradient(circle, #1e2340 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.4;
-  pointer-events: none;
+.login-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; padding:48px 40px; width:100%; max-width:420px;
+  box-shadow:0 8px 32px rgba(0,0,0,.3); text-align:center;
 }
-
-.login-wrap {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 420px;
-  padding: 20px;
+.login-logo { font-size:64px; font-weight:900; color:var(--accent); margin-bottom:12px; }
+.login-subtitle { font-size:15px; color:var(--text3); margin-bottom:36px; }
+.pin-input {
+  width:100%; padding:16px; font-size:24px; text-align:center;
+  background:var(--bg2); border:2px solid var(--border);
+  border-radius:12px; color:var(--text); font-weight:700;
+  letter-spacing:8px; outline:none; transition:all .2s;
+  font-family:inherit; margin-bottom:20px;
 }
-
-/* glow */
-.login-wrap::before {
-  content:'';
-  position:absolute;
-  top:-80px; left:50%; transform:translateX(-50%);
-  width:300px; height:300px;
-  background: radial-gradient(circle, rgba(79,142,247,0.15) 0%, transparent 70%);
-  pointer-events:none;
+.pin-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+.login-btn {
+  width:100%; padding:16px; font-size:16px; font-weight:700;
+  background:var(--accent); color:#fff; border:none;
+  border-radius:12px; cursor:pointer; transition:all .2s;
+  font-family:inherit;
 }
-
-.logo {
-  text-align: center;
-  margin-bottom: 36px;
+.login-btn:hover { background:var(--accent-hover); transform:translateY(-2px); }
+.login-btn:active { transform:translateY(0); }
+.error-msg {
+  background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3);
+  color:var(--red); padding:12px; border-radius:8px;
+  font-size:13px; margin-top:16px; display:none;
 }
-.logo-icon {
-  font-size: 48px;
-  display: block;
-  margin-bottom: 10px;
-  filter: drop-shadow(0 0 20px rgba(79,142,247,0.5));
-}
-.logo h1 {
-  font-size: 32px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #4f8ef7, #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
-}
-.logo p {
-  color: #64748b;
-  font-size: 13px;
-  margin-top: 6px;
-}
-
-.card {
-  background: #131722;
-  border: 1px solid #1e2340;
-  border-radius: 20px;
-  padding: 36px 32px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
-}
-
-.field {
-  margin-bottom: 16px;
-}
-.field label {
-  display: block;
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 7px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.field-wrap {
-  position: relative;
-}
-.field-wrap .icon {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  color: #374151;
-}
-.field input {
-  width: 100%;
-  padding: 13px 42px 13px 16px;
-  background: #0d0f18;
-  border: 1px solid #1e2340;
-  border-radius: 10px;
-  color: #e2e8f0;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  font-family: inherit;
-}
-.field input:focus {
-  border-color: #4f8ef7;
-  box-shadow: 0 0 0 3px rgba(79,142,247,0.1);
-}
-.field input::placeholder { color: #374151; }
-
-.btn-login {
-  width: 100%;
-  padding: 14px;
-  margin-top: 8px;
-  background: linear-gradient(135deg, #4f8ef7, #6366f1);
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
-  font-family: inherit;
-  letter-spacing: 0.3px;
-}
-.btn-login:hover  { opacity: 0.92; }
-.btn-login:active { transform: scale(0.99); }
-
-.btn-login.loading {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-#errorMsg {
-  display: none;
-  margin-top: 14px;
-  padding: 11px 14px;
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.25);
-  border-radius: 8px;
-  color: #ef4444;
-  font-size: 13px;
-  text-align: center;
-}
-
-.footer-note {
-  text-align: center;
-  margin-top: 24px;
-  color: #1e2340;
-  font-size: 12px;
-  user-select: none;
-}
-
-/* shake animation */
-@keyframes shake {
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-8px)}
-  40%{transform:translateX(8px)}
-  60%{transform:translateX(-5px)}
-  80%{transform:translateX(5px)}
-}
-.shake { animation: shake 0.4s ease; }
+.setup-mode { display:none; }
+.first-time { font-size:13px; color:var(--text3); margin-top:24px; }
 </style>
 </head>
 <body>
 
-<div class="login-wrap">
-  <div class="logo">
-    <span class="logo-icon">📈</span>
-    <h1>محفظة 2043</h1>
-    <p>رضوان الجهني — منصة إدارة الثروة الشخصية</p>
-  </div>
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-logo">◈</div>
+    <h1 style="margin:0 0 8px; font-size:28px">2043</h1>
+    <p class="login-subtitle" id="subtitle">محفظتك المالية الشاملة</p>
 
-  <div class="card" id="loginCard">
-    <div class="field">
-      <label>اسم المستخدم</label>
-      <div class="field-wrap">
-        <span class="icon">👤</span>
-        <input type="text" id="uInput" placeholder="أدخل اسم المستخدم" autocomplete="off" spellcheck="false">
-      </div>
+    <!-- Login Mode -->
+    <div id="loginMode">
+      <input 
+        type="password" 
+        class="pin-input" 
+        id="pinInput" 
+        placeholder="••••"
+        maxlength="4"
+        inputmode="numeric"
+        autocomplete="off">
+      <button class="login-btn" onclick="handleLogin()">دخول</button>
+      <div class="error-msg" id="errorMsg"></div>
     </div>
 
-    <div class="field">
-      <label>كلمة المرور</label>
-      <div class="field-wrap">
-        <span class="icon" id="eyeIcon" onclick="togglePass()" style="cursor:pointer">🔒</span>
-        <input type="password" id="pInput" placeholder="أدخل كلمة المرور" autocomplete="off">
-      </div>
+    <!-- Setup Mode -->
+    <div id="setupMode" class="setup-mode">
+      <input 
+        type="password" 
+        class="pin-input" 
+        id="setupPin1" 
+        placeholder="••••"
+        maxlength="4"
+        inputmode="numeric"
+        autocomplete="off">
+      <input 
+        type="password" 
+        class="pin-input" 
+        id="setupPin2" 
+        placeholder="تأكيد ••••"
+        maxlength="4"
+        inputmode="numeric"
+        autocomplete="off"
+        style="margin-top:12px">
+      <button class="login-btn" onclick="handleSetup()">إنشاء</button>
+      <div class="error-msg" id="setupError"></div>
     </div>
 
-    <button class="btn-login" id="loginBtn" onclick="doLogin()">
-      دخول ←
-    </button>
-
-    <div id="errorMsg">❌ اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    <p class="first-time" id="firstTimeMsg"></p>
   </div>
-
-  <div class="footer-note">© 2043 — خاص وسري</div>
 </div>
 
 <script>
-// ─── Credentials (AES encrypted) ───────────────────────────────────────────
-const _KEY = "2043_radwan_secure";
-const _C   = CryptoJS.AES.encrypt(
-  JSON.stringify({ u: "radwan aljohani", p: "1117473137" }),
-  _KEY
-).toString();
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (AUTH.isLoggedIn()) {
+    window.location.href = 'dashboard.html';
+    return;
+  }
 
-function verify(u, p) {
-  try {
-    const dec   = CryptoJS.AES.decrypt(_C, _KEY);
-    const creds = JSON.parse(dec.toString(CryptoJS.enc.Utf8));
-    return u.toLowerCase().trim() === creds.u.toLowerCase() &&
-           p.trim() === creds.p;
-  } catch(e) { return false; }
-}
-
-// ─── Already logged in? ─────────────────────────────────────────────────────
-(function(){
-  try {
-    if(sessionStorage.getItem('auth_2043') === '1')
-      window.location.href = 'dashboard.html';
-  } catch(e) {}
-})();
-
-// ─── Login ──────────────────────────────────────────────────────────────────
-function doLogin() {
-  const u = document.getElementById('uInput').value;
-  const p = document.getElementById('pInput').value;
-  const btn = document.getElementById('loginBtn');
-
-  btn.textContent = '...جاري التحقق';
-  btn.classList.add('loading');
-
-  setTimeout(() => {
-    if (verify(u, p)) {
-      try { sessionStorage.setItem('auth_2043', '1'); } catch(e) {}
-      btn.textContent = '✅ تم التحقق — جاري التحويل';
-      setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
-    } else {
-      btn.textContent = 'دخول ←';
-      btn.classList.remove('loading');
-      const err = document.getElementById('errorMsg');
-      err.style.display = 'block';
-      document.getElementById('loginCard').classList.add('shake');
-      setTimeout(() => {
-        err.style.display = 'none';
-        document.getElementById('loginCard').classList.remove('shake');
-      }, 3500);
-    }
-  }, 500);
-}
-
-// ─── Toggle password ────────────────────────────────────────────────────────
-function togglePass() {
-  const inp  = document.getElementById('pInput');
-  const icon = document.getElementById('eyeIcon');
-  if (inp.type === 'password') {
-    inp.type  = 'text';
-    icon.textContent = '🔓';
+  const isSetup = AUTH.isSetup();
+  
+  if (!isSetup) {
+    // أول مرة — وضع الإعداد
+    document.getElementById('subtitle').textContent = 'أهلاً بك! أنشئ رمز دخول';
+    document.getElementById('loginMode').style.display = 'none';
+    document.getElementById('setupMode').style.display = 'block';
   } else {
-    inp.type  = 'password';
-    icon.textContent = '🔒';
+    // وضع الدخول العادي
+    document.getElementById('firstTimeMsg').innerHTML = 
+      '<span style="color:var(--text3)">نسيت الرمز؟</span> <a href="#" onclick="resetApp(); return false" style="color:var(--accent); text-decoration:none; font-weight:600">إعادة تعيين</a>';
+  }
+
+  // Enter key support
+  document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      if (!isSetup) handleSetup();
+      else handleLogin();
+    }
+  });
+});
+
+// ══════════════════════════════════════════════
+//  Login
+// ══════════════════════════════════════════════
+function handleLogin() {
+  const pin = document.getElementById('pinInput').value.trim();
+  const errorEl = document.getElementById('errorMsg');
+
+  if (!pin || pin.length < 4) {
+    showError(errorEl, 'الرجاء إدخال رمز مكون من 4 أرقام');
+    return;
+  }
+
+  if (AUTH.login(pin)) {
+    window.location.href = 'dashboard.html';
+  } else {
+    showError(errorEl, '❌ رمز الدخول غير صحيح');
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
   }
 }
 
-// ─── Enter key ──────────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
+// ══════════════════════════════════════════════
+//  Setup
+// ══════════════════════════════════════════════
+function handleSetup() {
+  const pin1 = document.getElementById('setupPin1').value.trim();
+  const pin2 = document.getElementById('setupPin2').value.trim();
+  const errorEl = document.getElementById('setupError');
+
+  if (!pin1 || pin1.length < 4) {
+    showError(errorEl, 'الرمز يجب أن يكون 4 أرقام على الأقل');
+    return;
+  }
+
+  if (pin1 !== pin2) {
+    showError(errorEl, 'الرمزان غير متطابقان');
+    return;
+  }
+
+  AUTH.setup(pin1);
+  toast('✅ تم إنشاء حسابك بنجاح', 'success');
+  setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+}
+
+// ══════════════════════════════════════════════
+//  Reset App
+// ══════════════════════════════════════════════
+function resetApp() {
+  if (!confirm('⚠️ سيتم حذف جميع البيانات ورمز الدخول. هل أنت متأكد؟')) return;
+  if (!confirm('⚠️ تأكيد نهائي: لا يمكن التراجع عن هذا الإجراء!')) return;
+  
+  localStorage.clear();
+  sessionStorage.clear();
+  toast('تم إعادة التعيين بنجاح', 'success');
+  setTimeout(() => { window.location.reload(); }, 1000);
+}
+
+// ══════════════════════════════════════════════
+//  Helpers
+// ══════════════════════════════════════════════
+function showError(el, msg) {
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
 </script>
+
 </body>
 </html>
