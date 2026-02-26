@@ -12,40 +12,10 @@
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/data-sync.js"></script>
 <style>
-.editable {
-  cursor:pointer; border-bottom:1px dashed var(--border2);
-  display:inline-block; min-width:30px; transition:border-color .2s;
-}
-.editable:hover { border-color:var(--accent); color:var(--accent); }
-.edit-input {
-  width:110px; padding:4px 6px; background:var(--bg2);
-  border:1px solid var(--accent); border-radius:4px;
-  color:var(--text); font-size:12px; text-align:center;
-  outline:none; font-family:inherit;
-}
-.yield-bar-wrap { display:flex; align-items:center; gap:6px; }
-.yield-bar-bg   { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
-.yield-bar-fill { height:100%; border-radius:2px; }
-
-/* ── Chart fix ── */
-.chart-card {
-  height: auto !important;
-  display: block !important;
-  overflow: visible !important;
-}
-.chart-wrap {
-  position: relative;
-  width: 100%;
-  height: 260px;
-  overflow: hidden;
-}
-.chart-wrap canvas {
-  position: absolute !important;
-  top: 0 !important; left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-}
+.chart-wrap { position:relative; width:100%; height:280px; }
+.chart-wrap canvas { width:100% !important; height:100% !important; }
 </style>
 </head>
 <body>
@@ -56,353 +26,365 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>🏠 العقارات</h1>
-      <p>سجل ممتلكاتك العقارية — انقر على أي قيمة لتعديلها</p>
+      <p>إدارة الأصول العقارية</p>
     </div>
     <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 CSV</button>
       <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="kpi-grid cols-4" id="prKPIs"></div>
+  <div class="kpi-grid cols-4" id="propKPIs"></div>
 
-  <!-- Charts -->
-  <div class="chart-grid cols-2">
-    <div class="chart-card">
-      <div class="chart-title">🥧 توزيع العقارات بالقيمة</div>
-      <div class="chart-wrap">
-        <canvas id="propChart"></canvas>
-      </div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">📊 عائد الإيجار لكل عقار</div>
-      <div class="chart-wrap">
-        <canvas id="yieldChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Form -->
   <div class="form-card">
     <h3>➕ إضافة عقار جديد</h3>
     <div class="form-row">
       <div class="form-group">
-        <label>اسم / وصف العقار</label>
-        <input id="pr-name" placeholder="شقة الرياض — حي النرجس">
+        <label>اسم العقار</label>
+        <input id="p-name" placeholder="شقة الرياض">
       </div>
       <div class="form-group">
         <label>النوع</label>
-        <select id="pr-type">
-          <option>شقة سكنية</option><option>فيلا</option>
-          <option>أرض</option><option>محل تجاري</option>
-          <option>مستودع</option><option>صندوق ريت</option><option>أخرى</option>
+        <select id="p-type">
+          <option value="سكني">سكني</option>
+          <option value="تجاري">تجاري</option>
+          <option value="أرض">أرض</option>
+          <option value="مزرعة">مزرعة</option>
+          <option value="أخرى">أخرى</option>
         </select>
       </div>
       <div class="form-group">
-        <label>المدينة</label>
-        <input id="pr-city" placeholder="الرياض">
+        <label>القيمة الحالية (ر.س)</label>
+        <input id="p-value" type="number" step="1000" placeholder="650000">
       </div>
       <div class="form-group">
-        <label>سنة الشراء</label>
-        <input id="pr-year" type="number" placeholder="2022">
+        <label>سعر الشراء (ر.س)</label>
+        <input id="p-purchase-price" type="number" step="1000" placeholder="550000">
       </div>
       <div class="form-group">
-        <label>تكلفة الشراء (SAR)</label>
-        <input id="pr-cost" type="number" placeholder="500000">
+        <label>تاريخ الشراء</label>
+        <input id="p-purchase-date" type="date">
       </div>
       <div class="form-group">
-        <label>القيمة السوقية الحالية (SAR)</label>
-        <input id="pr-value" type="number" placeholder="650000">
+        <label>الإيجار الشهري (ر.س)</label>
+        <input id="p-rent" type="number" step="100" placeholder="2500">
       </div>
       <div class="form-group">
-        <label>الإيجار السنوي (SAR)</label>
-        <input id="pr-rent" type="number" placeholder="36000">
+        <label>المساحة (م²)</label>
+        <input id="p-area" type="number" step="1" placeholder="120">
       </div>
       <div class="form-group">
-        <label>الحالة</label>
-        <select id="pr-status">
-          <option>مؤجر</option><option>شاغر</option>
-          <option>للبيع</option><option>للاستخدام الشخصي</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>ملاحظة</label>
-        <input id="pr-note" placeholder="اختياري">
+        <label>الموقع</label>
+        <input id="p-location" placeholder="الرياض">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="addProperty()">➕ إضافة العقار</button>
+    <div class="form-group">
+      <label>ملاحظات</label>
+      <textarea id="p-notes" rows="2" placeholder="ملاحظات إضافية"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addProperty()">➕ إضافة</button>
   </div>
 
-  <!-- Table -->
+  <div class="chart-grid cols-2">
+    <div class="chart-card">
+      <div class="chart-title">📊 القيمة حسب النوع</div>
+      <div class="chart-wrap"><canvas id="byTypeChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📈 الربح/الخسارة</div>
+      <div class="chart-wrap"><canvas id="pnlChart"></canvas></div>
+    </div>
+  </div>
+
   <div class="toolbar">
     <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
-    <span id="prCount" style="color:var(--text3);font-size:13px"></span>
+    <span id="trCount" style="color:var(--text3);font-size:13px"></span>
   </div>
 
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>#</th><th>الاسم</th><th>النوع</th><th>المدينة</th>
-          <th>سنة الشراء</th><th>تكلفة الشراء</th><th>القيمة الحالية</th>
-          <th>الربح الورقي</th><th>الإيجار السنوي</th>
-          <th>عائد الإيجار %</th><th>الحالة</th><th>ملاحظة</th><th>حذف</th>
+          <th>الاسم</th><th>النوع</th><th>القيمة الحالية</th>
+          <th>سعر الشراء</th><th>الربح/الخسارة</th><th>%</th>
+          <th>الإيجار الشهري</th><th>المساحة</th><th>الموقع</th>
+          <th>تعديل</th><th>حذف</th>
         </tr>
       </thead>
-      <tbody id="prBody"></tbody>
+      <tbody id="propBody"></tbody>
     </table>
   </div>
 
 </div>
 
 <script>
-let prData   = Store.load('properties_v1', NW_default());
-let filtered = [...prData];
-let searchQ  = '';
+// ══════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════
+let properties = [];
+let filtered = [];
+let searchQ = '';
+let chartType = null, chartPnL = null;
 
-function NW_default() {
-  const nw = Store.load('networth_full_v1', { properties:[] });
-  return nw.properties || [];
+// ══════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════
+function init() {
+  properties = APP.properties;
+  filtered = [...properties];
+  renderKPIs();
+  renderTable();
+  renderCharts();
 }
 
-let chartProp=null, chartYield=null;
-
-// ── KPIs ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════
+//  KPIs
+// ══════════════════════════════════════════════
 function renderKPIs() {
-  const totalVal  = prData.reduce((s,p)=>s+(p.value||0),0);
-  const totalCost = prData.reduce((s,p)=>s+(p.cost||0),0);
-  const totalRent = prData.reduce((s,p)=>s+(p.rent||0),0);
-  const pl        = totalVal - totalCost;
-  const avgYield  = totalVal>0 ? totalRent/totalVal*100 : 0;
+  const totalValue = properties.reduce((s, p) => s + (parseFloat(p.value) || 0), 0);
+  const totalPurchase = properties.reduce((s, p) => s + (parseFloat(p.purchase_price) || 0), 0);
+  const totalPnL = totalValue - totalPurchase;
+  const totalRent = properties.reduce((s, p) => s + (parseFloat(p.rent_monthly) || 0), 0);
 
-  document.getElementById('prKPIs').innerHTML = `
+  const kpis = [
+    { label:'القيمة الإجمالية',  value:H.fmt(totalValue, 0) + ' ر.س',    icon:'🏠' },
+    { label:'التكلفة الإجمالية', value:H.fmt(totalPurchase, 0) + ' ر.س', icon:'💰' },
+    { label:'الربح/الخسارة',     value:H.fmt(totalPnL, 0) + ' ر.س',      icon:'📊', color:H.colorClass(totalPnL) },
+    { label:'الإيجار الشهري',    value:H.fmt(totalRent, 0) + ' ر.س',     icon:'💵' }
+  ];
+
+  document.getElementById('propKPIs').innerHTML = kpis.map(k => `
     <div class="kpi-card">
-      <div class="kpi-icon">🏠</div>
-      <div class="kpi-label">إجمالي القيمة السوقية</div>
-      <div class="kpi-value accent">${H.fmt(totalVal)}</div>
-      <div class="kpi-sub">SAR — ${prData.length} عقار</div>
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-value ${k.color || ''}">${k.value}</div>
+      <div class="kpi-label">${k.label}</div>
     </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📈</div>
-      <div class="kpi-label">الربح الرأسمالي</div>
-      <div class="kpi-value ${pl>=0?'pos':'neg'}">${pl>=0?'+':''}${H.fmt(pl)}</div>
-      <div class="kpi-sub">${H.pct(totalCost>0?pl/totalCost:0)}</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">💰</div>
-      <div class="kpi-label">الإيجار السنوي</div>
-      <div class="kpi-value pos">${H.fmt(totalRent)}</div>
-      <div class="kpi-sub">${H.fmt(totalRent/12)} SAR / شهرياً</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📊</div>
-      <div class="kpi-label">متوسط العائد الإيجاري</div>
-      <div class="kpi-value warn">${H.fmt(avgYield,2)}%</div>
-      <div class="kpi-sub">على القيمة السوقية</div>
-    </div>
-  `;
+  `).join('');
 }
 
-// ── Charts ───────────────────────────────────────────────
-function renderCharts() {
-  if(!prData.length) return;
+// ══════════════════════════════════════════════
+//  Add Property
+// ══════════════════════════════════════════════
+function addProperty() {
+  const name = document.getElementById('p-name').value.trim();
+  const type = document.getElementById('p-type').value;
+  const value = parseFloat(document.getElementById('p-value').value) || 0;
+  const purchase_price = parseFloat(document.getElementById('p-purchase-price').value) || 0;
+  const purchase_date = document.getElementById('p-purchase-date').value;
+  const rent_monthly = parseFloat(document.getElementById('p-rent').value) || 0;
+  const area = parseFloat(document.getElementById('p-area').value) || 0;
+  const location = document.getElementById('p-location').value.trim();
+  const notes = document.getElementById('p-notes').value.trim();
 
-  if(chartProp)  chartProp.destroy();
-  if(chartYield) chartYield.destroy();
-
-  const COLORS=['#4f8ef7','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#f97316','#84cc16'];
-
-  chartProp = new Chart(document.getElementById('propChart'),{
-    type:'doughnut',
-    data:{
-      labels: prData.map(p=>p.name.substring(0,12)),
-      datasets:[{ data:prData.map(p=>p.value||0),
-        backgroundColor:COLORS, borderColor:'#131722', borderWidth:2 }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{position:'right',labels:{color:'#94a3b8',font:{size:11},padding:8,boxWidth:12}},
-        tooltip:{callbacks:{label:ctx=>`${H.fmt(ctx.raw)} SAR`}}
-      }
-    }
-  });
-
-  chartYield = new Chart(document.getElementById('yieldChart'),{
-    type:'bar',
-    data:{
-      labels: prData.map(p=>p.name.substring(0,10)),
-      datasets:[{
-        label:'عائد الإيجار %',
-        data: prData.map(p=> p.value>0 ? parseFloat(((p.rent||0)/p.value*100).toFixed(2)) : 0),
-        backgroundColor:'rgba(34,197,94,.65)', borderRadius:4
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2340'}},
-        y:{ticks:{color:'#64748b',callback:v=>v+'%'},grid:{color:'#1e2340'}}
-      }
-    }
-  });
-}
-
-// ── Table ────────────────────────────────────────────────
-function renderTable() {
-  document.getElementById('prCount').textContent = `${filtered.length} عقار`;
-
-  if(!filtered.length){
-    document.getElementById('prBody').innerHTML=`
-      <tr><td colspan="13"><div class="empty-state">
-        <div class="empty-icon">🏗️</div><p>لا يوجد عقارات مسجلة</p>
-      </div></td></tr>`;
+  if (!name || !value) {
+    toast('⚠️ الاسم والقيمة مطلوبان', 'warn');
     return;
   }
 
-  document.getElementById('prBody').innerHTML = filtered.map(p => {
-    const idx     = prData.indexOf(p);
-    const pl      = (p.value||0)-(p.cost||0);
-    const plPct   = p.cost>0 ? pl/p.cost : 0;
-    const yld     = p.value>0 ? (p.rent||0)/p.value*100 : 0;
-    const yldClr  = yld>=6?'var(--green)':yld>=4?'var(--yellow)':'var(--red)';
-    const statusBadge = {
-      'مؤجر':              'badge-buy',
-      'شاغر':              'badge-watch',
-      'للبيع':             'badge-reduce',
-      'للاستخدام الشخصي': 'badge-hold',
-    }[p.status]||'badge-hold';
+  const newProp = {
+    id: Date.now(),
+    name,
+    type,
+    value,
+    purchase_price,
+    purchase_date: purchase_date || H.today(),
+    rent_monthly,
+    area,
+    location,
+    notes
+  };
 
-    return `<tr>
-      <td style="color:var(--text3)">${idx+1}</td>
-      <td style="font-weight:600">
-        <span class="editable" onclick="editText(this,${idx},'name')">${p.name}</span>
-      </td>
-      <td><span class="editable" onclick="editSelect(this,${idx},'type',['شقة سكنية','فيلا','أرض','محل تجاري','مستودع','صندوق ريت','أخرى'])">${p.type}</span></td>
-      <td><span class="editable" onclick="editText(this,${idx},'city')">${p.city||'—'}</span></td>
-      <td style="color:var(--text3)"><span class="editable" onclick="editNum(this,${idx},'year',0)">${p.year||'—'}</span></td>
-      <td><span class="editable" onclick="editNum(this,${idx},'cost')">${H.fmt(p.cost||0)}</span></td>
-      <td class="accent" style="font-weight:700">
-        <span class="editable" onclick="editNum(this,${idx},'value')">${H.fmt(p.value||0)}</span>
-      </td>
-      <td class="${pl>=0?'pos':'neg'}" style="font-weight:600">${pl>=0?'+':''}${H.fmt(pl)}</td>
-      <td class="pos">
-        <span class="editable" onclick="editNum(this,${idx},'rent')">${H.fmt(p.rent||0)}</span>
-      </td>
-      <td>
-        <div class="yield-bar-wrap">
-          <span style="color:${yldClr};font-weight:700">${yld.toFixed(2)}%</span>
-          <div class="yield-bar-bg">
-            <div class="yield-bar-fill" style="width:${Math.min(yld/10*100,100)}%;background:${yldClr}"></div>
-          </div>
-        </div>
-      </td>
-      <td><span class="badge ${statusBadge}">${p.status||'—'}</span></td>
-      <td style="color:var(--text3)">
-        <span class="editable" onclick="editText(this,${idx},'note')">${p.note||'—'}</span>
-      </td>
-      <td><button class="btn btn-danger btn-sm" onclick="delProp(${idx})">🗑</button></td>
-    </tr>`;
+  properties.push(newProp);
+
+  // Clear
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-value').value = '';
+  document.getElementById('p-purchase-price').value = '';
+  document.getElementById('p-purchase-date').value = '';
+  document.getElementById('p-rent').value = '';
+  document.getElementById('p-area').value = '';
+  document.getElementById('p-location').value = '';
+  document.getElementById('p-notes').value = '';
+
+  saveAll();
+  init();
+  toast('✅ تمت الإضافة بنجاح', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  Table
+// ══════════════════════════════════════════════
+function renderTable() {
+  const tbody = document.getElementById('propBody');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3)">لا توجد عقارات</td></tr>';
+    updateCount();
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(p => {
+    const pnl = (parseFloat(p.value) || 0) - (parseFloat(p.purchase_price) || 0);
+    const pct = p.purchase_price > 0 ? (pnl / p.purchase_price * 100) : 0;
+
+    return `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.type}</td>
+        <td>${H.fmt(p.value, 0)}</td>
+        <td>${H.fmt(p.purchase_price, 0)}</td>
+        <td style="${H.colorStyle(pnl)}">${H.fmt(pnl, 0)}</td>
+        <td style="${H.colorStyle(pct)}">${H.pct(pct)}</td>
+        <td>${H.fmt(p.rent_monthly, 0)}</td>
+        <td>${p.area || '-'}</td>
+        <td>${p.location || '-'}</td>
+        <td><button class="btn btn-ghost btn-xs" onclick="editProperty(${p.id})">✏️</button></td>
+        <td><button class="btn btn-danger btn-xs" onclick="deleteProperty(${p.id})">🗑️</button></td>
+      </tr>
+    `;
   }).join('');
+
+  updateCount();
 }
 
-// ── Inline Edits ─────────────────────────────────────────
-function editNum(span,idx,field,min=0){
-  if(span.querySelector('input')) return;
-  const inp=document.createElement('input');
-  inp.className='edit-input'; inp.type='number'; inp.step='0.01'; inp.value=prData[idx][field]||0;
-  span.textContent=''; span.appendChild(inp); inp.focus(); inp.select();
-  const c=()=>{const v=parseFloat(inp.value); if(!isNaN(v)&&v>=min) prData[idx][field]=v; refreshAll();};
-  inp.addEventListener('blur',c);
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+// ══════════════════════════════════════════════
+//  Edit/Delete
+// ══════════════════════════════════════════════
+function editProperty(id) {
+  const p = properties.find(pr => pr.id === id);
+  if (!p) return;
+
+  const newValue = prompt('القيمة الحالية الجديدة:', p.value);
+  if (newValue === null || isNaN(newValue)) return;
+
+  p.value = parseFloat(newValue);
+
+  saveAll();
+  init();
+  toast('✅ تم التعديل بنجاح', 'success');
 }
 
-function editText(span,idx,field){
-  if(span.querySelector('input')) return;
-  const inp=document.createElement('input');
-  inp.className='edit-input'; inp.style.width='140px'; inp.type='text'; inp.value=prData[idx][field]||'';
-  span.textContent=''; span.appendChild(inp); inp.focus(); inp.select();
-  const c=()=>{if(inp.value.trim()) prData[idx][field]=inp.value.trim(); refreshAll();};
-  inp.addEventListener('blur',c);
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')refreshAll();});
+function deleteProperty(id) {
+  if (!confirm('⚠️ هل أنت متأكد من حذف هذا العقار؟')) return;
+
+  properties = properties.filter(p => p.id !== id);
+
+  saveAll();
+  init();
+  toast('✅ تم الحذف بنجاح', 'success');
 }
 
-function editSelect(span,idx,field,options){
-  if(span.querySelector('select')) return;
-  const sel=document.createElement('select');
-  sel.className='edit-input'; sel.style.width='130px';
-  options.forEach(o=>{ const opt=document.createElement('option'); opt.value=o; opt.textContent=o;
-    if(o===prData[idx][field]) opt.selected=true; sel.appendChild(opt); });
-  span.textContent=''; span.appendChild(sel); sel.focus();
-  const c=()=>{prData[idx][field]=sel.value; refreshAll();};
-  sel.addEventListener('blur',c);
-  sel.addEventListener('change',c);
-}
-
-// ── Add ──────────────────────────────────────────────────
-function addProperty(){
-  const name  = document.getElementById('pr-name').value.trim();
-  const type  = document.getElementById('pr-type').value;
-  const city  = document.getElementById('pr-city').value.trim();
-  const year  = parseInt(document.getElementById('pr-year').value)||0;
-  const cost  = parseFloat(document.getElementById('pr-cost').value)||0;
-  const value = parseFloat(document.getElementById('pr-value').value)||0;
-  const rent  = parseFloat(document.getElementById('pr-rent').value)||0;
-  const status= document.getElementById('pr-status').value;
-  const note  = document.getElementById('pr-note').value.trim();
-
-  if(!name)  return toast('أدخل اسم العقار','error');
-  if(!value) return toast('أدخل القيمة السوقية','error');
-
-  prData.push({name,type,city,year,cost,value,rent,status,note});
-  ['pr-name','pr-city','pr-year','pr-cost','pr-value','pr-rent','pr-note']
-    .forEach(id=>document.getElementById(id).value='');
-  refreshAll(); toast('✅ تمت إضافة العقار','success');
-}
-
-// ── Delete ───────────────────────────────────────────────
-function delProp(idx){
-  if(!confirm(`حذف "${prData[idx].name}"؟`)) return;
-  prData.splice(idx,1);
-  refreshAll(); toast('🗑 تم الحذف','warn');
-}
-
-// ── Search ───────────────────────────────────────────────
-function applySearch(q){
-  searchQ=q;
-  filtered=prData.filter(p=>!q||p.name.includes(q)||p.city?.includes(q)||p.type.includes(q));
+// ══════════════════════════════════════════════
+//  Search
+// ══════════════════════════════════════════════
+function applySearch(q) {
+  searchQ = q.trim().toLowerCase();
+  filtered = searchQ
+    ? properties.filter(p =>
+        (p.name || '').toLowerCase().includes(searchQ) ||
+        (p.type || '').toLowerCase().includes(searchQ) ||
+        (p.location || '').toLowerCase().includes(searchQ)
+      )
+    : [...properties];
   renderTable();
 }
 
-// ── Save ─────────────────────────────────────────────────
-function saveAll(){
-  Store.save('properties_v1', prData);
-  const nw = Store.load('networth_full_v1',{properties:[],cars:[],cash:[],other:[],liabilities:[]});
-  nw.properties = prData;
-  Store.save('networth_full_v1', nw);
-  toast('✅ تم الحفظ ومزامنة صافي الثروة','success');
+function updateCount() {
+  document.getElementById('trCount').textContent =
+    `${filtered.length} من ${properties.length} عقار`;
 }
 
-// ── Export ───────────────────────────────────────────────
-function exportCSV(){
-  const h=['name','type','city','year','cost','value','rent','status','note'];
-  const rows=prData.map(p=>h.map(k=>p[k]??'').join(','));
-  const csv='\uFEFF'+[h.join(','),...rows].join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`properties_${H.today()}.csv`; a.click();
-  toast('📥 تم التصدير','success');
+// ══════════════════════════════════════════════
+//  Charts
+// ══════════════════════════════════════════════
+function renderCharts() {
+  if (!properties.length) {
+    document.querySelector('#byTypeChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    document.querySelector('#pnlChart').parentElement.innerHTML = '<p style="text-align:center;color:var(--text3);padding:60px">لا توجد بيانات</p>';
+    return;
+  }
+
+  // By Type
+  const byType = {};
+  properties.forEach(p => {
+    const type = p.type || 'غير محدد';
+    byType[type] = (byType[type] || 0) + (parseFloat(p.value) || 0);
+  });
+
+  const typeData = Object.entries(byType).sort((a,b) => b[1] - a[1]);
+
+  const ctx1 = document.getElementById('byTypeChart').getContext('2d');
+  if (chartType) chartType.destroy();
+  chartType = new Chart(ctx1, {
+    type: 'pie',
+    data: {
+      labels: typeData.map(t => t[0]),
+      datasets: [{
+        data: typeData.map(t => t[1]),
+        backgroundColor: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'],
+        borderWidth: 2,
+        borderColor: 'var(--card)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: 'var(--text)', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${H.fmt(ctx.parsed, 0)} ر.س` } }
+      }
+    }
+  });
+
+  // PnL Chart
+  const pnlData = properties.map(p => {
+    const pnl = (parseFloat(p.value) || 0) - (parseFloat(p.purchase_price) || 0);
+    return { name: p.name, pnl };
+  }).sort((a,b) => b.pnl - a.pnl).slice(0, 8);
+
+  const ctx2 = document.getElementById('pnlChart').getContext('2d');
+  if (chartPnL) chartPnL.destroy();
+  chartPnL = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: pnlData.map(d => d.name),
+      datasets: [{
+        label: 'الربح/الخسارة (ر.س)',
+        data: pnlData.map(d => d.pnl),
+        backgroundColor: pnlData.map(d => d.pnl >= 0 ? '#10b981' : '#ef4444'),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { color: 'var(--text3)' }, grid: { color: 'var(--border)' } },
+        x: { ticks: { color: 'var(--text3)' }, grid: { display: false } }
+      }
+    }
+  });
 }
 
-// ── Refresh ──────────────────────────────────────────────
-function refreshAll(){
-  filtered=prData.filter(p=>!searchQ||p.name.includes(searchQ)||p.city?.includes(searchQ));
-  renderKPIs(); renderCharts(); renderTable();
+// ══════════════════════════════════════════════
+//  Save
+// ══════════════════════════════════════════════
+function saveAll() {
+  Store.save('properties_v1', properties);
+  toast('✅ تم الحفظ بنجاح', 'success');
+  dataSync.emit('properties');
 }
 
-refreshAll();
+// ══════════════════════════════════════════════
+//  Sync
+// ══════════════════════════════════════════════
+dataSync.onDataChanged('properties', init);
+
+// ══════════════════════════════════════════════
+//  Run
+// ══════════════════════════════════════════════
+init();
 </script>
+
 </body>
 </html>
