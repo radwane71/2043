@@ -3,109 +3,313 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
 <title>سلم الراتب — 2043</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
 <style>
-.scale-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; margin-bottom: 24px; }
-.scale-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
-.scale-table-wrap thead th { background: var(--bg2); color: var(--text3); font-weight: 700; padding: 10px; text-align: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
-.scale-table-wrap tbody td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.scale-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  margin-bottom: 24px;
+}
+.scale-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 1100px;
+}
+.scale-table-wrap thead th {
+  background: var(--bg2);
+  color: var(--text3);
+  font-weight: 700;
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.scale-table-wrap tbody td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+.row-past td   { opacity: 0.55; }
 .row-current td { background: rgba(79,142,247,0.08) !important; font-weight: 700; }
-.field-inline { background: rgba(255,255,255,0.05); border: 1px solid transparent; color: inherit; padding: 4px; border-radius: 4px; text-align: center; font-family: inherit; }
-.field-inline:focus { border-color: var(--accent); background: var(--bg); outline: none; }
+.field-inline {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid transparent;
+  color: inherit;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-align: center;
+  font-family: inherit;
+  font-size: 12px;
+  transition: border-color 0.15s;
+}
+.field-inline:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+  outline: none;
+}
+.unsaved-badge {
+  display: none;
+  padding: 4px 10px;
+  background: rgba(245,158,11,0.15);
+  border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 6px;
+  color: var(--yellow, #f59e0b);
+  font-size: 12px;
+  font-weight: 600;
+}
+.unsaved-badge.show { display: inline-block; }
 </style>
 </head>
 <body>
 <script>initPage('salary-scale');</script>
+
 <div class="main">
+
   <div class="page-header">
     <div class="page-header-left">
       <h1>📈 سلم الراتب</h1>
       <p>أخصائي أول مختبرات — تحكم كامل في بيانات السلم الوظيفي</p>
     </div>
-    <div class="page-header-right">
+    <div class="page-header-right" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="unsaved-badge" id="unsavedBadge">● تعديلات غير محفوظة</span>
+      <button class="btn btn-ghost" onclick="exportCSV()">📄 تصدير CSV</button>
+      <button class="btn btn-ghost" onclick="exportJSON()">📦 تصدير JSON</button>
+      <button class="btn btn-danger btn-sm" onclick="resetScale()">🔄 إعادة تعيين</button>
       <button class="btn btn-primary" onclick="saveScale()">💾 حفظ التعديلات</button>
     </div>
   </div>
-  <div class="kpi-grid cols-4" id="scaleKPIs"></div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid cols-4" id="scaleKPIs" style="margin-bottom:24px"></div>
+
+  <!-- Table -->
   <div class="scale-table-wrap">
     <table>
       <thead>
         <tr>
-          <th>السنة هـ</th><th>السنة م</th><th>العمر</th><th>الخدمة</th>
-          <th>الأساسي</th><th>بدل السكن</th><th>بدل النقل</th><th>الإجمالي</th>
-          <th>GOSI</th><th>ساند</th><th>صافي الراتب</th>
-          <th>أوفر تايم</th><th>تكلفة الساعة</th><th>الحالة</th>
+          <th>السنة هـ</th>
+          <th>السنة م</th>
+          <th>العمر</th>
+          <th>الخدمة</th>
+          <th>الأساسي</th>
+          <th>بدل السكن</th>
+          <th>بدل النقل</th>
+          <th>الإجمالي</th>
+          <th>GOSI (9.75%)</th>
+          <th>ساند (0.75%)</th>
+          <th>صافي الراتب</th>
+          <th>تكلفة الساعة</th>
+          <th>أوفر تايم (1.5x)</th>
+          <th>الحالة</th>
         </tr>
       </thead>
       <tbody id="scaleBody"></tbody>
     </table>
   </div>
-</div>
-<script>
-const currentYear = new Date().getFullYear();
-let CURRENT_SCALE = Store.load('salary_scale_v1', SCALE_DATA); // SCALE_DATA comes from current file or data.js
 
+</div>
+
+<script>
+const CY = new Date().getFullYear();
+let CURRENT_SCALE = Store.load('salary_scale_v1', APP.salaryScale || []);
+let _dirty = false;
+
+// ─────────────────────────────────────────────
+//  حساب القيم المشتقة لصف واحد
+// ─────────────────────────────────────────────
+function calcRow(d) {
+  d.gross    = (d.basic || 0) + (d.housing || 0) + (d.transport || 0);
+  d.gosi     = ((d.basic || 0) + (d.housing || 0)) * 0.0975;
+  d.saned    = ((d.basic || 0) + (d.housing || 0)) * 0.0075;
+  d.net      = d.gross - d.gosi - d.saned;
+  d.cost_hr  = d.basic / (22 * 8);   // تكلفة الساعة الأساسية
+  d.ot_hr    = d.cost_hr * 1.5;      // أوفر تايم
+  return d;
+}
+CURRENT_SCALE = CURRENT_SCALE.map(calcRow);
+
+// ─────────────────────────────────────────────
+//  Render
+// ─────────────────────────────────────────────
 function renderTable() {
-  document.getElementById('scaleBody').innerHTML = CURRENT_SCALE.map((d, i) => {
-    const isPast = d.year < currentYear;
-    const isCurrent = d.year === currentYear;
+  const tbody = document.getElementById('scaleBody');
+  tbody.innerHTML = CURRENT_SCALE.map((d, i) => {
+    const past    = d.year < CY;
+    const current = d.year === CY;
+    const cls     = past ? 'row-past' : current ? 'row-current' : '';
     return `
-      <tr class="${isPast?'row-past':isCurrent?'row-current':'row-future'}">
-        <td>${d.hijri}</td>
-        <td style="font-weight:${isCurrent?'800':'400'}">${d.year}</td>
-        <td>${d.age}</td>
-        <td>${d.exp}</td>
-        <td><input type="number" class="field-inline" style="width:80px;color:var(--accent)" value="${d.basic}" onchange="updateRow(${i},'basic',this.value)"></td>
-        <td><input type="number" class="field-inline" style="width:70px" value="${d.housing}" onchange="updateRow(${i},'housing',this.value)"></td>
-        <td><input type="number" class="field-inline" style="width:60px" value="${d.transport}" onchange="updateRow(${i},'transport',this.value)"></td>
-        <td id="gross-${i}" style="font-weight:700">${H.fmt(d.gross)}</td>
-        <td id="gosi-${i}" style="color:var(--red)">${H.fmt(d.gosi)}</td>
-        <td id="saned-${i}" style="color:var(--red)">${H.fmt(d.saned)}</td>
-        <td id="net-${i}" style="color:var(--green);font-weight:700">${H.fmt(d.net)}</td>
-        <td><input type="number" class="field-inline" style="width:60px;color:var(--yellow)" value="${d.ot_hr.toFixed(2)}" onchange="updateRow(${i},'ot_hr',this.value)"></td>
-        <td><input type="number" class="field-inline" style="width:60px" value="${d.cost_hr.toFixed(2)}" onchange="updateRow(${i},'cost_hr',this.value)"></td>
-        <td>${isPast?'ماضي':isCurrent?'الآن ✦':'مستقبل'}</td>
+      <tr class="${cls}">
+        <td>${d.hijri || '—'}</td>
+        <td style="font-weight:${current?'800':'400'};color:${current?'var(--accent)':'inherit'}">${d.year}</td>
+        <td>${d.age  || '—'}</td>
+        <td>${d.exp  || '—'}</td>
+
+        <td><input type="number" class="field-inline" style="width:82px;color:var(--accent)"
+              value="${d.basic}" data-i="${i}" data-f="basic"
+              onchange="updateField(${i},'basic',this.value)"></td>
+
+        <td><input type="number" class="field-inline" style="width:72px"
+              value="${d.housing}" data-i="${i}" data-f="housing"
+              onchange="updateField(${i},'housing',this.value)"></td>
+
+        <td><input type="number" class="field-inline" style="width:64px"
+              value="${d.transport}" data-i="${i}" data-f="transport"
+              onchange="updateField(${i},'transport',this.value)"></td>
+
+        <td id="gross-${i}"  style="font-weight:700">${H.fmt(d.gross)}</td>
+        <td id="gosi-${i}"   style="color:var(--red)">${H.fmt(d.gosi)}</td>
+        <td id="saned-${i}"  style="color:var(--red)">${H.fmt(d.saned)}</td>
+        <td id="net-${i}"    style="color:var(--green);font-weight:700">${H.fmt(d.net)}</td>
+        <td id="costhr-${i}" style="color:var(--text2)">${H.fmt(d.cost_hr, 2)}</td>
+        <td id="othr-${i}"   style="color:var(--yellow,#f59e0b)">${H.fmt(d.ot_hr, 2)}</td>
+        <td style="font-size:11px">${past ? '⏪ ماضي' : current ? '🔵 الآن' : '⏩ مستقبل'}</td>
       </tr>`;
   }).join('');
 }
 
-function updateRow(idx, field, val) {
-  let d = CURRENT_SCALE[idx];
-  d[field] = parseFloat(val) || 0;
-  d.gross = d.basic + d.housing + d.transport;
-  d.gosi  = (d.basic + d.housing) * 0.0975; // 9% + 0.75%
-  d.saned = (d.basic + d.housing) * 0.0075;
-  d.net   = d.gross - d.gosi - d.saned;
-  
-  document.getElementById(`gross-${idx}`).innerText = H.fmt(d.gross);
-  document.getElementById(`gosi-${idx}`).innerText = H.fmt(d.gosi);
-  document.getElementById(`saned-${idx}`).innerText = H.fmt(d.saned);
-  document.getElementById(`net-${idx}`).innerText = H.fmt(d.net);
+// ─────────────────────────────────────────────
+//  تحديث خلية بدون re-render كامل
+// ─────────────────────────────────────────────
+function updateField(idx, field, val) {
+  CURRENT_SCALE[idx][field] = parseFloat(val) || 0;
+  calcRow(CURRENT_SCALE[idx]);
+  const d = CURRENT_SCALE[idx];
+  document.getElementById(`gross-${idx}` ).innerText = H.fmt(d.gross);
+  document.getElementById(`gosi-${idx}`  ).innerText = H.fmt(d.gosi);
+  document.getElementById(`saned-${idx}` ).innerText = H.fmt(d.saned);
+  document.getElementById(`net-${idx}`   ).innerText = H.fmt(d.net);
+  document.getElementById(`costhr-${idx}`).innerText = H.fmt(d.cost_hr, 2);
+  document.getElementById(`othr-${idx}`  ).innerText = H.fmt(d.ot_hr, 2);
+  markDirty();
 }
 
+function markDirty() {
+  _dirty = true;
+  document.getElementById('unsavedBadge').classList.add('show');
+}
+
+// ─────────────────────────────────────────────
+//  حفظ
+// ─────────────────────────────────────────────
 function saveScale() {
   Store.save('salary_scale_v1', CURRENT_SCALE);
-  toast('✅ تم حفظ تعديلات سلم الرواتب بنجاح','success');
+  _dirty = false;
+  document.getElementById('unsavedBadge').classList.remove('show');
+  toast('✅ تم حفظ سلم الرواتب بنجاح', 'success');
   renderKPIs();
 }
 
-function renderKPIs() {
-  const curr = CURRENT_SCALE.find(d => d.year === currentYear) || CURRENT_SCALE[0];
-  const last = CURRENT_SCALE[CURRENT_SCALE.length-1];
-  const totalFuture = CURRENT_SCALE.filter(d => d.year >= currentYear).reduce((s,d) => s + d.net * 12, 0);
-  
-  document.getElementById('scaleKPIs').innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">الراتب الصافي الحالي</div><div class="kpi-value accent">${H.fmt(curr.net)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">أعلى راتب متوقع</div><div class="kpi-value pos">${H.fmt(last.net)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">إجمالي الدخل المتوقع</div><div class="kpi-value" style="color:var(--purple)">${H.fmt(totalFuture)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">سنوات الخدمة المتبقية</div><div class="kpi-value warn">${2043 - currentYear}</div></div>`;
+// ─────────────────────────────────────────────
+//  إعادة تعيين
+// ─────────────────────────────────────────────
+function resetScale() {
+  if (!confirm('إعادة تعيين السلم إلى البيانات الافتراضية؟ ستُفقد كل التعديلات.')) return;
+  localStorage.removeItem('salary_scale_v1');
+  CURRENT_SCALE = (APP.salaryScale || []).map(calcRow);
+  _dirty = false;
+  document.getElementById('unsavedBadge').classList.remove('show');
+  renderTable();
+  renderKPIs();
+  toast('🔄 تمت إعادة التعيين', 'warn');
 }
 
-renderKPIs(); renderTable();
+// ─────────────────────────────────────────────
+//  تصدير CSV
+// ─────────────────────────────────────────────
+function exportCSV() {
+  const headers = ['السنة م','السنة هـ','العمر','الخدمة','الأساسي','السكن','النقل','الإجمالي','GOSI','ساند','الصافي','تكلفة الساعة','أوفر تايم'];
+  const rows = CURRENT_SCALE.map(d => [
+    d.year, d.hijri || '', d.age || '', d.exp || '',
+    d.basic, d.housing, d.transport,
+    d.gross.toFixed(2), d.gosi.toFixed(2), d.saned.toFixed(2), d.net.toFixed(2),
+    d.cost_hr.toFixed(2), d.ot_hr.toFixed(2)
+  ]);
+  const csv = '\uFEFF' + [headers, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `salary_scale_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('📄 تم تصدير CSV', 'success');
+}
+
+// ─────────────────────────────────────────────
+//  تصدير JSON
+// ─────────────────────────────────────────────
+function exportJSON() {
+  const payload = {
+    app: '2043',
+    type: 'salary_scale',
+    exportedAt: new Date().toISOString(),
+    data: CURRENT_SCALE
+  };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+  a.download = `salary_scale_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('📦 تم تصدير JSON', 'success');
+}
+
+// ─────────────────────────────────────────────
+//  KPIs
+// ─────────────────────────────────────────────
+function renderKPIs() {
+  const curr       = CURRENT_SCALE.find(d => d.year === CY) || CURRENT_SCALE[0] || {};
+  const last       = CURRENT_SCALE[CURRENT_SCALE.length - 1] || {};
+  const future     = CURRENT_SCALE.filter(d => d.year >= CY);
+  const totalFuture = future.reduce((s, d) => s + (d.net || 0) * 12, 0);
+  const avgNet      = future.length ? totalFuture / future.length / 12 : 0;
+
+  document.getElementById('scaleKPIs').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">💳</div>
+      <div class="kpi-label">الراتب الصافي الحالي</div>
+      <div class="kpi-value accent">${H.fmt(curr.net || 0)}</div>
+      <div class="kpi-sub">SAR / شهر</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">أعلى راتب متوقع</div>
+      <div class="kpi-value pos">${H.fmt(last.net || 0)}</div>
+      <div class="kpi-sub">${last.year || '—'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">إجمالي الدخل المتوقع</div>
+      <div class="kpi-value" style="color:var(--purple)">${H.fmt(totalFuture)}</div>
+      <div class="kpi-sub">SAR حتى ${2043}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-label">متوسط الراتب الصافي</div>
+      <div class="kpi-value warn">${H.fmt(avgNet)}</div>
+      <div class="kpi-sub">SAR / شهر متوسط مستقبلي</div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+//  تحذير عند الخروج بدون حفظ
+// ─────────────────────────────────────────────
+window.addEventListener('beforeunload', e => {
+  if (_dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ─────────────────────────────────────────────
+//  Init
+// ─────────────────────────────────────────────
+renderKPIs();
+renderTable();
 </script>
 </body>
 </html>
