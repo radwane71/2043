@@ -110,7 +110,7 @@
       <button class="filter-tab" onclick="applyFilter('مراقبة',this)">مراقبة</button>
       <button class="filter-tab" onclick="applyFilter('تخفيف',this)">تخفيف</button>
     </div>
-    <input class="search-input" placeholder="🔍 بحث بالاسم أو التيكر..." oninput="applySearch(this.value)">
+    <input class="search-input" placeholder="🔍 بحث بالاسم أو التيكر أو القطاع..." oninput="applySearch(this.value)">
   </div>
 
   <div class="table-wrap">
@@ -207,16 +207,21 @@ function renderKPIs() {
   const totalReturn    = truePL + totalDiv;
   const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
 
-  // YOC المرجّح
-  const divByStock = {};
-  divs.forEach(d => { divByStock[d.stock] = (divByStock[d.stock]||0) + d.amount; });
+  // YOC المرجّح — بناءً على التيكر لا اسم الشركة
+  const divByTicker = {};
+  divs.forEach(d => {
+    // دعم القديم (اسم) والجديد (تيكر)
+    const key = d.ticker || d.stock;
+    if (key) divByTicker[key] = (divByTicker[key] || 0) + d.amount;
+  });
   let weightedYOC = 0, totalWeight = 0;
   portData.forEach(p => {
     const cost = p.qty * p.avg_cost;
-    const sd   = divByStock[p.stock] || 0;
-    if (cost > 0 && sd > 0) { weightedYOC += (sd/cost)*cost; totalWeight += cost; }
+    // حاول التيكر أولاً ثم الاسم كـ fallback
+    const sd = (divByTicker[p.ticker] || divByTicker[H.tickerName(p.ticker)] || 0);
+    if (cost > 0 && sd > 0) { weightedYOC += (sd / cost) * cost; totalWeight += cost; }
   });
-  const portfolioYOC = totalWeight > 0 ? (weightedYOC/totalWeight)*100 : 0;
+  const portfolioYOC = totalWeight > 0 ? (weightedYOC / totalWeight) * 100 : 0;
 
   // Annualized
   const divDates  = divs.map(d=>new Date(d.date)).filter(d=>!isNaN(d));
@@ -294,6 +299,8 @@ function renderKPIs() {
 function renderTable() {
   const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
   document.getElementById('portBody').innerHTML = filtered.map((p,i) => {
+    const name       = H.tickerName(p.ticker);
+    const sector     = H.tickerSector(p.ticker);
     const cost       = p.qty * p.avg_cost;
     const mkt        = p.qty * p.current_price;
     const pl         = mkt - cost;
@@ -306,9 +313,9 @@ function renderTable() {
     const idx        = portData.indexOf(p);
     return `<tr>
       <td style="color:var(--text3)">${i+1}</td>
-      <td><strong>${p.stock}</strong>${p.is_bluechip?'<span style="font-size:10px;color:var(--yellow)"> ⭐</span>':''}</td>
+      <td><strong>${name}</strong>${p.is_bluechip?'<span style="font-size:10px;color:var(--yellow)"> ⭐</span>':''}</td>
       <td class="accent" style="font-weight:700">${p.ticker}</td>
-      <td><small style="color:var(--text3)">${p.sector}</small></td>
+      <td><small style="color:var(--text3)">${sector}</small></td>
       <td><span class="editable" onclick="editCell(this,${idx},'qty')">${H.fmt(p.qty,0)}</span></td>
       <td><span class="editable" onclick="editCell(this,${idx},'avg_cost')">${H.fmt(p.avg_cost)}</span></td>
       <td><span class="editable ${priceClass}" onclick="editCell(this,${idx},'current_price')">${H.fmt(p.current_price)}</span></td>
@@ -365,7 +372,7 @@ function quickPriceUpdate() {
   document.getElementById('qpRows').innerHTML = portData.map((p,i) => `
     <div class="qp-row">
       <div>
-        <div class="qp-name">${p.stock}</div>
+        <div class="qp-name">${H.tickerName(p.ticker)}</div>
         <div class="qp-ticker">${p.ticker}</div>
       </div>
       <div class="qp-old">${H.fmt(p.current_price)}</div>
@@ -404,7 +411,6 @@ function applyQuickPrices() {
     }
   });
   closeQP();
-  // حفظ تلقائي بعد التطبيق
   Store.save('portfolio_v1', portData);
   renderKPIs();
   applyFilters();
@@ -424,7 +430,12 @@ function applySearch(q) { searchQ = q; applyFilters(); }
 function applyFilters() {
   filtered = portData.filter(p => {
     const mF = activeFilter === 'all' || p.decision.includes(activeFilter);
-    const mS = !searchQ || p.stock.includes(searchQ) || p.ticker.includes(searchQ) || p.sector.includes(searchQ);
+    const name   = H.tickerName(p.ticker);
+    const sector = H.tickerSector(p.ticker);
+    const mS = !searchQ ||
+      name.includes(searchQ) ||
+      p.ticker.includes(searchQ) ||
+      sector.includes(searchQ);
     return mF && mS;
   });
   renderTable();
@@ -444,9 +455,11 @@ function saveAll() {
 function exportCSV() {
   const headers = ['السهم','التيكر','القطاع','الكمية','متوسط التكلفة','السعر الحالي','القيمة السوقية','ر/خ','ر/خ%','القرار'];
   const rows = portData.map(p => {
-    const mkt = p.qty * p.current_price;
-    const pl  = mkt - p.qty * p.avg_cost;
-    return [p.stock, p.ticker, p.sector, p.qty, p.avg_cost, p.current_price,
+    const mkt    = p.qty * p.current_price;
+    const pl     = mkt - p.qty * p.avg_cost;
+    const name   = H.tickerName(p.ticker);
+    const sector = H.tickerSector(p.ticker);
+    return [name, p.ticker, sector, p.qty, p.avg_cost, p.current_price,
       mkt.toFixed(2), pl.toFixed(2),
       ((pl/(p.qty*p.avg_cost))*100).toFixed(2)+'%', p.decision].join(',');
   });
