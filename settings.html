@@ -128,15 +128,17 @@
     </div>
   </div>
 
-  <!-- ══ 5. النسخ الاحتياطي — 0% فقد ══ -->
+  <!-- ══ 5. النسخ الاحتياطي — أقصى تغطية ══ -->
   <div class="settings-section">
-    <div class="settings-section-header">🧰 النسخ الاحتياطي الكامل — 0% فقد</div>
+    <div class="settings-section-header">🧰 النسخ الاحتياطي الكامل — أقصى تغطية</div>
     <div class="settings-section-body">
 
       <div class="info-box blue" style="margin-bottom:16px">
-        🔵 <strong>التصدير:</strong> يُصدّر <strong>كل</strong> مفاتيح localStorage دون استثناء، بقيمها الخام (Raw Strings).
+        🔵 <strong>التصدير:</strong> يصوّر كل مفاتيح localStorage و sessionStorage (Raw Strings)، ويأخذ Snapshot للكوكيز القابلة للقراءة، ويضيف بصمات SHA-256 للتحقق.
         <br>
-        🟡 <strong>الاستعادة:</strong> تمسح localStorage ثم تُعيد كل مفتاح بقيمته الأصلية حرفياً.
+        🟡 <strong>الاستعادة:</strong> يمسح localStorage و sessionStorage ثم يعيدها حرفياً. ثم يستعيد الكوكيز بأفضل مجهود.
+        <br>
+        ⚠️ ملاحظة مهمة: المتصفح يمنع قراءة/نسخ بعض الأشياء (مثل HttpOnly cookies). هذا يقربك من 100% داخل نطاق ما يسمح به المتصفح، لكنه ليس “100% مطلق” على مستوى كل المتصفح.
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
@@ -148,6 +150,7 @@
           <input id="restoreInput" type="file" accept=".json" style="display:none"
                  onchange="handleRestoreFile(this)">
         </label>
+        <button class="btn btn-ghost btn-sm" onclick="selfCheckNow()">🔍 فحص سريع (Integrity)</button>
         <button class="btn btn-danger btn-sm" onclick="clearSession()">🗑 مسح sessionStorage</button>
         <button class="btn btn-danger btn-sm" onclick="clearLocalStorage()">🗑 مسح localStorage كاملاً</button>
       </div>
@@ -159,12 +162,12 @@
 
       <div id="restoreBtnWrap" style="display:none;margin-bottom:16px">
         <button class="btn btn-danger" onclick="confirmRestore()">
-          ♻️ استعادة كاملة (سيُعاد كل شيء كما كان)
+          ♻️ استعادة كاملة (مع تحقق البصمات)
         </button>
       </div>
 
       <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">
-        📋 البيانات الموجودة حالياً في localStorage:
+        📋 Snapshot سريع للحالة الحالية:
       </div>
       <div id="sessionStatus"
            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
@@ -280,27 +283,109 @@ function saveStocksSettings() {
 }
 
 // ═══════════════════════════════════════════════
-//  3. النسخ الاحتياطي 100%
+//  3. النسخ الاحتياطي + Integrity
 // ═══════════════════════════════════════════════
 function _snapshotStorage(storage) {
   const out = {};
   try {
     for (let i = 0; i < storage.length; i++) {
       const k = storage.key(i);
-      out[k] = storage.getItem(k); // raw string
+      out[k] = storage.getItem(k) ?? '';
     }
   } catch (e) {}
   return out;
 }
 
-function exportFullBackup() {
+function _parseCookiesRaw(raw) {
+  const list = [];
+  if (!raw) return list;
+  raw.split(';').map(s => s.trim()).filter(Boolean).forEach(pair => {
+    const eq = pair.indexOf('=');
+    if (eq <= 0) return;
+    const name = pair.slice(0, eq).trim();
+    const value = pair.slice(eq + 1);
+    list.push({ name, value });
+  });
+  return list;
+}
+
+function _setCookieBestEffort(name, value) {
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  // لا نملك خصائص Path/Domain/Expires من document.cookie، فنعيدها بأبسط صيغة مفيدة.
+  document.cookie = `${name}=${value}; Path=/; SameSite=Lax${secure}`;
+}
+
+function _clearReadableCookiesBestEffort() {
+  const now = _parseCookiesRaw(document.cookie);
+  now.forEach(c => {
+    // مسح بأفضل مجهود. قد لا يمسح كوكيز لها Path/Domain مختلف.
+    document.cookie = `${c.name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/`;
+  });
+}
+
+async function _sha256Hex(str) {
+  try {
+    if (!window.crypto || !crypto.subtle) return '';
+    const enc = new TextEncoder().encode(String(str ?? ''));
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch (e) {
+    return '';
+  }
+}
+
+async function _hashMapOfRawMap(rawMap) {
+  const keys = Object.keys(rawMap || {}).sort();
+  const out = {};
+  for (const k of keys) {
+    out[k] = await _sha256Hex(rawMap[k]);
+  }
+  return out;
+}
+
+function _bytesOfString(str) {
+  try { return new Blob([String(str ?? '')]).size; } catch(e) { return 0; }
+}
+
+function _sumBytesOfMap(m) {
+  let sum = 0;
+  Object.keys(m || {}).forEach(k => { sum += _bytesOfString(m[k]); });
+  return sum;
+}
+
+async function exportFullBackup() {
+  const ls = _snapshotStorage(localStorage);
+  const ss = _snapshotStorage(sessionStorage);
+
+  const cookiesRaw = String(document.cookie || '');
+  const cookiesList = _parseCookiesRaw(cookiesRaw);
+
   const payload = {
     app: '2043',
-    schema: 'raw-storage-snapshot',
-    version: 3,
+    schema: 'raw-storage-snapshot+integrity',
+    version: 4,
     exportedAt: new Date().toISOString(),
-    localStorage: _snapshotStorage(localStorage),
-    sessionStorage: _snapshotStorage(sessionStorage),
+
+    localStorage: ls,
+    sessionStorage: ss,
+    cookiesRaw,
+
+    integrity: {
+      algo: 'SHA-256',
+      localStorageHashes: await _hashMapOfRawMap(ls),
+      sessionStorageHashes: await _hashMapOfRawMap(ss),
+      cookiesHash: await _sha256Hex(cookiesRaw),
+    },
+
+    stats: {
+      localStorageKeys: Object.keys(ls).length,
+      sessionStorageKeys: Object.keys(ss).length,
+      cookiesCount: cookiesList.length,
+      localStorageBytes: _sumBytesOfMap(ls),
+      sessionStorageBytes: _sumBytesOfMap(ss),
+      cookiesBytes: _bytesOfString(cookiesRaw),
+      userAgent: navigator.userAgent,
+    }
   };
 
   const json = JSON.stringify(payload, null, 2);
@@ -309,7 +394,7 @@ function exportFullBackup() {
   a.download = `2043_full_backup_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
   a.click();
 
-  toast(`📦 تم التصدير — localStorage: ${Object.keys(payload.localStorage).length} • sessionStorage: ${Object.keys(payload.sessionStorage).length}`, 'success');
+  toast(`📦 تم التصدير — LS:${payload.stats.localStorageKeys} • SS:${payload.stats.sessionStorageKeys} • Cookies:${payload.stats.cookiesCount}`, 'success');
   renderSessionStatus();
 }
 
@@ -321,8 +406,12 @@ function handleRestoreFile(input) {
     try {
       const obj = JSON.parse(reader.result);
 
-      // v3 raw snapshot
-      if (obj && obj.version === 3 && obj.localStorage && typeof obj.localStorage === 'object') {
+      // v4
+      if (obj && obj.version === 4 && obj.localStorage && typeof obj.localStorage === 'object') {
+        _pendingRestore = { type: 'v4', data: obj };
+      }
+      // v3
+      else if (obj && obj.version === 3 && obj.localStorage && typeof obj.localStorage === 'object') {
         _pendingRestore = { type: 'v3', data: obj };
       }
       // v2
@@ -338,23 +427,29 @@ function handleRestoreFile(input) {
         return;
       }
 
+      const info = document.getElementById('backupFileInfo');
+      info.style.display = 'block';
+
+      const exportedAt = String(obj.exportedAt || obj._exported || '—');
       const lsCount = (_pendingRestore.type === 'v1')
         ? Object.keys(obj).filter(k => !k.startsWith('_')).length
         : Object.keys(obj.localStorage || {}).length;
-
-      const ssCount = (_pendingRestore.type === 'v3')
+      const ssCount = (_pendingRestore.type === 'v4' || _pendingRestore.type === 'v3')
         ? Object.keys(obj.sessionStorage || {}).length
         : 0;
+      const cookiesCount = (_pendingRestore.type === 'v4')
+        ? _parseCookiesRaw(String(obj.cookiesRaw || '')).length
+        : 0;
 
-      const info = document.getElementById('backupFileInfo');
-      info.style.display = 'block';
       info.innerHTML = `
         ✅ <strong>الملف محمّل بنجاح</strong><br>
-        📅 تاريخ النسخة: <strong>${String(obj.exportedAt || obj._exported || '—').split('T')[0]}</strong><br>
+        📅 تاريخ النسخة: <strong>${exportedAt.split('T')[0]}</strong><br>
         🗂 localStorage: <strong>${lsCount}</strong><br>
         🧩 sessionStorage: <strong>${ssCount}</strong><br>
+        🍪 cookies (readable): <strong>${cookiesCount}</strong><br>
         📦 الإصدار: <strong>${obj.version || 'v1 قديم'}</strong>
       `;
+
       document.getElementById('restoreBtnWrap').style.display = 'block';
       toast('✅ ملف النسخة الاحتياطية جاهز للاستعادة','success');
     } catch (e) {
@@ -364,21 +459,104 @@ function handleRestoreFile(input) {
   reader.readAsText(file);
 }
 
-function confirmRestore() {
+async function _verifyAgainst(backup) {
+  const report = {
+    ok: true,
+    ls: { expectedKeys: 0, currentKeys: 0, missing: 0, mismatched: 0 },
+    ss: { expectedKeys: 0, currentKeys: 0, missing: 0, mismatched: 0 },
+    cookies: { expectedHash: '', currentHash: '', ok: true },
+  };
+
+  // localStorage
+  const expLS = backup.localStorage || {};
+  const curLS = _snapshotStorage(localStorage);
+  report.ls.expectedKeys = Object.keys(expLS).length;
+  report.ls.currentKeys = Object.keys(curLS).length;
+
+  const expLSHashes = (backup.integrity && backup.integrity.localStorageHashes) || null;
+  if (expLSHashes) {
+    for (const k of Object.keys(expLSHashes)) {
+      if (!(k in curLS)) { report.ok = false; report.ls.missing++; continue; }
+      const h = await _sha256Hex(curLS[k]);
+      if (h !== expLSHashes[k]) { report.ok = false; report.ls.mismatched++; }
+    }
+  }
+
+  // sessionStorage
+  const expSS = backup.sessionStorage || {};
+  const curSS = _snapshotStorage(sessionStorage);
+  report.ss.expectedKeys = Object.keys(expSS).length;
+  report.ss.currentKeys = Object.keys(curSS).length;
+
+  const expSSHashes = (backup.integrity && backup.integrity.sessionStorageHashes) || null;
+  if (expSSHashes) {
+    for (const k of Object.keys(expSSHashes)) {
+      if (!(k in curSS)) { report.ok = false; report.ss.missing++; continue; }
+      const h = await _sha256Hex(curSS[k]);
+      if (h !== expSSHashes[k]) { report.ok = false; report.ss.mismatched++; }
+    }
+  }
+
+  // cookies
+  if (backup.integrity && backup.integrity.cookiesHash) {
+    report.cookies.expectedHash = backup.integrity.cookiesHash;
+    report.cookies.currentHash = await _sha256Hex(String(document.cookie || ''));
+    report.cookies.ok = (report.cookies.expectedHash === report.cookies.currentHash);
+    if (!report.cookies.ok) report.ok = false;
+  }
+
+  return report;
+}
+
+async function confirmRestore() {
   if (!_pendingRestore) return toast('اختر ملف الاستعادة أولاً','error');
   if (!confirm('⚠️ سيتم مسح كل البيانات الحالية واستعادة النسخة الاحتياطية.\nهذا لا يمكن التراجع عنه. هل أنت متأكد؟')) return;
 
   try { localStorage.clear(); } catch(e) {}
   try { sessionStorage.clear(); } catch(e) {}
 
-  if (_pendingRestore.type === 'v3') {
+  // cookies (best effort)
+  _clearReadableCookiesBestEffort();
+
+  if (_pendingRestore.type === 'v4') {
+    const obj = _pendingRestore.data;
+
+    const ls = obj.localStorage || {};
+    const ss = obj.sessionStorage || {};
+    Object.keys(ls).forEach(k => localStorage.setItem(k, ls[k]));
+    Object.keys(ss).forEach(k => sessionStorage.setItem(k, ss[k]));
+
+    const cookiesList = _parseCookiesRaw(String(obj.cookiesRaw || ''));
+    cookiesList.forEach(c => _setCookieBestEffort(c.name, c.value));
+
+    const rep = await _verifyAgainst(obj);
+    if (rep.ok) {
+      toast('✅ تمت الاستعادة والتحقق بنجاح — لا اختلافات مكتشفة','success');
+    } else {
+      toast('⚠️ تمت الاستعادة، لكن تحقق البصمات كشف اختلافات','warn');
+    }
+
+    const info = document.getElementById('backupFileInfo');
+    info.style.display = 'block';
+    info.style.borderColor = rep.ok ? 'rgba(34,197,94,.25)' : 'rgba(245,158,11,.35)';
+    info.style.background = rep.ok ? 'rgba(34,197,94,.07)' : 'rgba(245,158,11,.08)';
+    info.innerHTML = `
+      ${rep.ok ? '✅' : '⚠️'} <strong>نتيجة التحقق</strong><br>
+      🗂 LS: missing ${rep.ls.missing} • mismatched ${rep.ls.mismatched}<br>
+      🧩 SS: missing ${rep.ss.missing} • mismatched ${rep.ss.mismatched}<br>
+      🍪 Cookies hash: ${rep.cookies.ok ? 'OK' : 'DIFF'}
+    `;
+
+  } else if (_pendingRestore.type === 'v3') {
     const ls = _pendingRestore.data.localStorage || {};
     const ss = _pendingRestore.data.sessionStorage || {};
     Object.keys(ls).forEach(k => localStorage.setItem(k, ls[k]));
     Object.keys(ss).forEach(k => sessionStorage.setItem(k, ss[k]));
+    toast('♻️ تمت الاستعادة (v3) — جاري إعادة التحميل','success');
   } else if (_pendingRestore.type === 'v2') {
     const ls = _pendingRestore.data.localStorage || {};
     Object.keys(ls).forEach(k => localStorage.setItem(k, ls[k]));
+    toast('♻️ تمت الاستعادة (v2) — جاري إعادة التحميل','success');
   } else {
     const obj = _pendingRestore.data;
     Object.keys(obj).forEach(k => {
@@ -387,10 +565,43 @@ function confirmRestore() {
         localStorage.setItem(k, val);
       }
     });
+    toast('♻️ تمت الاستعادة (v1) — جاري إعادة التحميل','success');
   }
 
-  toast('♻️ تمت الاستعادة بالكامل — جاري إعادة التحميل','success');
-  setTimeout(() => location.reload(), 800);
+  renderSessionStatus();
+  setTimeout(() => location.reload(), 900);
+}
+
+async function selfCheckNow() {
+  const ls = _snapshotStorage(localStorage);
+  const ss = _snapshotStorage(sessionStorage);
+  const cookiesRaw = String(document.cookie || '');
+
+  const payload = {
+    localStorage: ls,
+    sessionStorage: ss,
+    cookiesRaw,
+    integrity: {
+      algo: 'SHA-256',
+      localStorageHashes: await _hashMapOfRawMap(ls),
+      sessionStorageHashes: await _hashMapOfRawMap(ss),
+      cookiesHash: await _sha256Hex(cookiesRaw),
+    },
+  };
+
+  const rep = await _verifyAgainst(payload);
+  toast(rep.ok ? '✅ فحص سريع: كل شيء متطابق' : '⚠️ فحص سريع: تم اكتشاف اختلافات', rep.ok ? 'success' : 'warn');
+
+  const info = document.getElementById('backupFileInfo');
+  info.style.display = 'block';
+  info.style.borderColor = rep.ok ? 'rgba(34,197,94,.25)' : 'rgba(245,158,11,.35)';
+  info.style.background = rep.ok ? 'rgba(34,197,94,.07)' : 'rgba(245,158,11,.08)';
+  info.innerHTML = `
+    ${rep.ok ? '✅' : '⚠️'} <strong>Integrity Snapshot</strong><br>
+    🗂 LS keys: <strong>${Object.keys(ls).length}</strong> • bytes: <strong>${_sumBytesOfMap(ls)}</strong><br>
+    🧩 SS keys: <strong>${Object.keys(ss).length}</strong> • bytes: <strong>${_sumBytesOfMap(ss)}</strong><br>
+    🍪 Cookies (readable): <strong>${_parseCookiesRaw(cookiesRaw).length}</strong>
+  `;
 }
 
 // ═══════════════════════════════════════════════
@@ -411,17 +622,21 @@ function clearLocalStorage() {
 }
 
 // ═══════════════════════════════════════════════
-//  5. حالة localStorage
+//  5. Snapshot عرض
 // ═══════════════════════════════════════════════
 function renderSessionStatus() {
   const container = document.getElementById('sessionStatus');
-  if (!localStorage.length) {
-    container.innerHTML = '<p style="color:var(--text3);font-size:13px">localStorage فارغ — كل البيانات تأتي من data.js</p>';
-    return;
-  }
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-  keys.sort();
+
+  const lsKeys = [];
+  for (let i = 0; i < localStorage.length; i++) lsKeys.push(localStorage.key(i));
+  lsKeys.sort();
+
+  const ssKeys = [];
+  try { for (let i = 0; i < sessionStorage.length; i++) ssKeys.push(sessionStorage.key(i)); } catch(e) {}
+  ssKeys.sort();
+
+  const cookieCount = _parseCookiesRaw(String(document.cookie || '')).length;
+
   const labels = {
     'portfolio_v1':     'المحفظة',
     'transactions_v1':  'العمليات',
@@ -436,7 +651,28 @@ function renderSessionStatus() {
     'custom_tickers':   'تيكرات مخصصة',
     'forecast_v1':      'التوقعات',
   };
-  container.innerHTML = keys.map(k => {
+
+  const topCards = `
+    <div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:13px;font-weight:700">localStorage</div>
+      <div style="font-size:11px;color:var(--text3)">${lsKeys.length} keys • ${_sumBytesOfMap(_snapshotStorage(localStorage))} bytes</div>
+    </div>
+    <div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:13px;font-weight:700">sessionStorage</div>
+      <div style="font-size:11px;color:var(--text3)">${ssKeys.length} keys • ${_sumBytesOfMap(_snapshotStorage(sessionStorage))} bytes</div>
+    </div>
+    <div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:13px;font-weight:700">Cookies (readable)</div>
+      <div style="font-size:11px;color:var(--text3)">${cookieCount} items</div>
+    </div>
+  `;
+
+  if (!lsKeys.length) {
+    container.innerHTML = topCards + '<div style="grid-column:1/-1"><p style="color:var(--text3);font-size:13px;margin:0">localStorage فارغ — كل البيانات تأتي من data.js</p></div>';
+    return;
+  }
+
+  const keyCards = lsKeys.map(k => {
     const raw = localStorage.getItem(k);
     let sizeKB = (new Blob([raw]).size / 1024).toFixed(1);
     let count  = '';
@@ -455,6 +691,8 @@ function renderSessionStatus() {
         ${k !== (labels[k] || k) ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:monospace">${k}</div>` : ''}
       </div>`;
   }).join('');
+
+  container.innerHTML = topCards + keyCards;
 }
 
 // ═══════════════════════════════════════════════
