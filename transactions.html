@@ -8,14 +8,81 @@
 <title>العمليات — 2043</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="assets/tickers.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/auth.js"></script>
 <script src="assets/data-sync.js"></script>
+<script src="assets/ticker-helper.js"></script>
 <style>
-.chart-wrap { position:relative; width:100%; height:280px; }
-.chart-wrap canvas { width:100% !important; height:100% !important; }
+.editable {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border2);
+  transition: border-color 0.2s;
+  display: inline-block;
+  min-width: 40px;
+}
+.editable:hover { border-color: var(--accent); color: var(--accent); }
+
+.edit-input {
+  width: 90px;
+  padding: 4px 6px;
+  background: var(--bg2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+.filter-tab:hover { border-color: var(--accent); color: var(--accent); }
+.filter-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter-tab.sell-active { background: var(--red); border-color: var(--red); color: #fff; }
+
+.import-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 12px;
+}
+.import-zone:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(79,142,247,0.04);
+}
+
+.row-deleted { opacity: 0.4; text-decoration: line-through; }
+
+.ticker-name-preview {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 16px;
+  font-weight: 600;
+  transition: color 0.2s;
+}
 </style>
 </head>
 <body>
@@ -23,377 +90,637 @@
 
 <div class="main">
 
+  <!-- Header -->
   <div class="page-header">
     <div class="page-header-left">
-      <h1>💹 العمليات</h1>
-      <p>سجل كامل لعمليات الشراء والبيع</p>
+      <h1>🔄 العمليات</h1>
+      <p>جميع عمليات الشراء والبيع — قابلة للتعديل والتصدير والاستيراد</p>
     </div>
     <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 تصدير CSV</button>
+      <button class="btn btn-ghost btn-sm"   onclick="exportJSON()">📦 تصدير JSON</button>
+      <button class="btn btn-warn btn-sm"    onclick="document.getElementById('importModal').style.display='flex'">📤 استيراد</button>
       <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
     </div>
   </div>
 
-  <div class="kpi-grid cols-4" id="transKPIs"></div>
+  <!-- KPIs -->
+  <div class="kpi-grid cols-5" id="trKPIs"></div>
 
+  <!-- Add Transaction Form -->
   <div class="form-card">
     <h3>➕ إضافة عملية جديدة</h3>
     <div class="form-row">
       <div class="form-group">
         <label>النوع</label>
         <select id="t-status">
-          <option value="Buy">شراء</option>
-          <option value="Sell">بيع</option>
+          <option value="Buy">شراء — Buy</option>
+          <option value="Sell">بيع — Sell</option>
         </select>
       </div>
       <div class="form-group">
-        <label>رمز السهم</label>
-        <input id="t-ticker" placeholder="2222" list="tickerList">
-        <datalist id="tickerList"></datalist>
+        <label>كود التيكر</label>
+        <input id="t-ticker" placeholder="2222" autocomplete="off" oninput="fetchTickerName()" style="text-transform:uppercase;letter-spacing:1px">
+        <div class="ticker-name-preview" id="t-name-preview"></div>
       </div>
       <div class="form-group">
         <label>الكمية</label>
-        <input id="t-qty" type="number" step="1" placeholder="100">
+        <input id="t-qty" type="number" min="1" placeholder="100">
       </div>
       <div class="form-group">
         <label>السعر</label>
-        <input id="t-price" type="number" step="0.01" placeholder="27.50">
+        <input id="t-price" type="number" step="0.01" placeholder="25.50" oninput="calcPreview()">
       </div>
       <div class="form-group">
         <label>التاريخ</label>
         <input id="t-date" type="date">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="addTransaction()">➕ إضافة</button>
+
+    <!-- Preview -->
+    <div id="addPreview" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:13px;display:flex;gap:24px;flex-wrap:wrap">
+      <span>الإجمالي: <strong id="prev-total" class="accent">—</strong></span>
+      <span>العمولة: <strong id="prev-comm" style="color:var(--text3)">—</strong></span>
+      <span>VAT: <strong id="prev-vat" style="color:var(--text3)">—</strong></span>
+      <span>صافي التكلفة: <strong id="prev-net" class="pos">—</strong></span>
+    </div>
+
+    <button class="btn btn-primary" onclick="addTransaction()">➕ إضافة العملية</button>
   </div>
 
-  <div class="chart-grid cols-2">
-    <div class="chart-card">
-      <div class="chart-title">📊 العمليات حسب الشهر</div>
-      <div class="chart-wrap"><canvas id="byMonthChart"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">💰 حجم العمليات</div>
-      <div class="chart-wrap"><canvas id="volumeChart"></canvas></div>
-    </div>
-  </div>
-
+  <!-- Filters -->
   <div class="toolbar">
-    <input class="search-input" placeholder="🔍 بحث..." oninput="applySearch(this.value)">
-    <div style="display:flex;gap:8px">
-      <select id="statusFilter" onchange="applyFilters()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none">
-        <option value="">جميع العمليات</option>
-        <option value="Buy">شراء</option>
-        <option value="Sell">بيع</option>
-      </select>
-      <span id="trCount" style="color:var(--text3);font-size:13px;line-height:36px"></span>
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="applyFilter('all',this)">الكل</button>
+      <button class="filter-tab" onclick="applyFilter('Buy',this)">شراء فقط</button>
+      <button class="filter-tab" onclick="applyFilter('Sell',this)">بيع فقط</button>
     </div>
+    <input class="search-input" placeholder="🔍 بحث بالتيكر أو الاسم..." oninput="applySearch(this.value)">
   </div>
 
+  <!-- Table -->
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>#</th><th>التاريخ</th><th>النوع</th><th>السهم</th>
-          <th>الكمية</th><th>السعر</th><th>الإجمالي</th>
-          <th>العمولة</th><th>VAT</th><th>التكلفة الكلية</th>
-          <th>حذف</th>
+          <th>#</th>
+          <th>النوع</th>
+          <th>التيكر</th>
+          <th>الاسم</th>
+          <th>الكمية</th>
+          <th>السعر</th>
+          <th>الإجمالي</th>
+          <th>العمولة</th>
+          <th>VAT</th>
+          <th>صافي التكلفة</th>
+          <th>التاريخ</th>
+          <th>إجراء</th>
         </tr>
       </thead>
-      <tbody id="transBody"></tbody>
+      <tbody id="trBody"></tbody>
     </table>
   </div>
 
 </div>
 
-<script>
-// ══════════════════════════════════════════════
-//  State
-// ══════════════════════════════════════════════
-let transactions = [];
-let filtered = [];
-let searchQ = '';
-let statusFilter = '';
-let chartMonth = null, chartVolume = null;
+<!-- ══ Import Modal ══════════════════════════════════════ -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:520px">
+    <h3 style="margin-bottom:16px;font-size:16px">📤 استيراد العمليات</h3>
 
-// ══════════════════════════════════════════════
-//  Init
-// ══════════════════════════════════════════════
-function init() {
-  transactions = APP.transactions;
-  filtered = [...transactions];
-  populateTickerList();
-  document.getElementById('t-date').value = H.today();
-  renderKPIs();
-  renderTable();
-  renderCharts();
-}
-
-// ══════════════════════════════════════════════
-//  KPIs
-// ══════════════════════════════════════════════
-function renderKPIs() {
-  const total = transactions.length;
-  const buys = transactions.filter(t => t.status === 'Buy').length;
-  const sells = transactions.filter(t => t.status === 'Sell').length;
-  const totalVolume = transactions.reduce((s, t) => s + (t.total || 0), 0);
-
-  const kpis = [
-    { label:'إجمالي العمليات',  value:total.toString(),              icon:'📊' },
-    { label:'عمليات الشراء',    value:buys.toString(),               icon:'🟢' },
-    { label:'عمليات البيع',     value:sells.toString(),              icon:'🔴' },
-    { label:'حجم التداول',      value:H.fmt(totalVolume, 0) + ' ر.س', icon:'💰' }
-  ];
-
-  document.getElementById('transKPIs').innerHTML = kpis.map(k => `
-    <div class="kpi-card">
-      <div class="kpi-icon">${k.icon}</div>
-      <div class="kpi-value">${k.value}</div>
-      <div class="kpi-label">${k.label}</div>
+    <div class="info-box blue" style="margin-bottom:16px">
+      يدعم استيراد ملفات <strong>JSON</strong> أو <strong>CSV</strong> بنفس صيغة التصدير.
     </div>
-  `).join('');
+
+    <div class="import-zone" onclick="document.getElementById('fileInput').click()">
+      <div style="font-size:32px;margin-bottom:8px">📁</div>
+      <div>اضغط لاختيار ملف أو اسحب وأفلت</div>
+      <div style="font-size:11px;margin-top:4px">JSON / CSV</div>
+    </div>
+    <input id="fileInput" type="file" accept=".json,.csv" style="display:none" onchange="handleImport(this)">
+
+    <div style="margin-top:16px">
+      <label style="font-size:12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">
+        أو الصق JSON مباشرة
+      </label>
+      <textarea id="jsonPaste" rows="5"
+        style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;outline:none;resize:vertical"
+        placeholder='[{"no":1,"status":"Buy","ticker":"2222","qty":100,...}]'></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('importModal').style.display='none'">إلغاء</button>
+      <button class="btn btn-primary" onclick="doImport()">استيراد ودمج</button>
+      <button class="btn btn-danger"  onclick="doImportReplace()">استيراد واستبدال</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ────────// ────────────────────────────────────────
+//  State
+// ────────────────────────────────────────
+let trData     = Store.load('transactions_v1', APP.transactions).map(t => ({...t}));
+let filtered   = [...trData];
+let activeF    = 'all';
+let searchQ    = '';
+
+// التحقق من وجود بيانات وتفريغها إذا لزم
+if (trData.length > 0) {
+  Store.save('transactions_v1', []);
+  setTimeout(() => {
+    window.location.reload();
+  }, 100);
 }
 
-// ══════════════════════════════════════════════
-//  Ticker Datalist
-// ══════════════════════════════════════════════
-function populateTickerList() {
-  const tickers = TickerDB.all();
-  document.getElementById('tickerList').innerHTML = tickers.map(t => 
-    `<option value="${t.code}">${t.name}</option>`
-  ).join('');
+// ────────────────────────────────────────────────
+//  Helper: دمج التيكرات الأصلية مع المخصصة
+// ────────────────────────────────────────────────
+function getAllTickers() {
+  return [...TICKERS, ...Store.load('custom_tickers', [])];
 }
 
-// ══════════════════════════════════════════════
+function lookupTicker(code) {
+  return window.TickerHelper?.search(code) || null;
+}
+
+// ────────────────────────────────────────────────
+//  Auto-fetch ticker name on input
+// ────────────────────────────────────────────────
+function fetchTickerName() {
+  const code    = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const preview = document.getElementById('t-name-preview');
+  const found   = lookupTicker(code);
+
+  if (!code) { 
+    preview.textContent = ''; 
+    return; 
+  }
+  
+  if (found) {
+    preview.textContent = '✓ ' + found.name;
+    preview.style.color = 'var(--green)';
+  } else {
+    preview.textContent = '❌ كود التيكر غير معرّف';
+    preview.style.color = 'var(--red)';
+  }
+}
+
+// ────────────────────────────────────────────────
+//  KPIs
+// ────────────────────────────────────────────────
+function renderKPIs() {
+  const buys    = trData.filter(t => t.status === 'Buy');
+  const sells   = trData.filter(t => t.status === 'Sell');
+  const buyAmt  = buys.reduce((s,t)  => s + t.total, 0);
+  const sellAmt = sells.reduce((s,t) => s + t.total, 0);
+  const fees    = trData.reduce((s,t) => s + (t.commission||0) + (t.vat||0), 0);
+  const net     = buyAmt - sellAmt;
+
+  document.getElementById('trKPIs').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon">🔢</div>
+      <div class="kpi-label">إجمالي العمليات</div>
+      <div class="kpi-value">${trData.length}</div>
+      <div class="kpi-sub">${buys.length} شراء / ${sells.length} بيع</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⬆️</div>
+      <div class="kpi-label">إجمالي الشراء</div>
+      <div class="kpi-value pos">${H.fmt(buyAmt)}</div>
+      <div class="kpi-sub">SAR</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⬇️</div>
+      <div class="kpi-label">إجمالي البيع</div>
+      <div class="kpi-value neg">${H.fmt(sellAmt)}</div>
+      <div class="kpi-sub">SAR</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💸</div>
+      <div class="kpi-label">إجمالي العمولات + VAT</div>
+      <div class="kpi-value warn">${H.fmt(fees)}</div>
+      <div class="kpi-sub">SAR</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🔄</div>
+      <div class="kpi-label">صافي الاستثمار</div>
+      <div class="kpi-value accent">${H.fmt(net)}</div>
+      <div class="kpi-sub">شراء − بيع</div>
+    </div>
+  `;
+}
+
+// ────────────────────────────────────────────────
+//  Render Table
+// ────────────────────────────────────────────────
+function renderTable() {
+  if (filtered.length === 0) {
+    document.getElementById('trBody').innerHTML = `
+      <tr><td colspan="12">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <p>لا توجد نتائج</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  document.getElementById('trBody').innerHTML = filtered.map(t => {
+    const realIdx = trData.indexOf(t);
+    const isBuy   = t.status === 'Buy';
+    // الاسم دائماً من tickers.js — لا fallback على t.name القديم
+    const name    = H.tickerName(t.ticker);
+
+    return `<tr id="row-${realIdx}">
+      <td style="color:var(--text3)">${t.no}</td>
+      <td>
+        <span class="badge ${isBuy ? 'badge-buy' : 'badge-sell'}">
+          ${isBuy ? '⬆ شراء' : '⬇ بيع'}
+        </span>
+      </td>
+
+      <!-- التيكر — كود فقط -->
+      <td class="accent" style="font-weight:700">
+        ${t.ticker}
+      </td>
+
+      <!-- الاسم — من tickers.js دائماً -->
+      <td style="color:var(--text3);font-size:12px">${name}</td>
+
+      <!-- الكمية — قابلة للتعديل -->
+      <td>
+        <span class="editable" onclick="editNum(this,${realIdx},'qty')">${H.fmt(t.qty,0)}</span>
+      </td>
+
+      <!-- السعر — قابل للتعديل -->
+      <td>
+        <span class="editable" onclick="editNum(this,${realIdx},'price')">${H.fmt(t.price)}</span>
+      </td>
+
+      <td style="font-weight:700">${H.fmt(t.total)}</td>
+      <td style="color:var(--text3)">${H.fmt(t.commission||0)}</td>
+      <td style="color:var(--text3)">${H.fmt(t.vat||0)}</td>
+      <td style="font-weight:600;color:${isBuy?'var(--red)':'var(--green)'}">${H.fmt(t.total_cost||0)}</td>
+
+      <!-- التاريخ — قابل للتعديل -->
+      <td style="color:var(--text3)">
+        <span class="editable" onclick="editDate(this,${realIdx},'date')">${t.date||'—'}</span>
+      </td>
+
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="deleteRow(${realIdx})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────
+//  Inline Edit — Number
+// ────────────────────────────────────────────────
+function editNum(span, idx, field) {
+  if (span.querySelector('input')) return;
+  const input = document.createElement('input');
+  input.className = 'edit-input';
+  input.type  = 'number';
+  input.value = trData[idx][field];
+  input.step  = '0.01';
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus(); input.select();
+
+  function commit() {
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val >= 0) {
+      trData[idx][field] = val;
+      if (field === 'qty' || field === 'price') {
+        const total = trData[idx].qty * trData[idx].price;
+        const fees  = H.calcCommission(total);
+        trData[idx].total      = parseFloat(total.toFixed(4));
+        trData[idx].commission = parseFloat(fees.commission.toFixed(4));
+        trData[idx].vat        = parseFloat(fees.vat.toFixed(4));
+        trData[idx].total_cost = parseFloat(fees.net.toFixed(4));
+      }
+    }
+    applyFilters();
+    renderKPIs();
+  }
+  input.addEventListener('blur',    commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  input.blur();
+    if (e.key === 'Escape') applyFilters();
+  });
+}
+
+// ────────────────────────────────────────────────
+//  Inline Edit — Date
+// ────────────────────────────────────────────────
+function editDate(span, idx, field) {
+  if (span.querySelector('input')) return;
+  const input = document.createElement('input');
+  input.className = 'edit-input';
+  input.style.width = '130px';
+  input.type  = 'date';
+  input.value = trData[idx][field] || H.today();
+  span.textContent = '';
+  span.appendChild(input);
+  input.focus();
+
+  function commit() {
+    if (input.value) trData[idx][field] = input.value;
+    applyFilters();
+  }
+  input.addEventListener('blur',    commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  input.blur();
+    if (e.key === 'Escape') applyFilters();
+  });
+}
+
+// ────────────────────────────────────────────────
 //  Add Transaction
-// ══════════════════════════════════════════════
+// ────────────────────────────────────────────────
+function calcPreview() {
+  const qty   = parseFloat(document.getElementById('t-qty').value)   || 0;
+  const price = parseFloat(document.getElementById('t-price').value) || 0;
+  if (!qty || !price) return;
+
+  const total = qty * price;
+  const fees  = H.calcCommission(total);
+  const prev  = document.getElementById('addPreview');
+  prev.style.display = 'flex';
+  document.getElementById('prev-total').textContent = H.fmt(total) + ' SAR';
+  document.getElementById('prev-comm').textContent  = H.fmt(fees.commission) + ' SAR';
+  document.getElementById('prev-vat').textContent   = H.fmt(fees.vat) + ' SAR';
+  document.getElementById('prev-net').textContent   = H.fmt(fees.net) + ' SAR';
+}
+
 function addTransaction() {
   const status = document.getElementById('t-status').value;
-  const ticker = document.getElementById('t-ticker').value.trim().toUpperCase();
-  const qty = parseFloat(document.getElementById('t-qty').value) || 0;
-  const price = parseFloat(document.getElementById('t-price').value) || 0;
-  const date = document.getElementById('t-date').value;
+  const code   = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const qty    = parseFloat(document.getElementById('t-qty').value)   || 0;
+  const price  = parseFloat(document.getElementById('t-price').value) || 0;
+  const date   = document.getElementById('t-date').value || H.today();
 
-  if (!ticker || !qty || !price || !date) {
-    toast('⚠️ جميع الحقول مطلوبة', 'warn');
-    return;
+  if (!code)  return toast('أدخل كود التيكر', 'error');
+  if (!qty)   return toast('أدخل الكمية', 'error');
+  if (!price) return toast('أدخل السعر', 'error');
+
+  const found = lookupTicker(code);
+  if (!found) {
+    return toast('❌ كود التيكر غير معرّف — اذهب للإعدادات وأضفه أولاً', 'error');
   }
 
   const total = qty * price;
-  const fees = H.calcCommission(total);
+  const fees  = H.calcCommission(total);
 
-  const newTrans = {
-    no: transactions.length + 1,
+  const newTransaction = {
+    no:         trData.length + 1,
     status,
-    ticker,
+    ticker:     window.TickerHelper.normalizeCode(code),
     qty,
     price,
-    total,
-    commission: fees.commission,
-    vat: fees.vat,
-    total_cost: fees.net,
-    date
+    total:      parseFloat(total.toFixed(4)),
+    commission: parseFloat(fees.commission.toFixed(4)),
+    vat:        parseFloat(fees.vat.toFixed(4)),
+    total_cost: parseFloat(fees.net.toFixed(4)),
+    date,
   };
 
-  transactions.push(newTrans);
+  // إضافة العملية مع المزامنة
+  updateTransactions(current => [...current, newTransaction]);
 
-  // Clear
+  // إعادة حساب المحفظة تلقائياً
+  recalculatePortfolioFromTransactions();
+
+  // Reset form
   document.getElementById('t-ticker').value = '';
-  document.getElementById('t-qty').value = '';
-  document.getElementById('t-price').value = '';
+  document.getElementById('t-qty').value    = '';
+  document.getElementById('t-price').value  = '';
+  document.getElementById('t-date').value   = '';
+  document.getElementById('t-name-preview').textContent = '';
+  document.getElementById('addPreview').style.display = 'none';
 
-  saveAll();
+  applyFilters();
+  renderKPIs();
+  toast(`✅ تمت إضافة ${status === 'Buy' ? 'شراء' : 'بيع'} ${code} — ${found.name}`, 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
   syncAfterTransactionChange();
-  init();
-  toast('✅ تمت الإضافة بنجاح', 'success');
 }
 
-// ══════════════════════════════════════════════
-//  Table
-// ══════════════════════════════════════════════
-function renderTable() {
-  const tbody = document.getElementById('transBody');
-
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3)">لا توجد عمليات</td></tr>';
-    updateCount();
-    return;
-  }
-
-  tbody.innerHTML = filtered.map(t => {
-    const statusColor = t.status === 'Buy' ? 'var(--green)' : 'var(--red)';
-    const statusText = t.status === 'Buy' ? 'شراء' : 'بيع';
-
-    return `
-      <tr>
-        <td>${t.no}</td>
-        <td>${t.date}</td>
-        <td><span style="color:${statusColor};font-weight:700">${statusText}</span></td>
-        <td><strong>${H.tickerName(t.ticker)}</strong></td>
-        <td>${H.fmt(t.qty, 0)}</td>
-        <td>${H.fmt(t.price, 2)}</td>
-        <td>${H.fmt(t.total, 2)}</td>
-        <td>${H.fmt(t.commission, 2)}</td>
-        <td>${H.fmt(t.vat, 2)}</td>
-        <td><strong>${H.fmt(t.total_cost, 2)}</strong></td>
-        <td><button class="btn btn-danger btn-xs" onclick="deleteTransaction(${t.no})">🗑️</button></td>
-      </tr>
-    `;
-  }).join('');
-
-  updateCount();
-}
-
-// ══════════════════════════════════════════════
-//  Delete Transaction
-// ══════════════════════════════════════════════
-function deleteTransaction(no) {
-  if (!confirm('⚠️ هل أنت متأكد من حذف هذه العملية؟\nسيتم إعادة حساب المحفظة.')) return;
-
-  transactions = transactions.filter(t => t.no !== no);
-  transactions.forEach((t, i) => t.no = i + 1);
-
-  saveAll();
+// ────────────────────────────────────────────────
+//  Delete Row
+// ────────────────────────────────────────────────
+function deleteRow(idx) {
+  if (!confirm(`حذف العملية #${trData[idx].no} — ${trData[idx].ticker}؟`)) return;
+  
+  // حذف مع المزامنة
+  updateTransactions(current => {
+    const newData = [...current];
+    newData.splice(idx, 1);
+    // إعادة ترقيم
+    newData.forEach((t, i) => t.no = i + 1);
+    return newData;
+  });
+  
+  trData.splice(idx, 1);
+  trData.forEach((t, i) => t.no = i + 1);
+  
+  // إعادة حساب المحفظة
+  recalculatePortfolioFromTransactions();
+  
+  applyFilters();
+  renderKPIs();
+  toast('🗑 تم الحذف مع المزامنة', 'warn');
+  
+  // مزامنة فورية مع جميع الصفحات
   syncAfterTransactionChange();
-  init();
-  toast('✅ تم الحذف بنجاح', 'success');
 }
 
-// ══════════════════════════════════════════════
+// ────────────────────────────────────────────────
 //  Filters
-// ══════════════════════════════════════════════
-function applySearch(q) {
-  searchQ = q.trim().toLowerCase();
+// ────────────────────────────────────────────────
+function applyFilter(f, btn) {
+  activeF = f;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active','sell-active'));
+  btn.classList.add(f === 'Sell' ? 'sell-active' : 'active');
   applyFilters();
 }
 
+function applySearch(q) { searchQ = q; applyFilters(); }
+
 function applyFilters() {
-  statusFilter = document.getElementById('statusFilter').value;
-
-  filtered = transactions.filter(t => {
-    const matchSearch = !searchQ ||
-      H.tickerName(t.ticker).toLowerCase().includes(searchQ) ||
-      t.ticker.toLowerCase().includes(searchQ) ||
-      t.date.includes(searchQ);
-
-    const matchStatus = !statusFilter || t.status === statusFilter;
-
-    return matchSearch && matchStatus;
+  filtered = trData.filter(t => {
+    const mF   = activeF === 'all' || t.status === activeF;
+    const name = H.tickerName(t.ticker);
+    const mS   = !searchQ ||
+                 t.ticker.toLowerCase().includes(searchQ.toLowerCase()) ||
+                 name.toLowerCase().includes(searchQ.toLowerCase());
+    return mF && mS;
   });
-
   renderTable();
 }
 
-function updateCount() {
-  document.getElementById('trCount').textContent =
-    `${filtered.length} من ${transactions.length} عملية`;
-}
-
-// ══════════════════════════════════════════════
-//  Charts
-// ══════════════════════════════════════════════
-function renderCharts() {
-  if (!transactions.length) {
-    ['#byMonthChart', '#volumeChart'].forEach(id => {
-      document.querySelector(id).parentElement.innerHTML =
-        '<p style="text-align:center;color:var(--text3);padding:60px 20px">لا توجد عمليات</p>';
-    });
-    return;
-  }
-
-  // By Month
-  const byMonth = {};
-  transactions.forEach(t => {
-    const month = t.date.substring(0, 7);
-    byMonth[month] = (byMonth[month] || 0) + 1;
-  });
-
-  const sorted = Object.keys(byMonth).sort();
-  const last12 = sorted.slice(-12);
-
-  const ctx1 = document.getElementById('byMonthChart').getContext('2d');
-  if (chartMonth) chartMonth.destroy();
-  chartMonth = new Chart(ctx1, {
-    type: 'line',
-    data: {
-      labels: last12.map(m => {
-        const [y, mo] = m.split('-');
-        return `${mo}/${y.slice(2)}`;
-      }),
-      datasets: [{
-        label: 'عدد العمليات',
-        data: last12.map(m => byMonth[m]),
-        borderColor: CHART_COLORS[0],
-        backgroundColor: CHART_COLORS[0] + '20',
-        tension: 0.3,
-        fill: true,
-        pointRadius: 4,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      ...getChartOptions('line'),
-      plugins: {
-        ...getChartOptions('line').plugins,
-        legend: { display: false }
-      }
-    }
-  });
-
-  // Volume
-  const byVolume = {};
-  transactions.forEach(t => {
-    const month = t.date.substring(0, 7);
-    byVolume[month] = (byVolume[month] || 0) + (t.total || 0);
-  });
-
-  const ctx2 = document.getElementById('volumeChart').getContext('2d');
-  if (chartVolume) chartVolume.destroy();
-  chartVolume = new Chart(ctx2, {
-    type: 'bar',
-    data: {
-      labels: last12.map(m => {
-        const [y, mo] = m.split('-');
-        return `${mo}/${y.slice(2)}`;
-      }),
-      datasets: [{
-        label: 'حجم التداول (ر.س)',
-        data: last12.map(m => byVolume[m] || 0),
-        backgroundColor: CHART_COLORS[1],
-        borderRadius: 8
-      }]
-    },
-    options: {
-      ...getChartOptions('bar'),
-      plugins: {
-        ...getChartOptions('bar').plugins,
-        legend: { display: false },
-        tooltip: {
-          ...getChartOptions('bar').plugins.tooltip,
-          callbacks: { label: (ctx) => `${H.fmt(ctx.parsed.y, 0)} ر.س` }
-        }
-      }
-    }
-  });
-}
-
-// ══════════════════════════════════════════════
+// ────────────────────────────────────────────────
 //  Save
-// ══════════════════════════════════════════════
+// ────────────────────────────────────────────────
 function saveAll() {
-  Store.save('transactions_v1', transactions);
-  toast('✅ تم الحفظ بنجاح', 'success');
+  updateTransactions(() => trData);
+  toast('✅ تم الحفظ مع المزامنة', 'success');
+  
+  // مزامنة فورية مع جميع الصفحات
+  syncAfterTransactionChange();
 }
 
-// ══════════════════════════════════════════════
-//  Sync
-// ══════════════════════════════════════════════
-dataSync.onDataChanged('transactions', init);
+// ────────────────────────────────────────────────
+//  Export CSV
+// ────────────────────────────────────────────────
+function exportCSV() {
+  const headers = ['no','status','ticker','name','qty','price','total','commission','vat','total_cost','date'];
+  const rows = trData.map(t => {
+    const name = H.tickerName(t.ticker);
+    return headers.map(h => h === 'name' ? name : (t[h]??'')).join(',');
+  });
+  const csv  = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  downloadFile(csv, `transactions_${H.today()}.csv`, 'text/csv');
+  toast('📥 تم تصدير CSV', 'success');
+}
 
-// ══════════════════════════════════════════════
-//  Run
-// ══════════════════════════════════════════════
-init();
+// ────────────────────────────────────────────────
+//  Export JSON
+// ────────────────────────────────────────────────
+function exportJSON() {
+  const json = JSON.stringify(trData, null, 2);
+  downloadFile(json, `transactions_${H.today()}.json`, 'application/json');
+  toast('📦 تم تصدير JSON', 'success');
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ────────────────────────────────────────────────
+//  Import
+// ────────────────────────────────────────────────
+function handleImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('jsonPaste').value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function parseImportData() {
+  const raw = document.getElementById('jsonPaste').value.trim();
+  if (!raw) { toast('لا يوجد بيانات للاستيراد', 'error'); return null; }
+
+  try {
+    return JSON.parse(raw);
+  } catch(e) {
+    try {
+      const lines   = raw.split('\n').filter(l => l.trim());
+      const headers = lines[0].split(',').map(h => h.trim());
+      return lines.slice(1).map(line => {
+        const vals = line.split(',');
+        const obj  = {};
+        headers.forEach((h, i) => {
+          const v = vals[i]?.trim();
+          obj[h]  = isNaN(v) || v === '' ? v : parseFloat(v);
+        });
+        return obj;
+      });
+    } catch(e2) {
+      toast('صيغة الملف غير صحيحة', 'error');
+      return null;
+    }
+  }
+}
+
+function doImport() {
+  const data = parseImportData();
+  if (!data || !Array.isArray(data)) return;
+  const startNo = trData.length + 1;
+  data.forEach((t, i) => {
+    t.no = startNo + i;
+    trData.push(t);
+  });
+  closeImport();
+  applyFilters();
+  renderKPIs();
+  toast(`✅ تم استيراد ${data.length} عملية (دمج)`, 'success');
+}
+
+function doImportReplace() {
+  if (!confirm('سيتم حذف كل البيانات الحالية واستبدالها. هل أنت متأكد؟')) return;
+  const data = parseImportData();
+  if (!data || !Array.isArray(data)) return;
+  trData = data.map((t, i) => ({ ...t, no: i + 1 }));
+  closeImport();
+  applyFilters();
+  renderKPIs();
+  toast(`✅ تم الاستيراد والاستبدال — ${trData.length} عملية`, 'success');
+}
+
+function closeImport() {
+  document.getElementById('importModal').style.display = 'none';
+  document.getElementById('jsonPaste').value = '';
+  document.getElementById('fileInput').value = '';
+}
+
+// ────────────────────────────────────────────────
+//  Drag & Drop Import
+// ────────────────────────────────────────────────
+const zone = document.querySelector('.import-zone');
+if (zone) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
+  zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { document.getElementById('jsonPaste').value = ev.target.result; };
+    reader.readAsText(file);
+  });
+}
+
+// ────────────────────────────────────────────────
+//  Init
+// ────────────────────────────────────────────────
+renderKPIs();
+applyFilters();
+document.getElementById('t-date').value = H.today();
+
+// الاستماع للتغييرات من صفحات أخرى
+dataSync.onDataChanged('transactions', (data, timestamp) => {
+  trData = [...data];
+  applyFilters();
+  renderKPIs();
+  toast('🔄 تم تحديث العمليات تلقائياً', 'info');
+});
+
+dataSync.onDataChanged('portfolio', (data, timestamp) => {
+  // تحديث أسماء الشركات إذا تغيرت
+  applyFilters();
+});
+
+// تحديث عند التركيز على الصفحة
+window.addEventListener('focus', () => {
+  const latestData = Store.load('transactions_v1', APP.transactions);
+  if (JSON.stringify(latestData) !== JSON.stringify(trData)) {
+    trData = [...latestData];
+    applyFilters();
+    renderKPIs();
+  }
+});
 </script>
-
 </body>
 </html>
