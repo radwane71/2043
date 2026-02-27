@@ -1,7 +1,21 @@
+function requireAuth() {
+  // إذا كنت تبغى نظام تسجيل دخول، ضيفه هنا
+  // مؤقتاً نرجع true عشان الصفحات تشتغل
+  return true;
+}
+
+function doLogout() {
+  if (confirm('هل أنت متأكد من تسجيل الخروج؟')) {
+    // يمكن مسح بيانات الجلسة أو التوجيه لصفحة تسجيل الدخول
+    toast('🚀 تم تسجيل الخروج', 'info');
+    setTimeout(() => window.location.href = 'dashboard.html', 800);
+  }
+}
+
 function renderSidebar(activePage) {
   const pages = [
     { id:'dashboard',     icon:'🏠', label:'لوحة التحكم',       file:'dashboard.html'     },
-    { id:'portfolio',     icon:'💹', label:'المحفظة',            file:'portfolio.html'     },
+    { id:'portfolio',     icon:'📉', label:'المحفظة',            file:'portfolio.html'     },
     { id:'transactions',  icon:'🔄', label:'العمليات',            file:'transactions.html'  },
     { id:'dividends',     icon:'💰', label:'التوزيعات',           file:'dividends.html'     },
     { id:'networth',      icon:'📊', label:'صافي الثروة',        file:'networth.html'      },
@@ -37,7 +51,7 @@ function renderSidebar(activePage) {
       </nav>
       <div class="sidebar-footer">
         <button class="logout-btn" onclick="doLogout()">
-          <span>🚪</span>
+          <span>🚺</span>
           <span>تسجيل الخروج</span>
         </button>
       </div>
