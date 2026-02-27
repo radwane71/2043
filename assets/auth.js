@@ -20,12 +20,16 @@ function renderSidebar(activePage) {
     </a>
   `).join('');
 
+  const ownerName = (window.APP && window.APP.settings && window.APP.settings.ownerName)
+    ? window.APP.settings.ownerName
+    : '';
+
   return `
     <div class="sidebar">
       <div class="sidebar-logo">
         <div class="logo-icon">📈</div>
         <h2>محفظة 2043</h2>
-        <span>1</span>
+        <span>${ownerName}</span>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-section">الرئيسية</div>
@@ -55,6 +59,6 @@ function toast(msg, type = 'success') {
 }
 
 function initPage(pageId) {
-  requireAuth();
+  if (!requireAuth()) return;
   document.body.insertAdjacentHTML('afterbegin', renderSidebar(pageId));
 }

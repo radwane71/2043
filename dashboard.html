@@ -12,14 +12,14 @@
 <script>
 // Fallback for CryptoJS
 if (typeof CryptoJS === 'undefined') {
-  document.write('<script src="https://unpkg.com/crypto-js@4.1.1/crypto-js.js"><\/script>');
+  document.write('<script src="https://unpkg.com/crypto-js@4.1.1/crypto-js.js"><\\/script>');
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Fallback for Chart.js
 if (typeof Chart === 'undefined') {
-  document.write('<script src="https://unpkg.com/chart.js@4.4.0/dist/chart.umd.js"><\/script>');
+  document.write('<script src="https://unpkg.com/chart.js@4.4.0/dist/chart.umd.js"><\\/script>');
 }
 </script>
 <script src="assets/tickers.js"></script>
@@ -265,27 +265,15 @@ if (typeof Chart === 'undefined') {
 </div>
 
 <script>
-const portfolio    = Store.load('portfolio_v1',    APP.portfolio);
-const settings     = APP.settings;
-const divs         = Store.load('dividends_v1',    APP.dividends);
-const transactionsRaw = Store.load('transactions_v1', APP.transactions);
+// Bootstrap defaults مرة واحدة. هذا يمنع الفراغ بين الصفحات بدون ما يمسح بياناتك.
+if (Store.get('portfolio_v1') === null) Store.save('portfolio_v1', APP.portfolio);
+if (Store.get('transactions_v1') === null) Store.save('transactions_v1', APP.transactions);
+if (Store.get('dividends_v1') === null) Store.save('dividends_v1', APP.dividends);
 
-// توحيد البيانات وإفراغها إذا لزم
-const transactions = normalizeTransactions(transactionsRaw);
-const dividends = normalizeDividends(divs);
-
-// التحقق من وجود بيانات قديمة وتفريغها
-if (portfolio.length > 0 || transactions.length > 0 || divs.length > 0) {
-  // مسح البيانات القديمة إذا وجدت
-  Store.save('portfolio_v1', []);
-  Store.save('transactions_v1', []);
-  Store.save('dividends_v1', []);
-  
-  // إعادة تحميل الصفحة بدون بيانات
-  setTimeout(() => {
-    window.location.reload();
-  }, 100);
-}
+const portfolio = Store.load('portfolio_v1', APP.portfolio);
+const settings  = APP.settings;
+const divs      = Store.load('dividends_v1', APP.dividends);
+const transactions = normalizeTransactions(Store.load('transactions_v1', APP.transactions));
 
 const ALL_TICKERS = [...TICKERS, ...Store.load('custom_tickers', [])];
 const TICKER_MAP  = {};
@@ -567,20 +555,24 @@ dataSync.onDataChanged('transactions', (data, timestamp) => {
   setTimeout(refreshDashboard, 500);
 });
 
+
 dataSync.onDataChanged('portfolio', (data, timestamp) => {
   console.log('Dashboard: Portfolio updated');
   setTimeout(refreshDashboard, 500);
 });
+
 
 dataSync.onDataChanged('dividends', (data, timestamp) => {
   console.log('Dashboard: Dividends updated');
   setTimeout(refreshDashboard, 500);
 });
 
+
 dataSync.onDataChanged('networth', (data, timestamp) => {
   console.log('Dashboard: Net Worth updated');
   setTimeout(refreshDashboard, 500);
 });
+
 
 dataSync.onDataChanged('dashboard', (data, timestamp) => {
   if (data.action === 'refresh') {
