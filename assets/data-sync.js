@@ -81,6 +81,9 @@ function recalculatePortfolio() {
   return newPort;
 }
 
+// Alias للتوافق مع transactions.html
+const recalculatePortfolioFromTransactions = recalculatePortfolio;
+
 // تحديث ملخص صافي الثروة
 function updateNetWorthBackbone() {
   const port = Store.load('portfolio_v1', APP.portfolio);
@@ -104,6 +107,14 @@ function updateNetWorthBackbone() {
   dataSync.notifyDataChanged('networth', summary);
 }
 
+// دالة للمزامنة بعد تغيير العمليات
+function syncAfterTransactionChange() {
+  recalculatePortfolio();
+  updateNetWorthBackbone();
+}
+
 window.dataSync = dataSync;
 window.recalculatePortfolio = recalculatePortfolio;
+window.recalculatePortfolioFromTransactions = recalculatePortfolioFromTransactions;
 window.updateNetWorthBackbone = updateNetWorthBackbone;
+window.syncAfterTransactionChange = syncAfterTransactionChange;
