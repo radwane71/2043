@@ -62,6 +62,9 @@ const ALIAS_TO_CODE = {
   [_normName('YANBU CEMENT')]: '3060',
   [_normName('YAMAMAH CEMENT')]: '3020',
   [_normName('QASSIM CEMENT')]: '3040',
+  [_normName('Yanbu Cement')]: '3060',
+  [_normName('Yamamah Cement')]: '3020',
+  [_normName('Qassim Cement')]: '3040',
   [_normName('ALKHABEER REIT')]: '4348',
   [_normName('AL MAATHER REIT')]: '4334',
   [_normName('ALINMA HOSPITALITY REIT')]: '4349',
@@ -69,6 +72,7 @@ const ALIAS_TO_CODE = {
   [_normName('JADWA REIT SAUDI')]: '4342',
   [_normName('DERAYAH REIT')]: '4339',
   [_normName('AL RAJHI REIT')]: '4340',
+  [_normName('Al RAJHI REIT')]: '4340',
   [_normName('UNITS TALEEM REIT')]: '4333',
   [_normName('CENOMI CENTERS')]: '4321',
   [_normName('FAKEEH CARE')]: '4017',
@@ -80,7 +84,10 @@ function _buildMaps() {
   const codeMap = {};
   const nameMap = {};
 
-  (window.TICKERS || []).forEach(t => {
+  // FIX: استخدم TICKERS بدل window.TICKERS
+  const tickersList = (typeof TICKERS !== 'undefined') ? TICKERS : (window.TICKERS || []);
+
+  tickersList.forEach(t => {
     if (!t || !t.code) return;
 
     // لا تسمح بالـ override على نفس الكود (يحمي من تكرارات البيانات)
@@ -165,7 +172,8 @@ function searchTicker(query) {
   if (_MAPS.nameMap[key]) return _MAPS.nameMap[key];
 
   // partial search (عرض فقط) — لا تستخدمها للتحويل الإحصائي
-  const found = (window.TICKERS || []).find(t => {
+  const tickersList = (typeof TICKERS !== 'undefined') ? TICKERS : (window.TICKERS || []);
+  const found = tickersList.find(t => {
     if (!t) return false;
     return String(t.code).includes(q) || _normName(t.name).includes(key);
   });
