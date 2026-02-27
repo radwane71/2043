@@ -134,10 +134,9 @@
     <div class="settings-section-body">
 
       <div class="info-box blue" style="margin-bottom:16px">
-        🔵 <strong>التصدير:</strong> يُصدّر <strong>كل</strong> مفاتيح localStorage دون استثناء —
-        يشمل تلقائياً كل صفحة حالية أو مستقبلية.
+        🔵 <strong>التصدير:</strong> يُصدّر <strong>كل</strong> مفاتيح localStorage دون استثناء، بقيمها الخام (Raw Strings).
         <br>
-        🟡 <strong>الاستعادة:</strong> تمسح localStorage ثم تُعيد كل مفتاح بقيمته الأصلية — نسبة فقد صفر.
+        🟡 <strong>الاستعادة:</strong> تمسح localStorage ثم تُعيد كل مفتاح بقيمته الأصلية حرفياً.
       </div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
@@ -151,31 +150,6 @@
         </label>
         <button class="btn btn-danger btn-sm" onclick="clearSession()">🗑 مسح sessionStorage</button>
         <button class="btn btn-danger btn-sm" onclick="clearLocalStorage()">🗑 مسح localStorage كاملاً</button>
-      </div>
-
-      <!-- ══ مسح شامل (Hard Reset) ══ -->
-      <div class="settings-section" style="margin-top:20px;border:2px solid var(--red);background:rgba(239,68,68,0.05)">
-        <div class="settings-section-header" style="color:var(--red);font-weight:700">
-          ⚠️ مسح شامل (Hard Reset) - إعادة ضبط كاملة للنظام
-        </div>
-        <div class="settings-section-body">
-          <div class="info-box red" style="margin-bottom:16px">
-            <strong>⚠️ تحذير هام:</strong> هذه العملية ستمسح <strong>كل شيء</strong> بشكل نهائي:
-            <ul style="margin:8px 0;padding-right:20px">
-              <li>جميع الإعدادات والتكوينات</li>
-              <li>جميع بيانات المحفظة والعمليات</li>
-              <li>جميع التوزيعات والعائدات</li>
-              <li>جميع البيانات المخزنة في localStorage</li>
-              <li>جميع بيانات الجلسة في sessionStorage</li>
-              <li>جميع قواعد البيانات المحلية (IndexedDB)</li>
-              <li>جميع ملفات الكاش المؤقتة</li>
-            </ul>
-            <strong>لا يمكن التراجع عن هذه العملية!</strong> تأكد من وجود نسخة احتياطية قبل المتابعة.
-          </div>
-          <button class="btn btn-danger" onclick="showHardResetConfirmation()" style="font-size:14px;padding:12px 20px">
-            🔄 مسح كافة البيانات وإعادة الضبط للنظام
-          </button>
-        </div>
       </div>
 
       <div id="backupFileInfo" style="display:none;margin-bottom:12px;padding:10px 14px;
@@ -249,8 +223,7 @@ function saveAll() {
   Store.save('app_fees_v1',     newFees);
   toast('✅ تم الحفظ مع المزامنة — الإعدادات مفعّلة الآن','success');
   renderSessionStatus();
-  
-  // مزامنة فورية مع جميع الصفحات
+
   dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
   dataSync.notifyDataChanged('portfolio', { action: 'refresh' });
   dataSync.notifyDataChanged('transactions', { action: 'refresh' });
@@ -265,7 +238,7 @@ function resetAll() {
 }
 
 // ═══════════════════════════════════════════════
-//  2. إعدادات الأسهم — يستخدم H.tickerName(p.ticker)
+//  2. إعدادات الأسهم
 // ═══════════════════════════════════════════════
 function loadStocksSettings() {
   const port = Store.load('portfolio_v1', APP.portfolio);
@@ -300,35 +273,43 @@ function saveStocksSettings() {
   });
   Store.save('portfolio_v1', port);
   toast('✅ تم حفظ إعدادات الأسهم مع المزامنة','success');
-  
-  // مزامنة فورية مع جميع الصفحات
+
   dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
   dataSync.notifyDataChanged('portfolio', { action: 'refresh' });
   dataSync.notifyDataChanged('networth', { action: 'refresh' });
 }
 
 // ═══════════════════════════════════════════════
-//  3. النسخ الاحتياطي
+//  3. النسخ الاحتياطي 100%
 // ═══════════════════════════════════════════════
+function _snapshotStorage(storage) {
+  const out = {};
+  try {
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      out[k] = storage.getItem(k); // raw string
+    }
+  } catch (e) {}
+  return out;
+}
+
 function exportFullBackup() {
-  const lsData = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    lsData[k] = localStorage.getItem(k);
-  }
   const payload = {
-    app:        '2043',
-    version:    2,
+    app: '2043',
+    schema: 'raw-storage-snapshot',
+    version: 3,
     exportedAt: new Date().toISOString(),
-    keysCount:  Object.keys(lsData).length,
-    localStorage: lsData
+    localStorage: _snapshotStorage(localStorage),
+    sessionStorage: _snapshotStorage(sessionStorage),
   };
+
   const json = JSON.stringify(payload, null, 2);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  a.download = `2043_full_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `2043_full_backup_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
   a.click();
-  toast(`📦 تم التصدير — ${Object.keys(lsData).length} عنصر محفوظ`, 'success');
+
+  toast(`📦 تم التصدير — localStorage: ${Object.keys(payload.localStorage).length} • sessionStorage: ${Object.keys(payload.sessionStorage).length}`, 'success');
   renderSessionStatus();
 }
 
@@ -339,23 +320,39 @@ function handleRestoreFile(input) {
   reader.onload = () => {
     try {
       const obj = JSON.parse(reader.result);
-      if (obj.version === 2 && obj.localStorage && typeof obj.localStorage === 'object') {
+
+      // v3 raw snapshot
+      if (obj && obj.version === 3 && obj.localStorage && typeof obj.localStorage === 'object') {
+        _pendingRestore = { type: 'v3', data: obj };
+      }
+      // v2
+      else if (obj && obj.version === 2 && obj.localStorage && typeof obj.localStorage === 'object') {
         _pendingRestore = { type: 'v2', data: obj };
-      } else if (!obj.version && typeof obj === 'object') {
+      }
+      // v1 (قديم)
+      else if (obj && !obj.version && typeof obj === 'object') {
         _pendingRestore = { type: 'v1', data: obj };
-      } else {
+      }
+      else {
         toast('ملف غير صالح أو تنسيق غير معروف', 'error');
         return;
       }
-      const count = _pendingRestore.type === 'v2'
-        ? Object.keys(obj.localStorage).length
-        : Object.keys(obj).filter(k => !k.startsWith('_')).length;
+
+      const lsCount = (_pendingRestore.type === 'v1')
+        ? Object.keys(obj).filter(k => !k.startsWith('_')).length
+        : Object.keys(obj.localStorage || {}).length;
+
+      const ssCount = (_pendingRestore.type === 'v3')
+        ? Object.keys(obj.sessionStorage || {}).length
+        : 0;
+
       const info = document.getElementById('backupFileInfo');
       info.style.display = 'block';
       info.innerHTML = `
         ✅ <strong>الملف محمّل بنجاح</strong><br>
-        📅 تاريخ النسخة: <strong>${(obj.exportedAt || obj._exported || '—').split('T')[0]}</strong><br>
-        🗂 عدد العناصر: <strong>${count}</strong><br>
+        📅 تاريخ النسخة: <strong>${String(obj.exportedAt || obj._exported || '—').split('T')[0]}</strong><br>
+        🗂 localStorage: <strong>${lsCount}</strong><br>
+        🧩 sessionStorage: <strong>${ssCount}</strong><br>
         📦 الإصدار: <strong>${obj.version || 'v1 قديم'}</strong>
       `;
       document.getElementById('restoreBtnWrap').style.display = 'block';
@@ -370,10 +367,18 @@ function handleRestoreFile(input) {
 function confirmRestore() {
   if (!_pendingRestore) return toast('اختر ملف الاستعادة أولاً','error');
   if (!confirm('⚠️ سيتم مسح كل البيانات الحالية واستعادة النسخة الاحتياطية.\nهذا لا يمكن التراجع عنه. هل أنت متأكد؟')) return;
-  localStorage.clear();
-  if (_pendingRestore.type === 'v2') {
-    const lsData = _pendingRestore.data.localStorage;
-    Object.keys(lsData).forEach(k => localStorage.setItem(k, lsData[k]));
+
+  try { localStorage.clear(); } catch(e) {}
+  try { sessionStorage.clear(); } catch(e) {}
+
+  if (_pendingRestore.type === 'v3') {
+    const ls = _pendingRestore.data.localStorage || {};
+    const ss = _pendingRestore.data.sessionStorage || {};
+    Object.keys(ls).forEach(k => localStorage.setItem(k, ls[k]));
+    Object.keys(ss).forEach(k => sessionStorage.setItem(k, ss[k]));
+  } else if (_pendingRestore.type === 'v2') {
+    const ls = _pendingRestore.data.localStorage || {};
+    Object.keys(ls).forEach(k => localStorage.setItem(k, ls[k]));
   } else {
     const obj = _pendingRestore.data;
     Object.keys(obj).forEach(k => {
@@ -383,8 +388,9 @@ function confirmRestore() {
       }
     });
   }
+
   toast('♻️ تمت الاستعادة بالكامل — جاري إعادة التحميل','success');
-  setTimeout(() => location.reload(), 1000);
+  setTimeout(() => location.reload(), 800);
 }
 
 // ═══════════════════════════════════════════════
@@ -394,156 +400,14 @@ function clearSession() {
   if (!confirm('مسح sessionStorage؟ البيانات في localStorage ستبقى.')) return;
   try { sessionStorage.clear(); } catch(e) {}
   toast('🗑 تم مسح sessionStorage','warn');
-  setTimeout(() => location.reload(), 1000);
+  setTimeout(() => location.reload(), 500);
 }
 
 function clearLocalStorage() {
   if (!confirm('⚠️ مسح كل localStorage؟\n\nستُحذف جميع البيانات وتعود من data.js.\nصدّر نسخة احتياطية أولاً!')) return;
   try { localStorage.clear(); } catch(e) {}
   toast('🗑 تم مسح localStorage — إعادة التحميل','warn');
-  setTimeout(() => location.reload(), 1000);
-}
-
-// ═══════════════════════════════════════════════
-//  6. مسح شامل (Hard Reset)
-// ═══════════════════════════════════════════════
-function showHardResetConfirmation() {
-  const modal = document.createElement('div');
-  modal.style.cssText = `
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8); z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px; box-sizing: border-box;
-  `;
-  
-  modal.innerHTML = `
-    <div style="background: var(--bg); border: 2px solid var(--red); border-radius: 12px; 
-                padding: 30px; max-width: 500px; width: 100%; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-      <h2 style="color: var(--red); margin-bottom: 20px;">تأكيد المسح الشامل</h2>
-      <p style="margin-bottom: 20px; line-height: 1.6;">
-        هل أنت متأكد تماماً من مسح <strong>كل البيانات</strong>؟
-        <br><br>
-        هذه العملية ستمسح بشكل نهائي:
-      </p>
-      <ul style="text-align: right; margin: 20px 0; padding-right: 20px; line-height: 1.8;">
-        <li>جميع الإعدادات والتكوينات</li>
-        <li>جميع بيانات المحفظة والعمليات</li>
-        <li>جميع التوزيعات والعائدات</li>
-        <li>جميع البيانات المخزنة في localStorage</li>
-        <li>جميع بيانات الجلسة في sessionStorage</li>
-        <li>جميع قواعد البيانات المحلية (IndexedDB)</li>
-        <li>جميع ملفات الكاش المؤقتة</li>
-      </ul>
-      <p style="color: var(--red); font-weight: bold; margin-bottom: 30px;">
-        لا يمكن التراجع عن هذه العملية!
-      </p>
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button onclick="this.closest('[style*=position]').remove()" 
-                style="padding: 12px 24px; border: 1px solid var(--border); 
-                       background: var(--bg2); color: var(--text); 
-                       border-radius: 6px; cursor: pointer;">
-          إلغاء
-        </button>
-        <button onclick="executeHardReset(); this.closest('[style*=position]').remove()" 
-                style="padding: 12px 24px; background: var(--red); 
-                       color: white; border: none; border-radius: 6px; 
-                       cursor: pointer; font-weight: bold;">
-          مسح كل شيء نهائياً
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-}
-
-function executeHardReset() {
-  try {
-    // 1. مسح localStorage بالكامل
-    localStorage.clear();
-    
-    // 2. مسح sessionStorage بالكامل
-    sessionStorage.clear();
-    
-    // 3. مسح جميع قواعد بيانات IndexedDB
-    if ('indexedDB' in window) {
-      const databases = indexedDB.databases ? indexedDB.databases() : Promise.resolve([]);
-      databases.then(dbList => {
-        dbList.forEach(db => {
-          if (db.name) {
-            indexedDB.deleteDatabase(db.name);
-          }
-        });
-      }).catch(() => {
-        // Fallback: محاولة مسح قواعد البيانات المعروفة
-        const knownDatabases = ['2043_db', 'portfolio_db', 'transactions_db'];
-        knownDatabases.forEach(dbName => {
-          indexedDB.deleteDatabase(dbName);
-        });
-      });
-    }
-    
-    // 4. مسح Service Worker cache إذا وجد
-    if ('caches' in window) {
-      caches.keys().then(cacheNames => {
-        cacheNames.forEach(cacheName => {
-          caches.delete(cacheName);
-        });
-      }).catch(() => {});
-    }
-    
-    // 5. مسح جميع المتغيرات العامة
-    if (typeof window.APP !== 'undefined') {
-      Object.keys(window.APP).forEach(key => {
-        if (typeof window.APP[key] === 'object' && Array.isArray(window.APP[key])) {
-          window.APP[key] = [];
-        }
-      });
-    }
-    
-    // 6. مسح جميع متغيرات TickerHelper إذا وجدت
-    if (typeof window.TickerHelper !== 'undefined') {
-      delete window.TickerHelper;
-    }
-    
-    // 7. مسح جميع المتغيرات المتبقية في الذاكرة
-    if (typeof window.portData !== 'undefined') {
-      window.portData = [];
-    }
-    if (typeof window.trData !== 'undefined') {
-      window.trData = [];
-    }
-    if (typeof window.divData !== 'undefined') {
-      window.divData = [];
-    }
-    if (typeof window.filtered !== 'undefined') {
-      window.filtered = [];
-    }
-    if (typeof window.transactions !== 'undefined') {
-      window.transactions = [];
-    }
-    if (typeof window.portfolio !== 'undefined') {
-      window.portfolio = [];
-    }
-    if (typeof window.dividends !== 'undefined') {
-      window.dividends = [];
-    }
-    
-    toast('🔄 تم المسح الشامل بنجاح - إعادة التحميل...', 'success');
-    
-    // 8. فرض إعادة تحميل فوري
-    window.location.reload();
-    
-  } catch (error) {
-    console.error('Error during hard reset:', error);
-    toast('❌ حدث خطأ أثناء المسح الشامل', 'error');
-    
-    // محاولة إعادة التحميل حتى في حالة الخطأ
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
-  }
+  setTimeout(() => location.reload(), 500);
 }
 
 // ═══════════════════════════════════════════════

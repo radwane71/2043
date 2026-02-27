@@ -173,6 +173,11 @@
 </div>
 
 <script>
+// Bootstrap defaults مرة واحدة. يمنع الفراغ ويمنع مسح بياناتك.
+if (Store.get('portfolio_v1') === null)     Store.save('portfolio_v1', APP.portfolio);
+if (Store.get('transactions_v1') === null)  Store.save('transactions_v1', APP.transactions);
+if (Store.get('dividends_v1') === null)     Store.save('dividends_v1', APP.dividends);
+
 // ════════════════════════════════════════════
 //  State
 // ══════════════════════════════════════════════
@@ -180,14 +185,6 @@ let portData     = Store.load('portfolio_v1', APP.portfolio).map(p=>({...p}));
 let filtered     = [...portData];
 let activeFilter = 'all';
 let searchQ      = '';
-
-// التحقق من وجود بيانات وتفريغها إذا لزم
-if (portData.length > 0) {
-  Store.save('portfolio_v1', []);
-  setTimeout(() => {
-    window.location.reload();
-  }, 100);
-}
 
 // ══════════════════════════════════════════════
 //  calcTrueCost
@@ -217,27 +214,15 @@ function renderKPIs() {
   const totalReturn    = truePL + totalDiv;
   const totalReturnPct = netCost > 0 ? totalReturn / netCost : 0;
 
-  // التحقق من وجود بيانات وتفريغها إذا لزم
-  if (portData.length > 0 || divs.length > 0) {
-    Store.save('portfolio_v1', []);
-    Store.save('dividends_v1', []);
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
-    return;
-  }
-
   // YOC المرجّح — بناءً على التيكر لا اسم الشركة
   const divByTicker = {};
   divs.forEach(d => {
-    // دعم القديم (اسم) والجديد (تيكر)
     const key = d.ticker || d.stock;
     if (key) divByTicker[key] = (divByTicker[key] || 0) + d.amount;
   });
   let weightedYOC = 0, totalWeight = 0;
   portData.forEach(p => {
     const cost = p.qty * p.avg_cost;
-    // حاول التيكر أولاً ثم الاسم كـ fallback
     const sd = (divByTicker[p.ticker] || divByTicker[H.tickerName(p.ticker)] || 0);
     if (cost > 0 && sd > 0) { weightedYOC += (sd / cost) * cost; totalWeight += cost; }
   });
@@ -297,13 +282,13 @@ function renderKPIs() {
       <div class="kpi-icon">🗓️</div>
       <div class="kpi-label">توزيعات آخر 12 شهر</div>
       <div class="kpi-value warn">${H.fmt(div12m)}</div>
-      <div class="kpi-sub">${H.fmt(div12m/netCost*100,2)}% على التكلفة</div>
+      <div class="kpi-sub">${netCost>0?H.fmt(div12m/netCost*100,2):'0.00'}% على التكلفة</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">📅</div>
       <div class="kpi-label">توزيعات آخر 6 أشهر</div>
       <div class="kpi-value">${H.fmt(div6m)}</div>
-      <div class="kpi-sub">${H.fmt(div6m/netCost*100,2)}% على التكلفة</div>
+      <div class="kpi-sub">${netCost>0?H.fmt(div6m/netCost*100,2):'0.00'}% على التكلفة</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">🎯</div>
@@ -443,8 +428,7 @@ function applyQuickPrices() {
     renderKPIs();
     applyFilters();
     toast(`✅ تم تحديث ${changed} سعر وحفظ التغييرات مع المزامنة`, 'success');
-    
-    // مزامنة فورية مع جميع الصفحات
+
     dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
     dataSync.notifyDataChanged('networth', { action: 'refresh' });
   } else {
@@ -483,8 +467,7 @@ function applyFilters() {
 function saveAll() {
   updatePortfolio(() => portData);
   toast('✅ تم حفظ التغييرات مع المزامنة', 'success');
-  
-  // مزامنة فورية مع جميع الصفحات
+
   dataSync.notifyDataChanged('dashboard', { action: 'refresh' });
   dataSync.notifyDataChanged('networth', { action: 'refresh' });
 }
@@ -520,12 +503,18 @@ applyFilters();
 // الاستماع للتغييرات من صفحات أخرى
 dataSync.onDataChanged('transactions', (data, timestamp) => {
   console.log('Portfolio: Transactions updated, recalculating...');
-  // إعادة حساب المحفظة بناءً على العمليات الجديدة
-  const updatedPortfolio = recalculatePortfolioFromTransactions();
-  portData = updatedPortfolio;
-  renderKPIs();
-  applyFilters();
-  toast('🔄 تم تحديث المحفظة تلقائياً من العمليات', 'info');
+
+  if (typeof recalculatePortfolioFromTransactions === 'function') {
+    const updatedPortfolio = recalculatePortfolioFromTransactions();
+    if (Array.isArray(updatedPortfolio) && updatedPortfolio.length) {
+      portData = updatedPortfolio;
+      renderKPIs();
+      applyFilters();
+      toast('🔄 تم تحديث المحفظة تلقائياً من العمليات', 'info');
+    }
+  } else {
+    toast('⚠️ تم تحديث العمليات، لكن دالة إعادة الحساب غير متاحة هنا', 'warn');
+  }
 });
 
 dataSync.onDataChanged('portfolio', (data, timestamp) => {
@@ -538,7 +527,6 @@ dataSync.onDataChanged('portfolio', (data, timestamp) => {
 });
 
 dataSync.onDataChanged('dividends', (data, timestamp) => {
-  // تحديث مؤشرات YOC عند تغيير التوزيعات
   renderKPIs();
 });
 
