@@ -94,15 +94,18 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>🔄 العمليات</h1>
-      <p>جميع عمليات الشراء والبيع — قابلة للتعديل والتصدير والاستيراد</p>
+      <p>جميع عمليات الشراء والبيع — الاسم للعرض فقط، والتحليل يعتمد على كود التيكر (4 أرقام)</p>
     </div>
-    <div class="page-header-right">
-      <button class="btn btn-ghost btn-sm"   onclick="exportCSV()">📥 تصدير CSV</button>
-      <button class="btn btn-ghost btn-sm"   onclick="exportJSON()">📦 تصدير JSON</button>
-      <button class="btn btn-warn btn-sm"    onclick="document.getElementById('importModal').style.display='flex'">📤 استيراد</button>
+    <div class="page-header-right" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="seedOct2025()">📌 إدراج عمليات 1 أكتوبر 2025</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 تصدير CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">📦 تصدير JSON</button>
+      <button class="btn btn-warn btn-sm"  onclick="document.getElementById('importModal').style.display='flex'">📤 استيراد</button>
       <button class="btn btn-primary btn-sm" onclick="saveAll()">💾 حفظ</button>
     </div>
   </div>
+
+  <div class="info-box blue" id="seedInfo" style="margin-bottom:14px;display:none"></div>
 
   <!-- KPIs -->
   <div class="kpi-grid cols-5" id="trKPIs"></div>
@@ -217,21 +220,109 @@
 </div>
 
 <script>
-// ────────// ────────────────────────────────────────
+// ────────────────────────────────────────
+//  Seed: Oct 1, 2025
+// ────────────────────────────────────────
+const SEED_DATE = '2025-10-01';
+const SEED_DONE_KEY = 'seed_tx_2025_10_01_done_v1';
+
+function showSeedInfo() {
+  const box = document.getElementById('seedInfo');
+  const done = Store.get(SEED_DONE_KEY) === '1';
+
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = done
+    ? `✅ تم إدراج عمليات ${SEED_DATE} مسبقاً. (لن تتكرر تلقائياً)`
+    : `📌 لديك خيار إدراج العمليات بتاريخ ${SEED_DATE}. سيتم ربط كل عملية بكود تيكر صحيح (4 أرقام).`;
+}
+
+function buildSeedFromAPP() {
+  const base = (APP.transactions || []).map((t, i) => ({
+    ...t,
+    no: i + 1,
+    date: SEED_DATE,
+  }));
+
+  const normalized = (window.normalizeTransactions ? normalizeTransactions(base) : base)
+    .map(t => ({ ...t }));
+
+  const bad = [];
+  normalized.forEach(t => {
+    const code = String(t.ticker || '');
+    if (!window.TickerHelper?.isValid(code)) {
+      bad.push({ no: t.no, ticker: t.ticker, status: t.status, qty: t.qty, price: t.price });
+    }
+  });
+
+  if (bad.length) {
+    return { ok: false, bad, data: normalized };
+  }
+
+  // فرض 4 أرقام
+  normalized.forEach(t => {
+    t.ticker = String(window.TickerHelper?.normalizeCode(t.ticker) || t.ticker).padStart(4, '0');
+  });
+
+  return { ok: true, data: normalized };
+}
+
+function seedOct2025() {
+  if (Store.get(SEED_DONE_KEY) === '1') {
+    return toast(`ℹ️ عمليات ${SEED_DATE} موجودة مسبقاً`, 'info');
+  }
+
+  // تأكد أن التيكر-هيلبر جاهز
+  if (!window.TickerHelper?.isValid) {
+    return toast('❌ نظام التيكر غير جاهز. أعد تحميل الصفحة.', 'error');
+  }
+
+  let mode = 'replace';
+  if (trData.length > 0) {
+    const wantsReplace = confirm(`عندك الآن ${trData.length} عملية.\n\nموافق = استبدال الكل بعمليات ${SEED_DATE}.\nإلغاء = دمج وإضافة فقط.`);
+    mode = wantsReplace ? 'replace' : 'merge';
+  }
+
+  const r = buildSeedFromAPP();
+  if (!r.ok) {
+    console.table(r.bad);
+    toast(`❌ تعذر الإدراج: فيه ${r.bad.length} تيكرات غير معروفة. افتح Console للتفاصيل.`, 'error');
+    return;
+  }
+
+  if (mode === 'replace') {
+    trData = r.data.map((t, i) => ({ ...t, no: i + 1 }));
+  } else {
+    const startNo = trData.length + 1;
+    const toAdd = r.data.map((t, i) => ({ ...t, no: startNo + i }));
+    trData = [...trData, ...toAdd];
+  }
+
+  // حفظ + مزامنة
+  updateTransactions(() => trData);
+
+  // إعادة حساب المحفظة
+  try { recalculatePortfolioFromTransactions(); } catch(e) {}
+
+  applyFilters();
+  renderKPIs();
+  Store.save(SEED_DONE_KEY, '1');
+  showSeedInfo();
+
+  toast(`✅ تم إدراج عمليات ${SEED_DATE} بنجاح`, 'success');
+
+  // مزامنة فورية مع جميع الصفحات
+  try { syncAfterTransactionChange(); } catch(e) {}
+}
+
+// ────────────────────────────────────────
 //  State
 // ────────────────────────────────────────
-let trData     = Store.load('transactions_v1', APP.transactions).map(t => ({...t}));
-let filtered   = [...trData];
-let activeF    = 'all';
-let searchQ    = '';
-
-// التحقق من وجود بيانات وتفريغها إذا لزم
-if (trData.length > 0) {
-  Store.save('transactions_v1', []);
-  setTimeout(() => {
-    window.location.reload();
-  }, 100);
-}
+let trData   = (Store.load('transactions_v1', APP.transactions) || []).map(t => ({...t}));
+trData       = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
+let filtered = [...trData];
+let activeF  = 'all';
+let searchQ  = '';
 
 // ────────────────────────────────────────────────
 //  Helper: دمج التيكرات الأصلية مع المخصصة
@@ -272,8 +363,8 @@ function fetchTickerName() {
 function renderKPIs() {
   const buys    = trData.filter(t => t.status === 'Buy');
   const sells   = trData.filter(t => t.status === 'Sell');
-  const buyAmt  = buys.reduce((s,t)  => s + t.total, 0);
-  const sellAmt = sells.reduce((s,t) => s + t.total, 0);
+  const buyAmt  = buys.reduce((s,t)  => s + (t.total||0), 0);
+  const sellAmt = sells.reduce((s,t) => s + (t.total||0), 0);
   const fees    = trData.reduce((s,t) => s + (t.commission||0) + (t.vat||0), 0);
   const net     = buyAmt - sellAmt;
 
@@ -329,7 +420,6 @@ function renderTable() {
   document.getElementById('trBody').innerHTML = filtered.map(t => {
     const realIdx = trData.indexOf(t);
     const isBuy   = t.status === 'Buy';
-    // الاسم دائماً من tickers.js — لا fallback على t.name القديم
     const name    = H.tickerName(t.ticker);
 
     return `<tr id="row-${realIdx}">
@@ -340,20 +430,13 @@ function renderTable() {
         </span>
       </td>
 
-      <!-- التيكر — كود فقط -->
-      <td class="accent" style="font-weight:700">
-        ${t.ticker}
-      </td>
-
-      <!-- الاسم — من tickers.js دائماً -->
+      <td class="accent" style="font-weight:700">${t.ticker}</td>
       <td style="color:var(--text3);font-size:12px">${name}</td>
 
-      <!-- الكمية — قابلة للتعديل -->
       <td>
         <span class="editable" onclick="editNum(this,${realIdx},'qty')">${H.fmt(t.qty,0)}</span>
       </td>
 
-      <!-- السعر — قابل للتعديل -->
       <td>
         <span class="editable" onclick="editNum(this,${realIdx},'price')">${H.fmt(t.price)}</span>
       </td>
@@ -363,7 +446,6 @@ function renderTable() {
       <td style="color:var(--text3)">${H.fmt(t.vat||0)}</td>
       <td style="font-weight:600;color:${isBuy?'var(--red)':'var(--green)'}">${H.fmt(t.total_cost||0)}</td>
 
-      <!-- التاريخ — قابل للتعديل -->
       <td style="color:var(--text3)">
         <span class="editable" onclick="editDate(this,${realIdx},'date')">${t.date||'—'}</span>
       </td>
@@ -457,17 +539,18 @@ function calcPreview() {
 
 function addTransaction() {
   const status = document.getElementById('t-status').value;
-  const code   = document.getElementById('t-ticker').value.trim().toUpperCase();
+  const codeIn = document.getElementById('t-ticker').value.trim().toUpperCase();
   const qty    = parseFloat(document.getElementById('t-qty').value)   || 0;
   const price  = parseFloat(document.getElementById('t-price').value) || 0;
   const date   = document.getElementById('t-date').value || H.today();
 
-  if (!code)  return toast('أدخل كود التيكر', 'error');
-  if (!qty)   return toast('أدخل الكمية', 'error');
-  if (!price) return toast('أدخل السعر', 'error');
+  if (!codeIn)  return toast('أدخل كود التيكر', 'error');
+  if (!qty)     return toast('أدخل الكمية', 'error');
+  if (!price)   return toast('أدخل السعر', 'error');
 
+  const code = String(window.TickerHelper?.normalizeCode(codeIn) || codeIn).padStart(4,'0');
   const found = lookupTicker(code);
-  if (!found) {
+  if (!found || !window.TickerHelper?.isValid(code)) {
     return toast('❌ كود التيكر غير معرّف — اذهب للإعدادات وأضفه أولاً', 'error');
   }
 
@@ -477,7 +560,7 @@ function addTransaction() {
   const newTransaction = {
     no:         trData.length + 1,
     status,
-    ticker:     window.TickerHelper.normalizeCode(code),
+    ticker:     code,
     qty,
     price,
     total:      parseFloat(total.toFixed(4)),
@@ -487,11 +570,8 @@ function addTransaction() {
     date,
   };
 
-  // إضافة العملية مع المزامنة
   updateTransactions(current => [...current, newTransaction]);
-
-  // إعادة حساب المحفظة تلقائياً
-  recalculatePortfolioFromTransactions();
+  try { recalculatePortfolioFromTransactions(); } catch(e) {}
 
   // Reset form
   document.getElementById('t-ticker').value = '';
@@ -504,9 +584,8 @@ function addTransaction() {
   applyFilters();
   renderKPIs();
   toast(`✅ تمت إضافة ${status === 'Buy' ? 'شراء' : 'بيع'} ${code} — ${found.name}`, 'success');
-  
-  // مزامنة فورية مع جميع الصفحات
-  syncAfterTransactionChange();
+
+  try { syncAfterTransactionChange(); } catch(e) {}
 }
 
 // ────────────────────────────────────────────────
@@ -515,11 +594,9 @@ function addTransaction() {
 function deleteRow(idx) {
   if (!confirm(`حذف العملية #${trData[idx].no} — ${trData[idx].ticker}؟`)) return;
   
-  // حذف مع المزامنة
   updateTransactions(current => {
     const newData = [...current];
     newData.splice(idx, 1);
-    // إعادة ترقيم
     newData.forEach((t, i) => t.no = i + 1);
     return newData;
   });
@@ -527,15 +604,13 @@ function deleteRow(idx) {
   trData.splice(idx, 1);
   trData.forEach((t, i) => t.no = i + 1);
   
-  // إعادة حساب المحفظة
-  recalculatePortfolioFromTransactions();
+  try { recalculatePortfolioFromTransactions(); } catch(e) {}
   
   applyFilters();
   renderKPIs();
   toast('🗑 تم الحذف مع المزامنة', 'warn');
   
-  // مزامنة فورية مع جميع الصفحات
-  syncAfterTransactionChange();
+  try { syncAfterTransactionChange(); } catch(e) {}
 }
 
 // ────────────────────────────────────────────────
@@ -555,8 +630,8 @@ function applyFilters() {
     const mF   = activeF === 'all' || t.status === activeF;
     const name = H.tickerName(t.ticker);
     const mS   = !searchQ ||
-                 t.ticker.toLowerCase().includes(searchQ.toLowerCase()) ||
-                 name.toLowerCase().includes(searchQ.toLowerCase());
+                 String(t.ticker).toLowerCase().includes(searchQ.toLowerCase()) ||
+                 String(name).toLowerCase().includes(searchQ.toLowerCase());
     return mF && mS;
   });
   renderTable();
@@ -568,9 +643,7 @@ function applyFilters() {
 function saveAll() {
   updateTransactions(() => trData);
   toast('✅ تم الحفظ مع المزامنة', 'success');
-  
-  // مزامنة فورية مع جميع الصفحات
-  syncAfterTransactionChange();
+  try { syncAfterTransactionChange(); } catch(e) {}
 }
 
 // ────────────────────────────────────────────────
@@ -652,6 +725,7 @@ function doImport() {
     trData.push(t);
   });
   closeImport();
+  trData = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
   applyFilters();
   renderKPIs();
   toast(`✅ تم استيراد ${data.length} عملية (دمج)`, 'success');
@@ -663,6 +737,7 @@ function doImportReplace() {
   if (!data || !Array.isArray(data)) return;
   trData = data.map((t, i) => ({ ...t, no: i + 1 }));
   closeImport();
+  trData = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
   applyFilters();
   renderKPIs();
   toast(`✅ تم الاستيراد والاستبدال — ${trData.length} عملية`, 'success');
@@ -695,6 +770,7 @@ if (zone) {
 // ────────────────────────────────────────────────
 //  Init
 // ────────────────────────────────────────────────
+showSeedInfo();
 renderKPIs();
 applyFilters();
 document.getElementById('t-date').value = H.today();
@@ -702,13 +778,13 @@ document.getElementById('t-date').value = H.today();
 // الاستماع للتغييرات من صفحات أخرى
 dataSync.onDataChanged('transactions', (data, timestamp) => {
   trData = [...data];
+  trData = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
   applyFilters();
   renderKPIs();
   toast('🔄 تم تحديث العمليات تلقائياً', 'info');
 });
 
 dataSync.onDataChanged('portfolio', (data, timestamp) => {
-  // تحديث أسماء الشركات إذا تغيرت
   applyFilters();
 });
 
@@ -717,6 +793,7 @@ window.addEventListener('focus', () => {
   const latestData = Store.load('transactions_v1', APP.transactions);
   if (JSON.stringify(latestData) !== JSON.stringify(trData)) {
     trData = [...latestData];
+    trData = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
     applyFilters();
     renderKPIs();
   }
