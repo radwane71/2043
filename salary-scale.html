@@ -25,7 +25,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  min-width: 1100px;
+  min-width: 1700px;
 }
 .scale-table-wrap thead th {
   background: var(--bg2);
@@ -44,7 +44,7 @@
   text-align: center;
   white-space: nowrap;
 }
-.row-past td   { opacity: 0.55; }
+.row-past td { opacity: 0.55; }
 .row-current td { background: rgba(79,142,247,0.08) !important; font-weight: 700; }
 .field-inline {
   background: rgba(255,255,255,0.05);
@@ -62,6 +62,10 @@
   background: var(--bg);
   outline: none;
 }
+.field-inline[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 .unsaved-badge {
   display: none;
   padding: 4px 10px;
@@ -73,6 +77,20 @@
   font-weight: 600;
 }
 .unsaved-badge.show { display: inline-block; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.meta-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.meta-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; font-weight: 700; }
+.meta-value { font-size: 13px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -83,14 +101,41 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>📈 سلم الراتب</h1>
-      <p>أخصائي أول مختبرات — تحكم كامل في بيانات السلم الوظيفي</p>
+      <p>سلم الهيئة الملكية — بيانات قابلة للتعديل للمستقبل فقط</p>
     </div>
     <div class="page-header-right" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="unsaved-badge" id="unsavedBadge">● تعديلات غير محفوظة</span>
+      <button class="btn btn-ghost btn-sm" onclick="addRow()">➕ إضافة سنة</button>
       <button class="btn btn-ghost" onclick="exportCSV()">📄 تصدير CSV</button>
       <button class="btn btn-ghost" onclick="exportJSON()">📦 تصدير JSON</button>
       <button class="btn btn-danger btn-sm" onclick="resetScale()">🔄 إعادة تعيين</button>
       <button class="btn btn-primary" onclick="saveScale()">💾 حفظ التعديلات</button>
+    </div>
+  </div>
+
+  <div class="info-box blue" style="margin-bottom:16px">
+    🔒 السنوات الماضية (<span id="cyLabel"></span>) مقفلة تلقائياً. لا يمكن تعديلها.
+    <br>
+    ✅ السنة الحالية والمستقبلية مفتوحة للتعديل. التغييرات تُحفظ في localStorage.
+  </div>
+
+  <!-- Meta -->
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="meta-label">الجهة</div>
+      <input id="m-agency" class="field-inline" style="width:100%;text-align:right" type="text" oninput="updateMeta('agency', this.value)">
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">المسمى الوظيفي</div>
+      <input id="m-title" class="field-inline" style="width:100%;text-align:right" type="text" oninput="updateMeta('jobTitle', this.value)">
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">الدرجة</div>
+      <input id="m-grade" class="field-inline" style="width:100%" type="number" oninput="updateMeta('grade', this.value)">
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">المستوى</div>
+      <input id="m-level" class="field-inline" style="width:100%" type="number" oninput="updateMeta('level', this.value)">
     </div>
   </div>
 
@@ -105,16 +150,21 @@
           <th>السنة هـ</th>
           <th>السنة م</th>
           <th>العمر</th>
-          <th>الخدمة</th>
+          <th>سنوات الخدمة</th>
           <th>الأساسي</th>
           <th>بدل السكن</th>
           <th>بدل النقل</th>
-          <th>الإجمالي</th>
-          <th>GOSI (9.75%)</th>
-          <th>ساند (0.75%)</th>
+          <th>الراتب الإجمالي</th>
+          <th>خصم التأمينات</th>
+          <th>خصم ساند</th>
+          <th>توتال خصم GOSI</th>
+          <th>بدل غلاء</th>
+          <th>بدل الشفت</th>
+          <th>تكلفة ساعة العمل</th>
+          <th>الأوفرتايم بالساعة</th>
+          <th>أوفر تايم</th>
+          <th>بدل النقل (يومي)</th>
           <th>صافي الراتب</th>
-          <th>تكلفة الساعة</th>
-          <th>أوفر تايم (1.5x)</th>
           <th>الحالة</th>
         </tr>
       </thead>
@@ -126,76 +176,196 @@
 
 <script>
 const CY = new Date().getFullYear();
-let CURRENT_SCALE = Store.load('salary_scale_v1', APP.salaryScale || []);
+document.getElementById('cyLabel').innerText = `≤ ${CY-1}`;
+
+const DEFAULT_META = {
+  agency: 'الهيئة الملكية',
+  jobTitle: 'أخصائي أول مختبرات — ماجستير',
+  grade: 2,
+  level: 3,
+};
+
+// البيانات كما زوّدتني بها (سلم الهيئة الملكية)
+const DEFAULT_SCALE_RGA = [
+  { hijri: 1437, year: 2016, age: 24, exp: 0,  basic: 8925,  housing: 2083, transport: 700,  gross: 12708, gosi: 991,  sand: 110,  gosi_total: 1101, col: 0, shift: 1000, hour_cost: 0,  ot_hour: 46,  ot: 70,  transport_day: 21, net: 11607 },
+  { hijri: 1438, year: 2017, age: 25, exp: 1,  basic: 9400,  housing: 2083, transport: 700,  gross: 13183, gosi: 1033, sand: 115,  gosi_total: 1148, col: 0, shift: 1000, hour_cost: 0,  ot_hour: 49,  ot: 60,  transport_day: 21, net: 12035 },
+  { hijri: 1439, year: 2018, age: 26, exp: 2,  basic: 9870,  housing: 2083, transport: 900,  gross: 13853, gosi: 1076, sand: 120,  gosi_total: 1195, col: 0, shift: 1000, hour_cost: 0,  ot_hour: 51,  ot: 63,  transport_day: 27, net: 12658 },
+  { hijri: 1440, year: 2019, age: 27, exp: 3,  basic: 10364, housing: 2083, transport: 900,  gross: 14347, gosi: 1120, sand: 124,  gosi_total: 1245, col: 0, shift: 1000, hour_cost: 0,  ot_hour: 54,  ot: 66,  transport_day: 27, net: 13102 },
+  { hijri: 1441, year: 2020, age: 28, exp: 4,  basic: 10883, housing: 2083, transport: 900,  gross: 13866, gosi: 1167, sand: 130,  gosi_total: 1297, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 57,  ot: 69,  transport_day: 27, net: 12569 },
+  { hijri: 1442, year: 2021, age: 29, exp: 5,  basic: 11427, housing: 2083, transport: 900,  gross: 14410, gosi: 1216, sand: 135,  gosi_total: 1351, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 60,  ot: 72,  transport_day: 27, net: 13059 },
+  { hijri: 1442, year: 2022, age: 29, exp: 5,  basic: 13160, housing: 2193, transport: 1200, gross: 16553, gosi: 1216, sand: 135,  gosi_total: 1351, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 69,  ot: 83,  transport_day: 36, net: 15202 },
+  { hijri: 1443, year: 2022, age: 30, exp: 6,  basic: 13686, housing: 2281, transport: 1200, gross: 17167, gosi: 1437, sand: 120,  gosi_total: 1557, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 71,  ot: 87,  transport_day: 36, net: 15611 },
+  { hijri: 1444, year: 2023, age: 31, exp: 7,  basic: 14234, housing: 2372, transport: 1200, gross: 17806, gosi: 1495, sand: 125,  gosi_total: 1619, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 74,  ot: 90,  transport_day: 36, net: 16187 },
+  { hijri: 1445, year: 2024, age: 32, exp: 8,  basic: 14803, housing: 2467, transport: 1200, gross: 18470, gosi: 1554, sand: 130,  gosi_total: 1684, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 77,  ot: 94,  transport_day: 36, net: 16787 },
+  { hijri: 1446, year: 2025, age: 33, exp: 9,  basic: 15394, housing: 2566, transport: 1200, gross: 19160, gosi: 1616, sand: 135,  gosi_total: 1751, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 80,  ot: 97,  transport_day: 36, net: 17409 },
+  { hijri: 1447, year: 2026, age: 34, exp: 10, basic: 16010, housing: 2668, transport: 1200, gross: 19878, gosi: 1681, sand: 140,  gosi_total: 1821, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 83,  ot: 101, transport_day: 36, net: 18057 },
+  { hijri: 1448, year: 2027, age: 35, exp: 11, basic: 18255, housing: 3043, transport: 1200, gross: 22498, gosi: 1917, sand: 160,  gosi_total: 2077, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 95,  ot: 116, transport_day: 36, net: 20421 },
+  { hijri: 1449, year: 2028, age: 36, exp: 12, basic: 18985, housing: 3164, transport: 1200, gross: 23349, gosi: 1993, sand: 166,  gosi_total: 2160, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 99,  ot: 120, transport_day: 36, net: 21190 },
+  { hijri: 1450, year: 2029, age: 37, exp: 13, basic: 19745, housing: 3291, transport: 1200, gross: 24235, gosi: 2073, sand: 173,  gosi_total: 2246, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 103, ot: 125, transport_day: 36, net: 21989 },
+  { hijri: 1451, year: 2030, age: 38, exp: 14, basic: 20534, housing: 3422, transport: 1200, gross: 25157, gosi: 2156, sand: 180,  gosi_total: 2336, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 107, ot: 130, transport_day: 36, net: 22821 },
+  { hijri: 1452, year: 2031, age: 39, exp: 15, basic: 21356, housing: 3559, transport: 1200, gross: 26115, gosi: 2242, sand: 187,  gosi_total: 2429, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 111, ot: 135, transport_day: 36, net: 23686 },
+  { hijri: 1453, year: 2032, age: 40, exp: 16, basic: 22210, housing: 3702, transport: 1200, gross: 27112, gosi: 2332, sand: 194,  gosi_total: 2526, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 116, ot: 141, transport_day: 36, net: 24585 },
+  { hijri: 1454, year: 2033, age: 41, exp: 17, basic: 23098, housing: 3850, transport: 1200, gross: 28148, gosi: 2425, sand: 202,  gosi_total: 2627, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 120, ot: 146, transport_day: 36, net: 25521 },
+  { hijri: 1455, year: 2034, age: 42, exp: 18, basic: 24022, housing: 4004, transport: 1200, gross: 29226, gosi: 2522, sand: 210,  gosi_total: 2733, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 125, ot: 152, transport_day: 36, net: 26494 },
+  { hijri: 1456, year: 2035, age: 43, exp: 19, basic: 24983, housing: 4164, transport: 1200, gross: 30347, gosi: 2623, sand: 219,  gosi_total: 2842, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 130, ot: 158, transport_day: 36, net: 27505 },
+  { hijri: 1457, year: 2036, age: 44, exp: 20, basic: 25983, housing: 4330, transport: 1200, gross: 31513, gosi: 2728, sand: 227,  gosi_total: 2956, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 135, ot: 165, transport_day: 36, net: 28557 },
+  { hijri: 1458, year: 2037, age: 45, exp: 21, basic: 27022, housing: 4504, transport: 1200, gross: 32726, gosi: 2837, sand: 236,  gosi_total: 3074, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 141, ot: 171, transport_day: 36, net: 29652 },
+  { hijri: 1459, year: 2038, age: 46, exp: 22, basic: 28103, housing: 4684, transport: 1200, gross: 33987, gosi: 2951, sand: 246,  gosi_total: 3197, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 146, ot: 178, transport_day: 36, net: 30790 },
+  { hijri: 1460, year: 2039, age: 47, exp: 23, basic: 29227, housing: 4871, transport: 1200, gross: 35298, gosi: 3069, sand: 256,  gosi_total: 3325, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 152, ot: 185, transport_day: 36, net: 31973 },
+  { hijri: 1461, year: 2040, age: 48, exp: 24, basic: 30396, housing: 5066, transport: 1200, gross: 36662, gosi: 3192, sand: 266,  gosi_total: 3458, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 158, ot: 192, transport_day: 36, net: 33204 },
+  { hijri: 1462, year: 2041, age: 49, exp: 25, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1463, year: 2042, age: 50, exp: 26, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1464, year: 2043, age: 51, exp: 27, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1465, year: 2044, age: 52, exp: 28, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1466, year: 2045, age: 53, exp: 29, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1467, year: 2046, age: 54, exp: 30, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1468, year: 2047, age: 55, exp: 31, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1469, year: 2048, age: 56, exp: 32, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1470, year: 2049, age: 57, exp: 33, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1471, year: 2050, age: 58, exp: 34, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1472, year: 2051, age: 59, exp: 35, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1473, year: 2052, age: 60, exp: 36, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1474, year: 2053, age: 61, exp: 37, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+  { hijri: 1475, year: 2054, age: 62, exp: 38, basic: 31034, housing: 5172, transport: 1200, gross: 37406, gosi: 3259, sand: 272,  gosi_total: 3530, col: 0, shift: 0,    hour_cost: 0,  ot_hour: 162, ot: 197, transport_day: 36, net: 33876 },
+];
+
+function _n(x) {
+  const v = parseFloat(String(x).replace(/,/g,''));
+  return isNaN(v) ? 0 : v;
+}
+
+function normalizeRow(d) {
+  const out = {
+    hijri: _n(d.hijri),
+    year:  _n(d.year),
+    age:   _n(d.age),
+    exp:   _n(d.exp),
+    basic: _n(d.basic),
+    housing: _n(d.housing),
+    transport: _n(d.transport),
+    gross: _n(d.gross),
+    gosi: _n(d.gosi),
+    sand: _n(d.sand),
+    gosi_total: _n(d.gosi_total),
+    col: _n(d.col),
+    shift: _n(d.shift),
+    hour_cost: _n(d.hour_cost),
+    ot_hour: _n(d.ot_hour),
+    ot: _n(d.ot),
+    transport_day: _n(d.transport_day),
+    net: _n(d.net),
+  };
+
+  // إن كانت بعض الحقول ناقصة، نحاول ملأها بشكل محافظ
+  if (!out.gross) out.gross = out.basic + out.housing + out.transport;
+  if (!out.gosi_total) out.gosi_total = out.gosi + out.sand;
+  if (!out.net && out.gross) out.net = out.gross - out.gosi_total;
+
+  return out;
+}
+
+// bootstrap data (مرة واحدة)
+if (Store.get('salary_scale_v1') === null) {
+  Store.save('salary_scale_v1', DEFAULT_SCALE_RGA.map(normalizeRow));
+}
+if (Store.get('salary_scale_meta_v1') === null) {
+  Store.save('salary_scale_meta_v1', DEFAULT_META);
+}
+
+let CURRENT_SCALE = Store.load('salary_scale_v1', DEFAULT_SCALE_RGA).map(normalizeRow);
+let META         = Store.load('salary_scale_meta_v1', DEFAULT_META);
 let _dirty = false;
 
-// ─────────────────────────────────────────────
-//  حساب القيم المشتقة لصف واحد
-// ─────────────────────────────────────────────
-function calcRow(d) {
-  d.gross    = (d.basic || 0) + (d.housing || 0) + (d.transport || 0);
-  d.gosi     = ((d.basic || 0) + (d.housing || 0)) * 0.0975;
-  d.saned    = ((d.basic || 0) + (d.housing || 0)) * 0.0075;
-  d.net      = d.gross - d.gosi - d.saned;
-  d.cost_hr  = d.basic / (22 * 8);   // تكلفة الساعة الأساسية
-  d.ot_hr    = d.cost_hr * 1.5;      // أوفر تايم
-  return d;
+function isPastYear(row) {
+  return (row.year || 0) < CY;
 }
-CURRENT_SCALE = CURRENT_SCALE.map(calcRow);
+
+function setInputsFromMeta() {
+  document.getElementById('m-agency').value = META.agency || '';
+  document.getElementById('m-title').value = META.jobTitle || '';
+  document.getElementById('m-grade').value = META.grade ?? '';
+  document.getElementById('m-level').value = META.level ?? '';
+}
+
+function updateMeta(field, val) {
+  META[field] = (field === 'grade' || field === 'level') ? _n(val) : String(val || '');
+  markDirty();
+}
 
 // ─────────────────────────────────────────────
 //  Render
 // ─────────────────────────────────────────────
+function inputCell({ i, field, value, width=70, type='number', disabled=false }) {
+  const dis = disabled ? 'disabled' : '';
+  const on = disabled ? '' : `onchange="updateField(${i},'${field}',this.value)"`;
+  const style = `width:${width}px;${field==='net'?'color:var(--green);font-weight:700':''}`;
+  const safeVal = (type === 'number') ? (value ?? 0) : (value ?? '');
+  return `<input ${dis} ${on} type="${type}" class="field-inline" style="${style}" value="${safeVal}">`;
+}
+
 function renderTable() {
   const tbody = document.getElementById('scaleBody');
+  CURRENT_SCALE.sort((a,b) => (a.year||0) - (b.year||0));
+
   tbody.innerHTML = CURRENT_SCALE.map((d, i) => {
-    const past    = d.year < CY;
-    const current = d.year === CY;
+    const past    = isPastYear(d);
+    const current = (d.year || 0) === CY;
     const cls     = past ? 'row-past' : current ? 'row-current' : '';
+
     return `
       <tr class="${cls}">
-        <td>${d.hijri || '—'}</td>
-        <td style="font-weight:${current?'800':'400'};color:${current?'var(--accent)':'inherit'}">${d.year}</td>
-        <td>${d.age  || '—'}</td>
-        <td>${d.exp  || '—'}</td>
+        <td>${inputCell({i, field:'hijri', value:d.hijri, width:64, disabled:past})}</td>
+        <td>${inputCell({i, field:'year',  value:d.year,  width:72, disabled:past})}</td>
+        <td>${inputCell({i, field:'age',   value:d.age,   width:56, disabled:past})}</td>
+        <td>${inputCell({i, field:'exp',   value:d.exp,   width:70, disabled:past})}</td>
 
-        <td><input type="number" class="field-inline" style="width:82px;color:var(--accent)"
-              value="${d.basic}" data-i="${i}" data-f="basic"
-              onchange="updateField(${i},'basic',this.value)"></td>
+        <td>${inputCell({i, field:'basic', value:d.basic, width:86, disabled:past})}</td>
+        <td>${inputCell({i, field:'housing', value:d.housing, width:78, disabled:past})}</td>
+        <td>${inputCell({i, field:'transport', value:d.transport, width:72, disabled:past})}</td>
 
-        <td><input type="number" class="field-inline" style="width:72px"
-              value="${d.housing}" data-i="${i}" data-f="housing"
-              onchange="updateField(${i},'housing',this.value)"></td>
+        <td>${inputCell({i, field:'gross', value:d.gross, width:92, disabled:past})}</td>
+        <td>${inputCell({i, field:'gosi', value:d.gosi, width:82, disabled:past})}</td>
+        <td>${inputCell({i, field:'sand', value:d.sand, width:76, disabled:past})}</td>
+        <td>${inputCell({i, field:'gosi_total', value:d.gosi_total, width:92, disabled:past})}</td>
 
-        <td><input type="number" class="field-inline" style="width:64px"
-              value="${d.transport}" data-i="${i}" data-f="transport"
-              onchange="updateField(${i},'transport',this.value)"></td>
+        <td>${inputCell({i, field:'col', value:d.col, width:70, disabled:past})}</td>
+        <td>${inputCell({i, field:'shift', value:d.shift, width:78, disabled:past})}</td>
 
-        <td id="gross-${i}"  style="font-weight:700">${H.fmt(d.gross)}</td>
-        <td id="gosi-${i}"   style="color:var(--red)">${H.fmt(d.gosi)}</td>
-        <td id="saned-${i}"  style="color:var(--red)">${H.fmt(d.saned)}</td>
-        <td id="net-${i}"    style="color:var(--green);font-weight:700">${H.fmt(d.net)}</td>
-        <td id="costhr-${i}" style="color:var(--text2)">${H.fmt(d.cost_hr, 2)}</td>
-        <td id="othr-${i}"   style="color:var(--yellow,#f59e0b)">${H.fmt(d.ot_hr, 2)}</td>
+        <td>${inputCell({i, field:'hour_cost', value:d.hour_cost, width:92, disabled:past})}</td>
+        <td>${inputCell({i, field:'ot_hour', value:d.ot_hour, width:96, disabled:past})}</td>
+        <td>${inputCell({i, field:'ot', value:d.ot, width:70, disabled:past})}</td>
+        <td>${inputCell({i, field:'transport_day', value:d.transport_day, width:98, disabled:past})}</td>
+
+        <td>${inputCell({i, field:'net', value:d.net, width:92, disabled:past})}</td>
         <td style="font-size:11px">${past ? '⏪ ماضي' : current ? '🔵 الآن' : '⏩ مستقبل'}</td>
       </tr>`;
   }).join('');
 }
 
 // ─────────────────────────────────────────────
-//  تحديث خلية بدون re-render كامل
+//  Update
 // ─────────────────────────────────────────────
 function updateField(idx, field, val) {
-  CURRENT_SCALE[idx][field] = parseFloat(val) || 0;
-  calcRow(CURRENT_SCALE[idx]);
-  const d = CURRENT_SCALE[idx];
-  document.getElementById(`gross-${idx}` ).innerText = H.fmt(d.gross);
-  document.getElementById(`gosi-${idx}`  ).innerText = H.fmt(d.gosi);
-  document.getElementById(`saned-${idx}` ).innerText = H.fmt(d.saned);
-  document.getElementById(`net-${idx}`   ).innerText = H.fmt(d.net);
-  document.getElementById(`costhr-${idx}`).innerText = H.fmt(d.cost_hr, 2);
-  document.getElementById(`othr-${idx}`  ).innerText = H.fmt(d.ot_hr, 2);
+  const row = CURRENT_SCALE[idx];
+  if (!row) return;
+  if (isPastYear(row)) {
+    toast('🔒 هذه السنة مقفلة (ماضي). لا يمكن تعديلها.', 'warn');
+    renderTable();
+    return;
+  }
+
+  row[field] = _n(val);
+
+  // مزامنة محافظِة (بدون فرض حسابات إلزامية)
+  if (field === 'basic' || field === 'housing' || field === 'transport') {
+    if (!row.gross) row.gross = row.basic + row.housing + row.transport;
+  }
+  if (field === 'gosi' || field === 'sand') {
+    if (!row.gosi_total) row.gosi_total = row.gosi + row.sand;
+  }
+
   markDirty();
+  renderKPIs();
 }
 
 function markDirty() {
@@ -204,41 +374,104 @@ function markDirty() {
 }
 
 // ─────────────────────────────────────────────
-//  حفظ
+//  Add row
 // ─────────────────────────────────────────────
-function saveScale() {
-  Store.save('salary_scale_v1', CURRENT_SCALE);
-  _dirty = false;
-  document.getElementById('unsavedBadge').classList.remove('show');
-  toast('✅ تم حفظ سلم الرواتب بنجاح', 'success');
+function addRow() {
+  const last = CURRENT_SCALE.slice().sort((a,b) => (a.year||0)-(b.year||0)).at(-1) || normalizeRow({});
+  const nextYear = (last.year || CY) + 1;
+
+  const newRow = normalizeRow({
+    hijri: (last.hijri || 0) + 1,
+    year: nextYear,
+    age: (last.age || 0) + 1,
+    exp: (last.exp || 0) + 1,
+
+    basic: last.basic,
+    housing: last.housing,
+    transport: last.transport,
+
+    gross: last.gross,
+    gosi: last.gosi,
+    sand: last.sand,
+    gosi_total: last.gosi_total,
+
+    col: last.col,
+    shift: last.shift,
+    hour_cost: last.hour_cost,
+    ot_hour: last.ot_hour,
+    ot: last.ot,
+    transport_day: last.transport_day,
+    net: last.net,
+  });
+
+  if (newRow.year < CY) {
+    newRow.year = CY;
+  }
+
+  CURRENT_SCALE.push(newRow);
+  markDirty();
+  renderTable();
   renderKPIs();
+  toast('➕ تمت إضافة سنة جديدة (قابلة للتعديل)', 'success');
 }
 
 // ─────────────────────────────────────────────
-//  إعادة تعيين
+//  Save / Reset
 // ─────────────────────────────────────────────
+function saveScale() {
+  Store.save('salary_scale_v1', CURRENT_SCALE.map(normalizeRow));
+  Store.save('salary_scale_meta_v1', META);
+
+  _dirty = false;
+  document.getElementById('unsavedBadge').classList.remove('show');
+  toast('✅ تم حفظ سلم الرواتب بنجاح', 'success');
+
+  // مزامنة مع صفحات أخرى لو كانت تستخدم نفس المفتاح
+  try { dataSync.notifyDataChanged('salary-scale', { action: 'refresh' }); } catch(e) {}
+  renderKPIs();
+}
+
 function resetScale() {
   if (!confirm('إعادة تعيين السلم إلى البيانات الافتراضية؟ ستُفقد كل التعديلات.')) return;
   localStorage.removeItem('salary_scale_v1');
-  CURRENT_SCALE = (APP.salaryScale || []).map(calcRow);
+  localStorage.removeItem('salary_scale_meta_v1');
+
+  Store.save('salary_scale_v1', DEFAULT_SCALE_RGA.map(normalizeRow));
+  Store.save('salary_scale_meta_v1', DEFAULT_META);
+
+  CURRENT_SCALE = Store.load('salary_scale_v1', DEFAULT_SCALE_RGA).map(normalizeRow);
+  META = Store.load('salary_scale_meta_v1', DEFAULT_META);
+
   _dirty = false;
   document.getElementById('unsavedBadge').classList.remove('show');
+
+  setInputsFromMeta();
   renderTable();
   renderKPIs();
   toast('🔄 تمت إعادة التعيين', 'warn');
 }
 
 // ─────────────────────────────────────────────
-//  تصدير CSV
+//  Export
 // ─────────────────────────────────────────────
 function exportCSV() {
-  const headers = ['السنة م','السنة هـ','العمر','الخدمة','الأساسي','السكن','النقل','الإجمالي','GOSI','ساند','الصافي','تكلفة الساعة','أوفر تايم'];
-  const rows = CURRENT_SCALE.map(d => [
-    d.year, d.hijri || '', d.age || '', d.exp || '',
-    d.basic, d.housing, d.transport,
-    d.gross.toFixed(2), d.gosi.toFixed(2), d.saned.toFixed(2), d.net.toFixed(2),
-    d.cost_hr.toFixed(2), d.ot_hr.toFixed(2)
-  ]);
+  const headers = [
+    'السنة م','السنة هـ','العمر','سنوات الخدمة',
+    'الأساسي','بدل السكن','بدل النقل','الراتب الإجمالي',
+    'خصم التأمينات','خصم ساند','توتال خصم GOSI',
+    'بدل غلاء','بدل الشفت','تكلفة ساعة العمل','الأوفرتايم بالساعة','أوفر تايم','بدل النقل (يومي)','صافي الراتب'
+  ];
+
+  const rows = CURRENT_SCALE
+    .slice()
+    .sort((a,b) => (a.year||0)-(b.year||0))
+    .map(d => [
+      d.year, d.hijri, d.age, d.exp,
+      d.basic, d.housing, d.transport, d.gross,
+      d.gosi, d.sand, d.gosi_total,
+      d.col, d.shift, d.hour_cost, d.ot_hour, d.ot, d.transport_day, d.net
+    ]);
+
   const csv = '\uFEFF' + [headers, ...rows].map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
@@ -247,14 +480,12 @@ function exportCSV() {
   toast('📄 تم تصدير CSV', 'success');
 }
 
-// ─────────────────────────────────────────────
-//  تصدير JSON
-// ─────────────────────────────────────────────
 function exportJSON() {
   const payload = {
     app: '2043',
     type: 'salary_scale',
     exportedAt: new Date().toISOString(),
+    meta: META,
     data: CURRENT_SCALE
   };
   const a = document.createElement('a');
@@ -267,23 +498,32 @@ function exportJSON() {
 // ─────────────────────────────────────────────
 //  KPIs
 // ─────────────────────────────────────────────
+function findCurrentOrNext() {
+  const sorted = CURRENT_SCALE.slice().sort((a,b) => (a.year||0)-(b.year||0));
+  let row = sorted.find(d => (d.year||0) === CY);
+  if (!row) row = sorted.find(d => (d.year||0) > CY) || sorted.at(-1) || {};
+  return row || {};
+}
+
 function renderKPIs() {
-  const curr       = CURRENT_SCALE.find(d => d.year === CY) || CURRENT_SCALE[0] || {};
-  const last       = CURRENT_SCALE[CURRENT_SCALE.length - 1] || {};
-  const future     = CURRENT_SCALE.filter(d => d.year >= CY);
+  const curr = findCurrentOrNext();
+  const sorted = CURRENT_SCALE.slice().sort((a,b) => (a.year||0)-(b.year||0));
+  const last = sorted.at(-1) || {};
+
+  const future = sorted.filter(d => (d.year||0) >= CY);
   const totalFuture = future.reduce((s, d) => s + (d.net || 0) * 12, 0);
-  const avgNet      = future.length ? totalFuture / future.length / 12 : 0;
+  const avgNet = future.length ? totalFuture / future.length / 12 : 0;
 
   document.getElementById('scaleKPIs').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-icon">💳</div>
-      <div class="kpi-label">الراتب الصافي الحالي</div>
+      <div class="kpi-label">الراتب الصافي (الآن/القادم)</div>
       <div class="kpi-value accent">${H.fmt(curr.net || 0)}</div>
-      <div class="kpi-sub">SAR / شهر</div>
+      <div class="kpi-sub">${curr.year || '—'} • SAR / شهر</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">🏆</div>
-      <div class="kpi-label">أعلى راتب متوقع</div>
+      <div class="kpi-label">أعلى صافي متوقع</div>
       <div class="kpi-value pos">${H.fmt(last.net || 0)}</div>
       <div class="kpi-sub">${last.year || '—'}</div>
     </div>
@@ -291,26 +531,25 @@ function renderKPIs() {
       <div class="kpi-icon">📊</div>
       <div class="kpi-label">إجمالي الدخل المتوقع</div>
       <div class="kpi-value" style="color:var(--purple)">${H.fmt(totalFuture)}</div>
-      <div class="kpi-sub">SAR حتى ${2043}</div>
+      <div class="kpi-sub">SAR (سنوي×12) من ${CY} إلى ${last.year || '—'}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon">⏳</div>
-      <div class="kpi-label">متوسط الراتب الصافي</div>
+      <div class="kpi-label">متوسط الصافي المستقبلي</div>
       <div class="kpi-value warn">${H.fmt(avgNet)}</div>
-      <div class="kpi-sub">SAR / شهر متوسط مستقبلي</div>
+      <div class="kpi-sub">SAR / شهر</div>
     </div>`;
 }
 
 // ─────────────────────────────────────────────
-//  تحذير عند الخروج بدون حفظ
+//  تحذير قبل الخروج
 // ─────────────────────────────────────────────
 window.addEventListener('beforeunload', e => {
   if (_dirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// ─────────────────────────────────────────────
-//  Init
-// ─────────────────────────────────────────────
+// Init
+setInputsFromMeta();
 renderKPIs();
 renderTable();
 </script>
