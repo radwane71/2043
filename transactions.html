@@ -290,16 +290,21 @@ function seedOct2025() {
     return;
   }
 
+  let newData;
   if (mode === 'replace') {
-    trData = r.data.map((t, i) => ({ ...t, no: i + 1 }));
+    newData = r.data.map((t, i) => ({ ...t, no: i + 1 }));
   } else {
     const startNo = trData.length + 1;
     const toAdd = r.data.map((t, i) => ({ ...t, no: startNo + i }));
-    trData = [...trData, ...toAdd];
+    newData = [...trData, ...toAdd];
   }
 
-  // حفظ + مزامنة
-  updateTransactions(() => trData);
+  // حفظ في Store
+  updateTransactions(() => newData);
+
+  // تحديث trData من Store مباشرة
+  trData = Store.load('transactions_v1', APP.transactions) || [];
+  trData = (window.normalizeTransactions ? normalizeTransactions(trData) : trData);
 
   // إعادة حساب المحفظة
   try { recalculatePortfolioFromTransactions(); } catch(e) {}
