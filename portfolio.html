@@ -91,7 +91,7 @@
 
   <div class="page-header">
     <div class="page-header-left">
-      <h1>💹 نظرة المحفظة</h1>
+      <h1>📈 نظرة المحفظة</h1>
       <p>21 سهم — انقر على أي قيمة لتعديلها مباشرة</p>
     </div>
     <div class="page-header-right">
@@ -180,15 +180,15 @@ if (Store.get('dividends_v1') === null)     Store.save('dividends_v1', APP.divid
 
 // ════════════════════════════════════════════
 //  State
-// ══════════════════════════════════════════════
-let portData     = Store.load('portfolio_v1', APP.portfolio).map(p=>({...p}));
+// ════════════════════════════════════════════
+let portData     = Store.load('portfolio_v1', APP.portfolio).map(p=>({...p})).filter(p => p.qty > 0);
 let filtered     = [...portData];
 let activeFilter = 'all';
 let searchQ      = '';
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  calcTrueCost
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function calcTrueCost() {
   const transactions = Store.load('transactions_v1', APP.transactions);
   const totalBought  = transactions
@@ -200,9 +200,9 @@ function calcTrueCost() {
   return { totalBought, totalSold, netCost: totalBought - totalSold };
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  KPIs
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function renderKPIs() {
   const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
   const divs     = Store.load('dividends_v1', APP.dividends);
@@ -238,7 +238,7 @@ function renderKPIs() {
   );
   const annualizedYOC = portfolioYOC / monthSpan * 12;
 
-  // آخر 12 و 6 أشهر
+  // آخر 12 و6 أشهر
   const now   = new Date();
   const ago12 = new Date(now); ago12.setMonth(ago12.getMonth()-12);
   const ago6  = new Date(now); ago6.setMonth(ago6.getMonth()-6);
@@ -255,7 +255,7 @@ function renderKPIs() {
     <div class="kpi-card">
       <div class="kpi-icon">🏆</div>
       <div class="kpi-label">العائد الشامل</div>
-      <div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''}${H.fmt(totalReturn)}</div>
+      <div class="kpi-value ${totalReturn>=0?'pos':'neg'}">${totalReturn>=0?'+':''} ${H.fmt(totalReturn)}</div>
       <div class="kpi-sub">ر/خ + توزيعات • ${H.pct(totalReturnPct)}</div>
     </div>
     <div class="kpi-card">
@@ -267,7 +267,7 @@ function renderKPIs() {
     <div class="kpi-card">
       <div class="kpi-icon">📈</div>
       <div class="kpi-label">ر/خ ورقية</div>
-      <div class="kpi-value ${truePL>=0?'pos':'neg'}">${truePL>=0?'+':''}${H.fmt(truePL)}</div>
+      <div class="kpi-value ${truePL>=0?'pos':'neg'}">${truePL>=0?'+':''} ${H.fmt(truePL)}</div>
       <div class="kpi-sub">${H.pct(truePLPct)} على التكلفة</div>
     </div>`;
 
@@ -298,9 +298,9 @@ function renderKPIs() {
     </div>`;
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Table
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function renderTable() {
   const totalMkt = portData.reduce((s,p) => s + p.qty * p.current_price, 0);
   document.getElementById('portBody').innerHTML = filtered.map((p,i) => {
@@ -346,9 +346,9 @@ function renderTable() {
   }).join('');
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Inline Edit
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function editCell(span, idx, field) {
   if (span.querySelector('input')) return;
   const input = document.createElement('input');
@@ -372,9 +372,9 @@ function editCell(span, idx, field) {
   });
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Quick Price Update
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function quickPriceUpdate() {
   document.getElementById('qpRows').innerHTML = portData.map((p,i) => `
     <div class="qp-row">
@@ -437,9 +437,9 @@ function applyQuickPrices() {
   }
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Filters
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function applyFilter(decision, btn) {
   activeFilter = decision;
   document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
@@ -461,9 +461,9 @@ function applyFilters() {
   renderTable();
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Save
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function saveAll() {
   updatePortfolio(() => portData);
   toast('✅ تم حفظ التغييرات مع المزامنة', 'success');
@@ -472,9 +472,9 @@ function saveAll() {
   dataSync.notifyDataChanged('networth', { action: 'refresh' });
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Export CSV
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 function exportCSV() {
   const headers = ['السهم','التيكر','القطاع','الكمية','متوسط التكلفة','السعر الحالي','القيمة السوقية','ر/خ','ر/خ%','القرار'];
   const rows = portData.map(p => {
@@ -494,9 +494,9 @@ function exportCSV() {
   toast('📥 تم تصدير CSV', 'success');
 }
 
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 //  Init
-// ══════════════════════════════════════════════
+// ════════════════════════════════════════════
 renderKPIs();
 applyFilters();
 
@@ -507,7 +507,7 @@ dataSync.onDataChanged('transactions', (data, timestamp) => {
   if (typeof recalculatePortfolioFromTransactions === 'function') {
     const updatedPortfolio = recalculatePortfolioFromTransactions();
     if (Array.isArray(updatedPortfolio) && updatedPortfolio.length) {
-      portData = updatedPortfolio;
+      portData = updatedPortfolio.filter(p => p.qty > 0);
       renderKPIs();
       applyFilters();
       toast('🔄 تم تحديث المحفظة تلقائياً من العمليات', 'info');
@@ -519,7 +519,7 @@ dataSync.onDataChanged('transactions', (data, timestamp) => {
 
 dataSync.onDataChanged('portfolio', (data, timestamp) => {
   if (JSON.stringify(data) !== JSON.stringify(portData)) {
-    portData = [...data];
+    portData = data.filter(p => p.qty > 0);
     renderKPIs();
     applyFilters();
     toast('🔄 تم تحديث المحفظة تلقائياً', 'info');
@@ -532,7 +532,7 @@ dataSync.onDataChanged('dividends', (data, timestamp) => {
 
 // تحديث عند التركيز على الصفحة
 window.addEventListener('focus', () => {
-  const latestPortfolio = Store.load('portfolio_v1', APP.portfolio);
+  const latestPortfolio = Store.load('portfolio_v1', APP.portfolio).filter(p => p.qty > 0);
   if (JSON.stringify(latestPortfolio) !== JSON.stringify(portData)) {
     portData = [...latestPortfolio];
     renderKPIs();
